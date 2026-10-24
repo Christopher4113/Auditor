@@ -144,6 +144,8 @@ export const ingestBankTransaction = internalMutation({
     counterparty: v.string(),
     memo: v.string(),
     source: v.union(v.literal("bank"), v.literal("stripe")),
+    reference: v.optional(v.string()),
+    vendorId: v.optional(v.string()),
     actor: v.union(v.literal("inject"), v.literal("workflow")),
   },
   returns: v.id("bankTransactions"),
