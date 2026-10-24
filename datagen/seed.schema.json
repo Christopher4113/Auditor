@@ -3,18 +3,97 @@
   "title": "Auditor seed.json (interface 5, A -> C)",
   "description": "Agreed Friday night. Section item shapes are A2's Phase 1 deliverable; C seeds from a 10-transaction hand-written sample until A1 lands.",
   "type": "object",
-  "required": ["seed", "accounts", "openingBalances", "periods", "bankTransactions", "stripePayouts", "contracts", "policyClauses", "vendors", "breaks", "answerKey"],
+  "required": [
+    "seed",
+    "entity",
+    "accounts",
+    "openingBalances",
+    "periods",
+    "bankTransactions",
+    "stripePayouts",
+    "contracts",
+    "policyClauses",
+    "vendors",
+    "breaks",
+    "answerKey"
+  ],
   "properties": {
-    "seed": { "type": "integer" },
-    "accounts": { "type": "array", "items": { "type": "object" } },
-    "openingBalances": { "type": "array", "items": { "type": "object" } },
-    "periods": { "type": "array", "items": { "type": "object" } },
-    "bankTransactions": { "type": "array", "items": { "type": "object" } },
-    "stripePayouts": { "type": "array", "items": { "type": "object" } },
-    "contracts": { "type": "array", "items": { "type": "object" } },
-    "policyClauses": { "type": "array", "items": { "type": "object" } },
-    "vendors": { "type": "array", "items": { "type": "object" }, "description": "carries crsTestIdentity per vendor" },
-    "breaks": { "type": "array", "items": { "type": "object" } },
-    "answerKey": { "type": "array", "items": { "type": "object" } }
+    "seed": {
+      "type": "integer"
+    },
+    "entity": {
+      "type": "string",
+      "description": "entity id every row belongs to, e.g. eo-festival-nyc"
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "openingBalances": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "July, August, September 2026"
+    },
+    "bankTransactions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "stripePayouts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "contracts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "policyClauses": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "the entity's policy pack, 12 clauses; chunked into Moss"
+    },
+    "vendors": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "carries crsTestIdentity per vendor"
+    },
+    "breaks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "answerKey": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "fxRates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "per period; empty for the USD entity"
+    }
   }
 }

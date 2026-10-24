@@ -8,16 +8,17 @@ import argparse
 import json
 import random
 
+ENTITY = "eo-festival-nyc"  # Experts Only Festival NYC; fiscal periods Jul-Sep 2026
 SECTIONS = [
     "accounts", "openingBalances", "periods", "bankTransactions", "stripePayouts",
-    "contracts", "policyClauses", "vendors", "breaks", "answerKey",
+    "contracts", "policyClauses", "vendors", "breaks", "answerKey", "fxRates",
 ]
 
 
 def generate(seed: int) -> dict:
     rng = random.Random(seed)  # every random choice goes through rng, never the global one
     _ = rng
-    return {"seed": seed, **{s: [] for s in SECTIONS}}  # A1/A3 fill these in
+    return {"seed": seed, "entity": ENTITY, **{s: [] for s in SECTIONS}}  # A1/A3 fill these in
 
 
 if __name__ == "__main__":

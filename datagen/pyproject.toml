@@ -1,6 +1,6 @@
 [project]
 name = "datagen"
 version = "0.1.0"
-description = "Seeded generator: Harbor Lights books, six planted breaks, answer key -> seed.json"
+description = "Seeded generator: Experts Only Festival NYC books (Jul-Sep 2026), six planted breaks, answer key -> seed.json"
 requires-python = ">=3.12"
 dependencies = []

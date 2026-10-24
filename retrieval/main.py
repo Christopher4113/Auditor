@@ -66,5 +66,5 @@ def stats() -> dict:
 
 @app.post("/verify")
 def verify(_: VerifyRequest) -> VerifyResult:
-    # ponytail: fail closed until A6 wires the CRS sandbox; Controller escalates on available=False
+    # ponytail: fail closed until A6 wires the CRS sandbox; the controls engine escalates on available=False
     return VerifyResult(identityMatch=False, fraudFlags=[], available=False)
