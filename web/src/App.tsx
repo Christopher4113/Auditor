@@ -26,7 +26,7 @@ import {
 import WorkspaceDrawer from "./components/WorkspaceDrawer";
 import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
-import { LiveProposals, convex, startClose, approve as approveLive, reject as rejectLive, signPeriod as signLive } from "./data/live";
+import { LiveProposals, convex, reason, startClose, approve as approveLive, reject as rejectLive, signPeriod as signLive } from "./data/live";
 import type { Period, Proposal, ProposalStatus } from "./data/types";
 
 const money = (value: number, cents = false) =>
@@ -1161,14 +1161,14 @@ export default function App() {
               convex
                 ? void approveLive(id, note)
                     .then(() => notify("Approved and posted under your identity."))
-                    .catch((e: Error) => notify(e.message))
+                    .catch((e: Error) => notify(reason(e)))
                 : approve(id, note)
             }
             onReject={(id, instruction) =>
               convex
                 ? void rejectLive(id, instruction)
                     .then(() => notify("Rejected; the agent is proposing a revision."))
-                    .catch((e: Error) => notify(e.message))
+                    .catch((e: Error) => notify(reason(e)))
                 : reject(id, instruction)
             }
             onInject={inject}
@@ -1184,7 +1184,7 @@ export default function App() {
                     setSignedPeriods((previous) => [...previous, period]);
                     notify(`${period} signed and locked.`);
                   })
-                  .catch((e: Error) => notify(e.message));
+                  .catch((e: Error) => notify(reason(e)));
               } else if (!pending) {
                 setSignedPeriods((previous) => [...previous, period]);
                 notify(`${period} signed and locked in this demo.`);

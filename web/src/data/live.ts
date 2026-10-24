@@ -113,3 +113,6 @@ export function startClose(period: Period) {
 export const approve = (proposalId: string, note: string) => http!.mutation(approveRef, { entity: ENTITY, proposalId, note });
 export const reject = (proposalId: string, instruction: string) => http!.mutation(rejectRef, { entity: ENTITY, proposalId, instruction });
 export const signPeriod = (period: Period) => http!.mutation(signRef, { entity: ENTITY, period: PERIOD_KEY[period] });
+
+/** Convex wraps thrown errors as "[Request ID: …] Server Error Uncaught Error: <message> at …"; show only the message. */
+export const reason = (e: Error) => e.message.replace(/^.*?Uncaught Error: /, "").replace(/\s+at .*$/s, "");
