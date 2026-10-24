@@ -42,6 +42,7 @@ export type ControlRule = {
 
 export type Proposal = {
   id: string;
+  entity?: string;
   title: string;
   vendor: string;
   amount: number;

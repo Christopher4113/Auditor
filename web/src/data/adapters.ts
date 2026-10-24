@@ -94,15 +94,15 @@ function ruleViews(rules: WireRuleResult[]): ControlRule[] {
   }));
 }
 
-function parksPaymentInSuspense(
+function paymentSuspenseMovement(
   lines: ReadonlyArray<Pick<WireLine, "account" | "debit" | "credit">>,
-): boolean {
+): number {
   // A credit clearing an old suspense balance is not a new payment hold.
-  return (
-    lines
-      .filter((line) => line.account === "1400")
-      .reduce((sum, line) => sum + line.debit - line.credit, 0) > 0
-  );
+  const net = lines
+    .filter((line) => line.account === "1400")
+    .reduce((sum, line) => sum + line.debit - line.credit, 0);
+  // Detail fallbacks contain display dollars; suppress binary floating-point dust.
+  return Math.abs(net) < 0.000001 ? 0 : net;
 }
 
 /** Posting a hold journal records parked funds; it does not release the payment. */
@@ -119,11 +119,13 @@ export function statusFrom(
       !rule.passed,
   );
   if (status === "posted") {
-    // A rule on this proposal is payment-specific. A vendor-wide flag alone must
-    // not retroactively reclassify unrelated refunds or old completed entries.
-    return bankHold || (paymentsHeld && parksPaymentInSuspense(lines))
-      ? "held"
-      : "posted";
+    // Account 1400 is Payments under review. A parked-funds posting itself is
+    // hold evidence, even when a later human decision has an empty rules array.
+    const suspense = paymentSuspenseMovement(lines);
+    if (suspense > 0) return "held";
+    if (suspense < 0) return "posted";
+    // A vendor-wide flag alone does not retroactively hold unrelated refunds.
+    return bankHold ? "held" : "posted";
   }
   if (status === "rejected") return "rejected";
   if (paymentsHeld || bankHold) return "held";
@@ -189,6 +191,7 @@ export function toProposal(row: LiveProposalRow): Proposal {
     .reduce((sum, line) => sum + Math.abs(line.debit - line.credit), 0);
   return {
     id: row.proposalId,
+    entity: row.entity,
     backendStatus: row.status,
     backendId: row._id,
     breakBackendId: row.breakId,

@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleCheck,
+  CircleAlert,
   Download,
   History,
   Layers3,
@@ -26,10 +27,12 @@ import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
 import {
   LiveWorkspace,
+  ENTITY,
   LiveSelection,
   convex,
   startClose,
   configurationError,
+  checkApproval,
   approve as approveLive,
   reject as rejectLive,
   signPeriod as signLive,
@@ -41,6 +44,10 @@ import {
   revisionsFor,
   needsHumanReview,
   proposalProgress,
+  unresolvedProposals,
+  canSignPeriod,
+  canApproveProposal,
+  canRejectProposal,
 } from "./data/selectors";
 import { toPeriodKey } from "./data/adapters";
 import QueryBoundary from "./components/QueryBoundary";
@@ -81,6 +88,9 @@ const shortCategory: Record<string, string> = {
   "brightwater-aug": "Updated agreement",
   "ironclad-aug": "August service costs",
 };
+const auditTime = () =>
+  new Date().toLocaleTimeString("en-US", { hour12: false });
+const demoTimestamp = () => Date.now();
 function Mark() {
   return (
     <span className="brand-mark" aria-hidden="true">
@@ -206,6 +216,9 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
+  const [toastKind, setToastKind] = useState<"success" | "error">("success");
+  const [controllerBusy, setControllerBusy] = useState(false);
+  const controllerBusyRef = useRef(false);
   const [signedPeriods, setSignedPeriods] = useState<string[]>([]);
   const [denialCount, setDenialCount] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -224,7 +237,7 @@ export default function App() {
       : selectedBase;
   const attention = periodProposals.filter(needsHumanReview);
   const progress = proposalProgress(periodProposals);
-  const pending = progress.pending;
+  const pending = unresolvedProposals(dataRows, { period }).length;
   const posted = progress.posted;
   const livePeriod = liveSnapshot?.periods.find(
     (item) => item.period === toPeriodKey(period),
@@ -240,6 +253,41 @@ export default function App() {
     liveSnapshot?.period === period ? liveSnapshot.score : undefined;
   const workflow =
     liveSnapshot?.period === period ? liveSnapshot.workflow : undefined;
+  const summary =
+    liveSnapshot?.period === period ? liveSnapshot.summary : undefined;
+  const balancedSummary = Boolean(
+    summary &&
+      Number.isSafeInteger(summary.debits) &&
+      Number.isSafeInteger(summary.credits) &&
+      summary.debits === summary.credits,
+  );
+  const liveActionsDisabled =
+    live &&
+    (liveLoading ||
+      liveFailure ||
+      !liveSnapshot?.connected ||
+      liveSnapshot.period !== period ||
+      !liveSnapshot.feedComplete);
+  const canSign = canSignPeriod(dataRows, {
+    period,
+    entity: live ? ENTITY : undefined,
+    status: live ? livePeriod?.status : signed ? "signed" : "open",
+    loading:
+      liveLoading ||
+      liveFailure ||
+      controllerBusy ||
+      liveActionsDisabled ||
+      (live && !balancedSummary),
+    closeRunning:
+      live && (workflow?.type === "inProgress" || Boolean(workflow?.running)),
+    feedComplete: live ? liveSnapshot?.feedComplete === true : true,
+    allowEmpty:
+      live &&
+      workflow?.type === "completed" &&
+      summary?.status === "open" &&
+      summary.openItems === 0 &&
+      summary.awaitingController === 0,
+  });
   const percent = live ? progress.percent : 95;
   const detailLoading =
     live &&
@@ -277,7 +325,10 @@ export default function App() {
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
-  const notify = (message: string) => setToast(message);
+  const notify = (message: string, kind: "success" | "error" = "success") => {
+    setToastKind(kind);
+    setToast(message);
+  };
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), 4500);
@@ -342,15 +393,7 @@ export default function App() {
     setLiveDetails(null);
     setRevisionFallback(null);
   };
-  const auditTime = () =>
-    new Date().toLocaleTimeString("en-US", { hour12: false });
-  const approve = (id: string, note: string) => {
-    if (live) {
-      notify(
-        "Live review actions are not available yet. This workspace is read-only.",
-      );
-      return;
-    }
+  const approveDemo = (id: string, note: string) => {
     const item = proposals.find((p) => p.id === id);
     if (
       !item ||
@@ -387,13 +430,7 @@ export default function App() {
       `${item.vendor} approved. Controller decision recorded in the demo audit trail.`,
     );
   };
-  const reject = (id: string, instruction: string) => {
-    if (live) {
-      notify(
-        "Live review actions are not available yet. This workspace is read-only.",
-      );
-      return;
-    }
+  const rejectDemo = (id: string, instruction: string) => {
     const item = proposals.find((p) => p.id === id);
     if (!item || signedPeriods.includes(item.period)) return;
     setProposals((previous) =>
@@ -439,7 +476,8 @@ export default function App() {
       notify("This period is locked. Choose an open period first.");
       return;
     }
-    const id = `injected-${Date.now()}`;
+    const injectedAt = demoTimestamp();
+    const id = `injected-${injectedAt}`;
     const held = kind === "vendor_bank_change";
     const item: Proposal = {
       id,
@@ -461,7 +499,7 @@ export default function App() {
       reason: held
         ? "The local demo applies a preventive hold for a bank-detail change. Independent payee verification and a controller decision are required before any release."
         : "This newly injected demo scenario requires controller review. Evidence and accounting treatment have not been investigated by a live agent.",
-      decisionId: `P-${String(Date.now()).slice(-4)}`,
+      decisionId: `P-${String(injectedAt).slice(-4)}`,
       sourceBank: {
         label: vendor,
         amount,
@@ -504,6 +542,82 @@ export default function App() {
     notify(
       `${vendor} added to the ${held ? "held payments" : "review"} queue.`,
     );
+  };
+  const controllerAction = async (
+    action: () => Promise<unknown>,
+    success: string,
+  ) => {
+    if (controllerBusyRef.current) {
+      const message = "Another decision is being saved. Please wait.";
+      notify(message, "error");
+      throw new Error(message);
+    }
+    controllerBusyRef.current = true;
+    setControllerBusy(true);
+    try {
+      if (liveActionsDisabled)
+        throw new Error(
+          "Wait for the live workspace to reconnect before making a decision.",
+        );
+      await action();
+      notify(success);
+    } catch (error) {
+      const message = reason(error);
+      notify(message, "error");
+      throw new Error(message);
+    } finally {
+      controllerBusyRef.current = false;
+      setControllerBusy(false);
+    }
+  };
+  const handleApprove = async (id: string, note: string) => {
+    if (!live) {
+      approveDemo(id, note);
+      return;
+    }
+    await controllerAction(async () => {
+      const item = dataRows.find((row) => row.id === id);
+      if (!item || !canApproveProposal(item, { signed, rows: dataRows })) {
+        throw new Error(
+          "This proposal is not ready for approval. Check its sources, entry, and current status.",
+        );
+      }
+      await checkApproval(item);
+      await approveLive(id, note.trim());
+    }, "Approved and posted. Your controller decision is recorded.");
+  };
+  const handleReject = async (id: string, instruction: string) => {
+    if (!live) {
+      rejectDemo(id, instruction);
+      return;
+    }
+    await controllerAction(async () => {
+      const item = dataRows.find((row) => row.id === id);
+      if (!instruction.trim())
+        throw new Error("Add an instruction before returning this proposal.");
+      if (!item || !canRejectProposal(item, { signed, rows: dataRows })) {
+        throw new Error(
+          "This proposal is no longer awaiting a controller decision.",
+        );
+      }
+      await rejectLive(id, instruction.trim());
+    }, "Returned with your instruction. The agent will propose a revision.");
+  };
+  const handleSign = async () => {
+    if (!live) {
+      if (canSign) {
+        setSignedPeriods((previous) => [...previous, period]);
+        notify(`${period} signed and locked in this demo.`);
+      }
+      return;
+    }
+    await controllerAction(async () => {
+      if (!canSign)
+        throw new Error(
+          "Resolve the current proposals and wait for the close to finish before signing.",
+        );
+      await signLive(period);
+    }, `${period} signed and locked.`);
   };
   const exportClose = () => {
     const payload = {
@@ -620,6 +734,7 @@ export default function App() {
               <select
                 id="period-select"
                 value={period}
+                disabled={controllerBusy}
                 onChange={(event) => changePeriod(event.target.value as Period)}
               >
                 {[...periods].reverse().map((p) => (
@@ -641,7 +756,7 @@ export default function App() {
                 <div className="tools-menu">
                   <span>WORKSPACE TOOLS</span>
                   <button
-                    disabled={!convex}
+                    disabled={!convex || controllerBusy}
                     onClick={() => {
                       setMode(live ? "demo" : "live");
                       setSelectedId(null);
@@ -725,7 +840,7 @@ export default function App() {
                   ? "Loading the live close…"
                   : !liveSnapshot?.connected
                     ? "Reconnecting. Showing the last received records."
-                    : "Connected to live data · review actions are read-only for now"}
+                    : "Connected to live data · controller decisions are recorded"}
             </span>
             {liveFailure && (
               <button
@@ -1213,25 +1328,14 @@ export default function App() {
           wide
         >
           <WorkspaceDrawer
+            key={`${mode}-${period}-${drawer}`}
             type={drawer}
             proposals={periodProposals}
             period={period}
             onClose={() => setDrawer(null)}
             onSelect={selectProposal}
-            onApprove={(id, note) =>
-              live
-                ? void approveLive(id, note)
-                    .then(() => notify("Approved and posted under your identity."))
-                    .catch((e: Error) => notify(reason(e)))
-                : approve(id, note)
-            }
-            onReject={(id, instruction) =>
-              live
-                ? void rejectLive(id, instruction)
-                    .then(() => notify("Rejected; the agent is proposing a revision."))
-                    .catch((e: Error) => notify(reason(e)))
-                : reject(id, instruction)
-            }
+            onApprove={handleApprove}
+            onReject={handleReject}
             onInject={inject}
             mode={mode}
             liveSnapshot={liveSnapshot}
@@ -1243,27 +1347,20 @@ export default function App() {
             }
             onPrepare={async () => {
               if (live) {
-                await startClose(period);
-                notify(
+                await controllerAction(
+                  () => startClose(period),
                   `${period} close started. New entries will appear as it runs.`,
                 );
               } else notify(`${period} demo close is ready to review.`);
             }}
-            onSign={() => {
-              if (live) {
-                void signLive(period)
-                  .then(() => {
-                    setSignedPeriods((previous) => [...previous, period]);
-                    notify(`${period} signed and locked.`);
-                  })
-                  .catch((e: Error) => notify(reason(e)));
-                return;
-              }
-              if (!pending) {
-                setSignedPeriods((previous) => [...previous, period]);
-                notify(`${period} signed and locked in this demo.`);
-              }
-            }}
+            onSign={handleSign}
+            canSign={canSign}
+            actionsDisabled={controllerBusy || liveActionsDisabled}
+            controlResults={
+              liveSnapshot?.period === period
+                ? liveSnapshot.controlResults
+                : undefined
+            }
             onDeny={() => {
               if (live) {
                 notify(
@@ -1300,8 +1397,15 @@ export default function App() {
         </Dialog>
       )}
       {toast && (
-        <div className="toast" role="status">
-          <CircleCheck size={17} />
+        <div
+          className={`toast ${toastKind === "error" ? "toast-error" : ""}`}
+          role={toastKind === "error" ? "alert" : "status"}
+        >
+          {toastKind === "error" ? (
+            <CircleAlert size={17} />
+          ) : (
+            <CircleCheck size={17} />
+          )}
           <span>{toast}</span>
           <button
             aria-label="Dismiss notification"

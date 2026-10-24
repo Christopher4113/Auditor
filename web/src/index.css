@@ -1541,6 +1541,14 @@ h1 > span {
 .toast > svg {
   color: #c3a0dd;
 }
+.toast.toast-error {
+  background: #fff8ef;
+  border-color: #ecd4b3;
+  color: #80592b;
+}
+.toast.toast-error > svg {
+  color: #ad7a32;
+}
 .toast button {
   display: flex;
   padding: 2px;
