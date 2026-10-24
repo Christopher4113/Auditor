@@ -1,23 +1,52 @@
-// C1: loads seed.json (interface 5, shape in datagen/seed.schema.json). Wipes the entity first, so it is
-// also the reset. Run: pnpm seed  (or  SEED=datagen/sample.json pnpm seed)
+// C1: loads seed.json (interface 5; shape owned by Group A in datagen/seed.schema.json, v1.0.0).
+// Wipes the entity first, so it is also the reset. Run: pnpm seed  (or  SEED=datagen/sample.seed.json pnpm seed)
+// Mapping from the seed contract to the tables: external ids become *Id string fields, never _id;
+// openingBalances become one balanced opening entry; stripePayouts attach to their bank transaction;
+// policyClauses become one policyPacks row; the answer key marks plantedBreak on bank transactions.
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import type { Id, TableNames } from "./_generated/dataModel";
 import { audit } from "./audit";
-import { vClause, vLine } from "./schema";
+
+const id = v.string();
+const cents = v.number();
+const seedLine = v.object({ accountCode: v.string(), debit: cents, credit: cents });
+const seedClause = v.object({ id, number: v.string(), text: v.string(), effectiveDate: v.string() });
 
 const vSeed = {
+  schemaVersion: v.string(),
   seed: v.number(),
-  entity: v.string(),
-  accounts: v.array(v.object({ code: v.string(), name: v.string(), type: v.union(v.literal("asset"), v.literal("liability"), v.literal("equity"), v.literal("revenue"), v.literal("expense")) })),
-  openingBalances: v.array(vLine), // as of the first period's start
-  periods: v.array(v.object({ period: v.string(), start: v.string(), end: v.string() })),
-  bankTransactions: v.array(v.object({ txnId: v.string(), period: v.string(), date: v.string(), amount: v.number(), counterparty: v.string(), memo: v.string() })),
-  stripePayouts: v.array(v.object({ txnId: v.string(), period: v.string(), date: v.string(), amount: v.number(), gross: v.number(), fees: v.number(), chargeCount: v.number() })),
-  contracts: v.array(v.object({ contractId: v.string(), counterparty: v.string(), title: v.string(), clauses: v.array(vClause) })),
-  policyPack: v.object({ jurisdiction: v.string(), currency: v.string(), thresholdCents: v.number(), clauses: v.array(vClause) }),
-  vendors: v.array(v.object({ vendorId: v.string(), name: v.string(), bankAccountLast4: v.string(), crsTestIdentity: v.string(), contractId: v.optional(v.string()) })),
-  answerKey: v.array(v.object({ breakNumber: v.number(), period: v.string(), title: v.string(), txnId: v.string(), expectedKind: v.string(), expectedLines: v.array(vLine) })),
+  dataset: v.string(),
+  entity: id,
+  currency: v.string(),
+  company: v.object({ name: v.string(), synthetic: v.boolean(), eventStartDate: v.string(), eventEndDate: v.string(), paidAttendance: v.number() }),
+  accounts: v.array(v.object({ id, entity: id, code: v.string(), name: v.string(), type: v.union(v.literal("asset"), v.literal("liability"), v.literal("equity"), v.literal("revenue"), v.literal("expense")), normalBalance: v.string(), currency: v.string() })),
+  openingBalances: v.array(v.object({ id, entity: id, date: v.string(), accountCode: v.string(), debit: cents, credit: cents })),
+  periods: v.array(v.object({ id, entity: id, startDate: v.string(), endDate: v.string(), status: v.union(v.literal("open"), v.literal("closing"), v.literal("closed")) })),
+  bankTransactions: v.array(
+    v.object({
+      id,
+      entity: id,
+      period: v.string(),
+      date: v.string(),
+      amount: v.number(),
+      currency: v.string(),
+      counterparty: v.string(),
+      description: v.string(),
+      reference: v.string(),
+      vendorId: v.union(id, v.null()),
+      stripePayoutId: v.union(id, v.null()),
+      status: v.union(v.literal("unmatched"), v.literal("matched")),
+    }),
+  ),
+  stripePayouts: v.array(v.object({ id, entity: id, period: v.string(), arrivalDate: v.string(), currency: v.string(), gross: cents, fee: cents, net: cents, chargeCount: v.number(), bankTransactionId: id })),
+  contracts: v.array(v.object({ id, entity: id, vendorId: id, title: v.string(), signedDate: v.string(), startDate: v.string(), endDate: v.string(), currency: v.string(), clauses: v.array(seedClause) })),
+  policyClauses: v.array(v.object({ id, entity: id, policyPackId: id, number: v.string(), text: v.string(), effectiveDate: v.string() })),
+  vendors: v.array(v.object({ id, entity: id, name: v.string(), category: v.string(), bankAccountLast4: v.string(), crsTestIdentity: v.union(id, v.null()) })),
+  breaks: v.array(v.object({ id, entity: id, period: v.string(), kind: v.string(), description: v.string(), bankTransactionIds: v.array(id), contractIds: v.array(id), status: v.string() })),
+  answerKey: v.array(
+    v.object({ id, entity: id, breakId: id, period: v.string(), expectedAction: v.string(), expectedLines: v.array(seedLine), citationIds: v.array(id), expectedEscalation: v.boolean(), pnlImpact: cents, explanation: v.string() }),
+  ),
   fxRates: v.array(v.object({ period: v.string(), currency: v.string(), rateToUsd: v.number() })),
 };
 
@@ -39,6 +68,9 @@ const ENTITY_INDEX: Record<TableNames, string> = {
   corrections: "by_entity_period",
 };
 
+// ponytail: rule 8.0 threshold is not in the seed contract yet; the brief says $5,000. A adds it to policyPack metadata if it ever varies.
+const THRESHOLD_CENTS = 500_000;
+
 export const load = internalMutation({
   args: vSeed,
   returns: v.object({ entity: v.string(), bankTransactions: v.number(), journalEntries: v.number() }),
@@ -46,46 +78,98 @@ export const load = internalMutation({
     const { entity } = s;
     for (const [table, index] of Object.entries(ENTITY_INDEX) as [TableNames, string][]) {
       // ponytail: one transaction; fine at a few hundred rows per table, batch + reschedule if it ever isn't
-      // Typed per-table index names don't survive the loop, so the builder is cast once here.
       const q = ctx.db.query(table) as unknown as { withIndex: (i: string, r: (b: { eq: (f: string, v: string) => unknown }) => unknown) => AsyncIterable<{ _id: Id<TableNames> }> };
       for await (const row of q.withIndex(index, (b) => b.eq("entity", entity))) await ctx.db.delete(row._id);
     }
 
-    for (const a of s.accounts) await ctx.db.insert("accounts", { entity, ...a });
-    for (const p of s.periods) await ctx.db.insert("periods", { entity, ...p, status: "open" });
-    for (const t of s.bankTransactions) await ctx.db.insert("bankTransactions", { entity, ...t, source: "bank", status: "unmatched" });
-    for (const { gross, fees, chargeCount, ...t } of s.stripePayouts)
-      await ctx.db.insert("bankTransactions", { entity, ...t, counterparty: "Stripe", memo: `Payout ${t.txnId}`, source: "stripe", stripe: { gross, fees, chargeCount }, status: "unmatched" });
-    for (const c of s.contracts) await ctx.db.insert("contracts", { entity, ...c });
-    await ctx.db.insert("policyPacks", { entity, ...s.policyPack });
-    for (const vd of s.vendors) await ctx.db.insert("vendors", { entity, ...vd, paymentsHeld: false });
-    for (const f of s.fxRates) await ctx.db.insert("fxRates", { entity, ...f });
+    for (const a of s.accounts) await ctx.db.insert("accounts", { entity, code: a.code, name: a.name, type: a.type });
+    for (const p of s.periods)
+      await ctx.db.insert("periods", { entity, period: p.id, start: p.startDate, end: p.endDate, status: p.status === "closed" ? "signed" : p.status });
 
-    for (const k of s.answerKey) {
-      await ctx.db.insert("answerKey", { entity, ...k });
-      const txn = await ctx.db
-        .query("bankTransactions")
-        .withIndex("by_entity_txnId", (q) => q.eq("entity", entity).eq("txnId", k.txnId))
-        .unique();
-      if (txn) await ctx.db.patch("bankTransactions", txn._id, { plantedBreak: k.breakNumber });
+    const payoutByTxn = new Map(s.stripePayouts.map((p) => [p.bankTransactionId, p]));
+    const plantedByTxn = new Map<string, number>();
+    const breaksById = new Map(s.breaks.map((b) => [b.id, b]));
+    s.answerKey.forEach((k, i) => {
+      for (const t of breaksById.get(k.breakId)?.bankTransactionIds ?? []) plantedByTxn.set(t, i + 1);
+    });
+    for (const t of s.bankTransactions) {
+      const payout = payoutByTxn.get(t.id);
+      await ctx.db.insert("bankTransactions", {
+        entity,
+        period: t.period,
+        txnId: t.id,
+        date: t.date,
+        amount: t.amount,
+        counterparty: t.counterparty,
+        memo: t.description,
+        reference: t.reference,
+        vendorId: t.vendorId ?? undefined,
+        source: payout ? "stripe" : "bank",
+        stripe: payout ? { gross: payout.gross, fees: payout.fee, chargeCount: payout.chargeCount } : undefined,
+        status: t.status,
+        plantedBreak: plantedByTxn.get(t.id),
+      });
     }
 
-    const first = [...s.periods].sort((a, b) => a.start.localeCompare(b.start))[0];
+    const vendorName = new Map(s.vendors.map((vd) => [vd.id, vd.name]));
+    const contractByVendor = new Map(s.contracts.map((c) => [c.vendorId, c.id]));
+    for (const c of s.contracts)
+      await ctx.db.insert("contracts", {
+        entity,
+        contractId: c.id,
+        vendorId: c.vendorId,
+        counterparty: vendorName.get(c.vendorId) ?? c.vendorId,
+        title: c.title,
+        clauses: c.clauses.map(({ id, number, text }) => ({ id, number, text })),
+      });
+    for (const vd of s.vendors)
+      await ctx.db.insert("vendors", {
+        entity,
+        vendorId: vd.id,
+        name: vd.name,
+        bankAccountLast4: vd.bankAccountLast4,
+        crsTestIdentity: vd.crsTestIdentity ?? undefined,
+        paymentsHeld: false,
+        contractId: contractByVendor.get(vd.id),
+      });
+    await ctx.db.insert("policyPacks", {
+      entity,
+      jurisdiction: "US",
+      currency: s.currency,
+      thresholdCents: THRESHOLD_CENTS,
+      clauses: s.policyClauses.map(({ id, number, text }) => ({ id, number, text })),
+    });
+    for (const f of s.fxRates) await ctx.db.insert("fxRates", { entity, ...f });
+
+    for (const [i, k] of s.answerKey.entries()) {
+      const brk = breaksById.get(k.breakId);
+      await ctx.db.insert("answerKey", {
+        entity,
+        period: k.period,
+        breakNumber: i + 1,
+        title: k.expectedAction,
+        txnId: brk?.bankTransactionIds[0] ?? "",
+        expectedKind: brk?.kind ?? "unknown",
+        expectedLines: k.expectedLines.map((l) => ({ account: l.accountCode, debit: l.debit, credit: l.credit })),
+      });
+    }
+
+    const first = [...s.periods].sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
     let journalEntries = 0;
     if (first && s.openingBalances.length) {
       await ctx.db.insert("journalEntries", {
         entity,
-        period: first.period,
+        period: first.id,
         entryId: "JE-OPENING",
-        date: first.start,
-        lines: s.openingBalances,
+        date: s.openingBalances[0].date,
+        lines: s.openingBalances.map((l) => ({ account: l.accountCode, debit: l.debit, credit: l.credit })),
         memo: "Opening balances",
         source: "opening",
         postedBy: "seed",
       });
       journalEntries = 1;
     }
-    await audit(ctx, { entity, actor: "seed", action: "seed.load", detail: `seed ${s.seed}` });
-    return { entity, bankTransactions: s.bankTransactions.length + s.stripePayouts.length, journalEntries };
+    await audit(ctx, { entity, actor: "seed", action: "seed.load", detail: `${s.dataset} seed ${s.seed} schema ${s.schemaVersion}` });
+    return { entity, bankTransactions: s.bankTransactions.length, journalEntries };
   },
 });

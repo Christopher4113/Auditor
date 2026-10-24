@@ -44,11 +44,13 @@ pnpm dev:retrieval       # http://localhost:8000/docs
 cd datagen && uv run generate.py
 ```
 
+Group A's Phase 1 is ready to consume: [data contract and Convex handoff](datagen/README.md), [10-transaction sample](datagen/sample.seed.json), [retrieval stub guide](retrieval/README.md), and [verification record](datagen/AUDIT.md). Run `pnpm data:generate`, `pnpm data:validate`, `pnpm data:test`, and `pnpm retrieval:test` from the root. Generation and validation require Python/uv; no API credentials or running services.
+
 Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`; `ANTHROPIC_MODEL` swaps Sonnet for Opus. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
 
 ## The six planted breaks
 
-~120 clean transactions a month plus these six, so precision and recall are measured. Amounts and clauses are in the brief; the answer key is in `seed.json`.
+Phase 2 adds these six planted breaks to ~120 clean transactions a month so precision and recall can be measured. Amounts and clauses are in the brief; A3 supplies the answer key in `seed.json`. Phase 1 has empty `breaks` and `answerKey` arrays and does not claim detection or scoring results yet.
 
 | # | Month | Break | Right answer | Who decides |
 |---|---|---|---|---|
@@ -71,7 +73,7 @@ Cut order if behind, from the bottom: core (generator, Workflow, agent, controls
 
 ```bash
 pnpm dev:convex                                   # push convex/ and watch
-SEED=datagen/sample.json pnpm seed                # wipe + load an entity (default SEED=datagen/seed.json)
+SEED=datagen/sample.seed.json pnpm seed           # wipe + load an entity (default SEED=datagen/seed.json from pnpm data:generate)
 npx convex run api:startClose '{"entity":"eo-festival-nyc","period":"2026-09"}'
 npx convex run api:listProposals '{"entity":"eo-festival-nyc","period":"2026-09"}'
 ```

@@ -69,7 +69,7 @@ export const getBreak = query({
     if (!brk) return null;
     const bank = await ctx.db.get(brk.bankTransactionId);
     const vendors = bank ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", brk.entity)).take(100) : [];
-    const vendor = vendors.find((vd) => vd.name === bank?.counterparty) ?? null;
+    const vendor = vendors.find((vd) => (bank?.vendorId ? vd.vendorId === bank.vendorId : vd.name === bank?.counterparty)) ?? null;
     const contractId = vendor?.contractId;
     const contract = contractId
       ? await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", brk.entity).eq("contractId", contractId)).unique()

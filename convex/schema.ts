@@ -28,7 +28,7 @@ export const vCitation = v.object({
   score: v.number(),
 });
 
-export const vClause = v.object({ id: v.string(), text: v.string() });
+export const vClause = v.object({ id: v.string(), number: v.optional(v.string()), text: v.string() });
 
 export const vRuleResult = v.object({
   rule: v.string(), // "balance", "citation", "threshold", "bank_detail_change", "period_lock", "revision_cap", "precedent", "correction"
@@ -82,6 +82,8 @@ export default defineSchema({
     amount: v.number(),
     counterparty: v.string(),
     memo: v.string(),
+    reference: v.optional(v.string()), // invoice / payout reference, the code matcher keys on it
+    vendorId: v.optional(v.string()), // vendors.vendorId; null on Stripe receipts
     source: v.union(v.literal("bank"), v.literal("stripe")),
     stripe: v.optional(v.object({ gross: v.number(), fees: v.number(), chargeCount: v.number() })),
     status: v.union(v.literal("unmatched"), v.literal("matched"), v.literal("flagged")),
@@ -104,8 +106,9 @@ export default defineSchema({
 
   contracts: defineTable({
     ...entity,
-    contractId: v.string(), // "apex-staging"
-    counterparty: v.string(),
+    contractId: v.string(), // "contract-apex"
+    vendorId: v.optional(v.string()),
+    counterparty: v.string(), // vendor name
     title: v.string(),
     clauses: v.array(vClause), // chunked into Moss; amendments append a clause
   }).index("by_entity_contractId", ["entity", "contractId"]),
@@ -115,7 +118,7 @@ export default defineSchema({
     vendorId: v.string(),
     name: v.string(),
     bankAccountLast4: v.string(),
-    crsTestIdentity: v.string(),
+    crsTestIdentity: v.optional(v.string()), // absent = not configured; verify_payee fails closed
     paymentsHeld: v.boolean(), // rule 4.3
     contractId: v.optional(v.string()),
   }).index("by_entity_vendorId", ["entity", "vendorId"]),

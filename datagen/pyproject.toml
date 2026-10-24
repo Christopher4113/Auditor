@@ -1,6 +1,9 @@
 [project]
 name = "datagen"
 version = "0.1.0"
-description = "Seeded generator: Experts Only Festival NYC books (Jul-Sep 2026), six planted breaks, answer key -> seed.json"
+description = "Phase 1 deterministic Experts Only Festival NYC data and seed contract"
 requires-python = ">=3.12"
 dependencies = []
+
+[dependency-groups]
+dev = ["jsonschema>=4.23,<5"]
