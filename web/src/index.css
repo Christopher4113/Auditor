@@ -79,6 +79,76 @@ svg {
   background: #ded5ff;
   color: #2d195e;
 }
+.connection-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 22px;
+  padding: 12px 16px;
+  border: 1px solid #e6e0f7;
+  border-radius: 12px;
+  background: #f4f0ff;
+  color: #62547e;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.connection-banner > span:nth-child(2) {
+  flex: 1;
+}
+.connection-banner .text-button {
+  flex-shrink: 0;
+}
+.connection-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #b4a8d1;
+}
+.connection-dot.connected {
+  background: #52a58a;
+}
+.connection-error {
+  color: #976333;
+  background: #fff8ef;
+  border-color: #f2dec2;
+}
+.live-mode-tag {
+  color: #6952aa;
+  background: #f0ebfc;
+}
+.readonly-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #f8f7fb;
+  color: #766c89;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.readonly-notice svg {
+  margin-top: 3px;
+}
+.badge.status-pending {
+  color: #7a728a;
+  background: #f1eef6;
+}
+.badge.status-approved {
+  color: #6850b0;
+  background: #eee7ff;
+}
+.icon-pending,
+.icon-approved {
+  color: #8670bb;
+  background: #f0ebfa;
+}
+.loading-banner {
+  background: #f3f0fa;
+  border-color: #e8e1f4;
+}
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
