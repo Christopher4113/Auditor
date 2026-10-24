@@ -21,7 +21,7 @@ export const closePeriod = workflow
     let posted = 0;
     let escalated = 0;
     for (const breakId of breakIds) {
-      const proposalId = await step.runMutation(internal.agent.propose, { caller: "agent", breakId });
+      const proposalId = await step.runAction(internal.agent.propose, { caller: "agent", breakId });
       const decision = await step.runMutation(internal.controls.review, { caller: "controls", proposalId });
       if (decision.outcome === "posted") {
         const r = await step.runMutation(internal.ledger.postEntry, { caller: "controls", proposalId, decisionId: decision.decisionId });
