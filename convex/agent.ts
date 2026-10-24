@@ -150,13 +150,17 @@ export const saveProposal = internalMutation({
     discardedFirstRead: v.optional(v.string()),
   },
   returns: v.id("proposals"),
-  handler: async (ctx, { entity, period, breakId, txnId, revision, ...rest }) => {
+  handler: async (ctx, { entity, period, breakId, txnId, revision: _requested, ...rest }) => {
+    // After a human reject the break reopens; the next proposal is a revision of the last one (C3 loop).
+    const prior = await ctx.db.query("proposals").withIndex("by_break", (q) => q.eq("breakId", breakId)).order("desc").take(10);
+    const revision = prior.length + 1;
     const proposalId = await ctx.db.insert("proposals", {
       entity,
       period,
       breakId,
       proposalId: `P-${txnId}-r${revision}`,
       revision,
+      revisionOf: prior[0]?._id,
       status: "under_review",
       proposedBy: "agent",
       ...rest,
