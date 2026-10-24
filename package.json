@@ -6,7 +6,8 @@
     "dev:web": "pnpm --filter web dev",
     "dev:retrieval": "cd retrieval && uv run --env-file .env uvicorn main:app --reload --port 8000",
     "codegen": "convex codegen",
-    "typecheck": "tsc -p convex && pnpm --filter web exec tsc -b"
+    "typecheck": "tsc -p convex && pnpm --filter web exec tsc -b",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2",
@@ -17,6 +18,7 @@
     "zod": "^4"
   },
   "devDependencies": {
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^2"
   }
 }
