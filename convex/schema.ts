@@ -93,6 +93,7 @@ export default defineSchema({
     status: v.union(v.literal("unmatched"), v.literal("matched"), v.literal("flagged")),
     matchedEntryId: v.optional(v.id("journalEntries")),
     plantedBreak: v.optional(v.number()), // 1-6 from the answer key; never shown to the agent
+    traceId: v.optional(v.string()), // correlation id for one unit of work; minted at seed/ingest, inherited downstream
   })
     .index("by_entity_period_status", ["entity", "period", "status"])
     .index("by_entity_txnId", ["entity", "txnId"]),
@@ -106,6 +107,7 @@ export default defineSchema({
     source: v.union(v.literal("opening"), v.literal("post_entry")),
     postedBy: vActor,
     proposalId: v.optional(v.id("proposals")),
+    traceId: v.optional(v.string()),
   }).index("by_entity_period", ["entity", "period"]),
 
   contracts: defineTable({
@@ -135,6 +137,7 @@ export default defineSchema({
     description: v.string(),
     status: v.union(v.literal("open"), v.literal("proposed"), v.literal("resolved"), v.literal("escalated")),
     planted: v.optional(v.number()),
+    traceId: v.optional(v.string()),
   })
     .index("by_entity_period", ["entity", "period"])
     .index("by_bankTransaction", ["bankTransactionId"]),
@@ -152,6 +155,7 @@ export default defineSchema({
     discardedFirstRead: v.optional(v.string()),
     correctionsApplied: v.array(v.string()), // correction ids the agent addressed
     proposedBy: vActor,
+    traceId: v.optional(v.string()),
   })
     .index("by_entity_period", ["entity", "period"])
     .index("by_break", ["breakId"])
@@ -170,6 +174,7 @@ export default defineSchema({
     instruction: v.optional(v.string()), // human reject carries one
     latencyMs: v.optional(v.number()),
     entryId: v.optional(v.id("journalEntries")),
+    traceId: v.optional(v.string()),
   })
     .index("by_proposal", ["proposalId"])
     .index("by_entity_period", ["entity", "period"]),
@@ -182,11 +187,15 @@ export default defineSchema({
     proposalId: v.optional(v.id("proposals")),
     decisionId: v.optional(v.id("decisions")),
     entryId: v.optional(v.id("journalEntries")),
+    breakId: v.optional(v.id("breaks")),
+    bankTransactionId: v.optional(v.id("bankTransactions")),
+    traceId: v.optional(v.string()), // resolved by audit() from any id above when not passed
     detail: v.optional(v.string()),
     at: v.number(),
   })
     .index("by_entity_period", ["entity", "period"])
-    .index("by_proposal", ["proposalId"]),
+    .index("by_proposal", ["proposalId"])
+    .index("by_entity_traceId", ["entity", "traceId"]),
 
   answerKey: defineTable({
     ...scoped,
@@ -222,5 +231,6 @@ export default defineSchema({
     proposalId: v.optional(v.id("proposals")),
     decisionId: v.optional(v.id("decisions")),
     appliedBy: v.array(v.string()), // proposal ids that addressed it
+    traceId: v.optional(v.string()),
   }).index("by_entity_period", ["entity", "period"]),
 });

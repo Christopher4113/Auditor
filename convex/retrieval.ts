@@ -4,6 +4,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { env, internalAction, internalQuery } from "./_generated/server";
+import { traceFor } from "./audit";
 
 const vHit = v.object({ id: v.string(), text: v.string(), score: v.number() });
 const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean() });
@@ -11,11 +12,13 @@ type Hit = { id: string; text: string; score: number };
 
 const endpoint = (path: string) => (env.RETRIEVAL_URL ? `${env.RETRIEVAL_URL.replace(/\/$/, "")}${path}` : null);
 
-async function post<T>(path: string, body: unknown): Promise<T | null> {
+async function post<T>(path: string, body: unknown, traceId?: string): Promise<T | null> {
   const url = endpoint(path);
   if (!url) return null;
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (traceId) headers["X-Trace-Id"] = traceId; // Group A logs it on /query and /verify
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
     if (!res.ok) {
       console.warn(`retrieval ${path} ${res.status}`);
       return null;
@@ -29,25 +32,25 @@ async function post<T>(path: string, body: unknown): Promise<T | null> {
 
 /** search_precedent / search_policy / search_corrections all route here; k=5 per collection (brief, Cost). */
 export const query = internalAction({
-  args: { collection: v.string(), text: v.string(), k: v.optional(v.number()) },
+  args: { collection: v.string(), text: v.string(), k: v.optional(v.number()), traceId: v.optional(v.string()) },
   returns: v.array(vHit),
-  handler: async (_ctx, { collection, text, k }): Promise<Hit[]> => (await post<Hit[]>("/query", { collection, text, k: k ?? 5 })) ?? [],
+  handler: async (_ctx, { collection, text, k, traceId }): Promise<Hit[]> => (await post<Hit[]>("/query", { collection, text, k: k ?? 5 }, traceId)) ?? [],
 });
 
 export const index = internalAction({
-  args: { collection: v.string(), id: v.string(), text: v.string(), meta: v.optional(v.record(v.string(), v.string())) },
+  args: { collection: v.string(), id: v.string(), text: v.string(), meta: v.optional(v.record(v.string(), v.string())), traceId: v.optional(v.string()) },
   returns: v.object({ ok: v.boolean() }),
-  handler: async (_ctx, chunk): Promise<{ ok: boolean }> => ({ ok: (await post<{ ok: boolean }>("/index", { ...chunk, meta: chunk.meta ?? {} }))?.ok === true }),
+  handler: async (_ctx, { traceId, ...chunk }): Promise<{ ok: boolean }> => ({ ok: (await post<{ ok: boolean }>("/index", { ...chunk, meta: chunk.meta ?? {} }, traceId))?.ok === true }),
 });
 
 /** verify_payee (controls engine only). Fails closed: no sidecar, no identity, any error -> available=false. */
 export const verify = internalAction({
-  args: { testIdentityId: v.optional(v.string()) },
+  args: { testIdentityId: v.optional(v.string()), traceId: v.optional(v.string()) },
   returns: vVerify,
-  handler: async (_ctx, { testIdentityId }) => {
+  handler: async (_ctx, { testIdentityId, traceId }) => {
     const closed = { identityMatch: false, fraudFlags: [] as string[], available: false };
     if (!testIdentityId) return closed;
-    return (await post<typeof closed>("/verify", { testIdentityId })) ?? closed;
+    return (await post<typeof closed>("/verify", { testIdentityId }, traceId)) ?? closed;
   },
 });
 
@@ -70,10 +73,11 @@ export const stats = internalAction({
 
 export const loadDecision = internalQuery({
   args: { decisionId: v.id("decisions") },
-  returns: v.union(v.null(), v.object({ entity: v.string(), period: v.string(), id: v.string(), text: v.string(), meta: v.record(v.string(), v.string()) })),
+  returns: v.union(v.null(), v.object({ entity: v.string(), period: v.string(), id: v.string(), text: v.string(), meta: v.record(v.string(), v.string()), traceId: v.optional(v.string()) })),
   handler: async (ctx, { decisionId }) => {
     const d = await ctx.db.get(decisionId);
     if (!d) return null;
+    const traceId = await traceFor(ctx, { decisionId });
     const p = await ctx.db.get(d.proposalId);
     const brk = p ? await ctx.db.get(p.breakId) : null;
     const lines = (p?.lines ?? []).map((l) => `${l.debit ? "Dr" : "Cr"} ${l.account} ${l.debit || l.credit}`).join("; ");
@@ -84,6 +88,7 @@ export const loadDecision = internalQuery({
       id: d.decisionId,
       text: `${d.decisionId} (${d.period}, ${brk?.kind ?? "break"}): ${d.outcome} by ${d.reviewer}. ${d.reason} Entry: ${lines}.${scope}`,
       meta: { entity: d.entity, period: d.period, reviewer: d.reviewer, outcome: d.outcome, breakKind: brk?.kind ?? "" },
+      traceId,
     };
   },
 });
@@ -94,8 +99,8 @@ export const indexDecision = internalAction({
   handler: async (ctx, { decisionId }): Promise<null> => {
     const chunk = await ctx.runQuery(internal.retrieval.loadDecision, { decisionId });
     if (!chunk) return null;
-    const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "decisions", id: chunk.id, text: chunk.text, meta: chunk.meta });
-    await ctx.runMutation(internal.audit.write, { entity: chunk.entity, period: chunk.period, actor: "controls", action: ok ? "index_decision" : "index_decision.skipped", decisionId, detail: chunk.id });
+    const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "decisions", id: chunk.id, text: chunk.text, meta: chunk.meta, traceId: chunk.traceId });
+    await ctx.runMutation(internal.audit.write, { entity: chunk.entity, period: chunk.period, actor: "controls", action: ok ? "index_decision" : "index_decision.skipped", decisionId, traceId: chunk.traceId, detail: chunk.id });
     return null;
   },
 });

@@ -7,7 +7,7 @@ import type { Infer } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { audit } from "./audit";
+import { audit, traceFor } from "./audit";
 import { ensureClose } from "./close";
 import { trialBalance } from "./ledger";
 import type { vPrecedentScope } from "./schema";
@@ -36,7 +36,9 @@ export async function approve(
   const brk = await ctx.db.get(p.breakId);
   const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
   const precedentScope = scope ?? { breakKind: brk?.kind ?? "unmatched", counterparty: txn?.counterparty };
+  const traceId = await traceFor(ctx, { proposalId: p._id });
   const decisionId = await ctx.db.insert("decisions", {
+    traceId,
     entity,
     period: p.period,
     decisionId: `D-${p.proposalId}-h`,
@@ -63,7 +65,9 @@ export async function reject(ctx: MutationCtx, entity: string, proposalId: strin
   await assertOpen(ctx, entity, p.period);
   const brk = await ctx.db.get(p.breakId);
   const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+  const traceId = await traceFor(ctx, { proposalId: p._id });
   const decisionId = await ctx.db.insert("decisions", {
+    traceId,
     entity,
     period: p.period,
     decisionId: `D-${p.proposalId}-h`,
@@ -76,6 +80,7 @@ export async function reject(ctx: MutationCtx, entity: string, proposalId: strin
     citations: p.citations,
   });
   const correctionId = await ctx.db.insert("corrections", {
+    traceId,
     entity,
     period: p.period,
     correctionId: `C-${p.proposalId}`,
