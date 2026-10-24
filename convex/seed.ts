@@ -5,6 +5,7 @@
 // policyClauses become one policyPacks row; the answer key marks plantedBreak on bank transactions.
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { Id, TableNames } from "./_generated/dataModel";
 import { audit } from "./audit";
 
@@ -170,6 +171,7 @@ export const load = internalMutation({
       journalEntries = 1;
     }
     await audit(ctx, { entity, actor: "seed", action: "seed.load", detail: `${s.dataset} seed ${s.seed} schema ${s.schemaVersion}` });
+    await ctx.scheduler.runAfter(0, internal.retrieval.indexEntity, { entity }); // policy + contract clauses into Moss (C4)
     return { entity, bankTransactions: s.bankTransactions.length, journalEntries };
   },
 });
