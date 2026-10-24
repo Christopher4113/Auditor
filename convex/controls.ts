@@ -42,7 +42,16 @@ export const review = internalMutation({
       .query("corrections")
       .withIndex("by_entity_period", (q) => q.eq("entity", p.entity).eq("period", p.period))
       .take(100);
+    // A correction binds to the break it came from (its proposal's break) or, for a human rejection with no
+    // proposal link, to the same break kind. Rule failures on another break are not this proposal's debt.
+    const sameBreak = new Set<string>();
+    for (const c of allCorrections) {
+      if (!c.proposalId) continue;
+      const cp = await ctx.db.get(c.proposalId);
+      if (cp?.breakId === p.breakId) sameBreak.add(c.correctionId);
+    }
     const openCorrectionIds = allCorrections
+      .filter((c) => (c.proposalId ? sameBreak.has(c.correctionId) : c.scope === (brk?.kind ?? "unmatched")))
       .filter((c) => !c.appliedBy.includes(p.proposalId))
       .map((c) => c.correctionId);
 
