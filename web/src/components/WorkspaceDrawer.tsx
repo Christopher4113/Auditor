@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   ArrowRight,
@@ -19,6 +19,8 @@ import {
   VolumeX,
 } from "lucide-react";
 import type { Proposal } from "../data/types";
+import type { LiveSnapshot } from "../data/live";
+import { needsHumanReview } from "../data/selectors";
 import {
   controlPolicyRules,
   initialProposals,
@@ -33,7 +35,13 @@ export type DrawerType =
   | "ask"
   | "memory"
   | "activity";
+const DataMode = createContext<"demo" | "live">("demo");
+
 interface WorkspaceDrawerProps {
+  mode?: "demo" | "live";
+  liveSnapshot?: LiveSnapshot | null;
+  loading?: boolean;
+  error?: string;
   type: DrawerType;
   proposals: Proposal[];
   period: string;
@@ -47,7 +55,7 @@ interface WorkspaceDrawerProps {
     amount: number,
     note: string,
   ) => void;
-  onPrepare: () => void;
+  onPrepare: () => void | Promise<void>;
   onSign: () => void;
   onDeny: () => void;
   signed: boolean;
@@ -66,15 +74,15 @@ const isApprovalReady = (proposal: Proposal) =>
   Math.abs(
     proposal.lines.reduce((sum, line) => sum + line.debit - line.credit, 0),
   ) <= 0.005;
-const unresolved = (proposal: Proposal) =>
-  proposal.status === "review" ||
-  proposal.status === "held" ||
-  proposal.status === "rejected";
+const unresolved = (proposal: Proposal) => proposal.status !== "posted";
 
 function Intro({ title, children }: { title: string; children: ReactNode }) {
+  const mode = useContext(DataMode);
   return (
     <div className="drawer-section">
-      <span className="badge badge-neutral">Demo</span>
+      <span className="badge badge-neutral">
+        {mode === "live" ? "Live data" : "Demo"}
+      </span>
       <h2 className="drawer-title">{title}</h2>
       <p className="drawer-copy">{children}</p>
     </div>
@@ -208,7 +216,11 @@ function Approvals({
           <article className="drawer-card" key={proposal.id}>
             <div className="drawer-card-head">
               <h3>{proposal.vendor}</h3>
-              <strong>{money(proposal.amount)}</strong>
+              <strong>
+                {proposal.sourceBank.available === false
+                  ? "Amount unavailable"
+                  : money(proposal.amount)}
+              </strong>
             </div>
             <span
               className={`badge ${proposal.status === "held" ? "badge-amber" : "badge-neutral"}`}
@@ -357,6 +369,8 @@ function Scoreboard({
   const [exceptionMinutes, setExceptionMinutes] = useState(20);
   const [escalationMinutes, setEscalationMinutes] = useState(15);
   const [prepared, setPrepared] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState("");
   const pending = proposals.filter(unresolved).length;
   const posted = proposals.filter(
     (proposal) => proposal.status === "posted",
@@ -402,14 +416,26 @@ function Scoreboard({
         <div className="drawer-row">
           <button
             className="secondary-button"
-            disabled={signed || prepared}
-            onClick={() => {
-              onPrepare();
-              setPrepared(true);
+            disabled={signed || prepared || preparing}
+            onClick={async () => {
+              setPreparing(true);
+              setPrepareError("");
+              try {
+                await onPrepare();
+                setPrepared(true);
+              } catch {
+                setPrepareError("The close couldn’t be prepared. Try again.");
+              } finally {
+                setPreparing(false);
+              }
             }}
           >
             <Sparkles size={15} />
-            {prepared ? "Close prepared" : "Prepare close"}
+            {preparing
+              ? "Preparing…"
+              : prepared
+                ? "Close prepared"
+                : "Prepare close"}
           </button>
           <button
             className="primary-button"
@@ -420,6 +446,11 @@ function Scoreboard({
             {signed ? "Signed" : "Sign period"}
           </button>
         </div>
+        {prepareError && (
+          <p className="warning-notice" role="alert">
+            {prepareError}
+          </p>
+        )}
         {prepared && (
           <p className="success-notice" role="status">
             Close prepared. Review any remaining items in the workspace.
@@ -1270,12 +1301,344 @@ function Activity({
   );
 }
 
+function LiveDrawerContent(props: WorkspaceDrawerProps) {
+  const {
+    type,
+    proposals,
+    period,
+    liveSnapshot: snapshot,
+    loading,
+    signed,
+    onSelect,
+    onPrepare,
+  } = props;
+  const [busy, setBusy] = useState(false);
+  const [requested, setRequested] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const score = snapshot?.period === period ? snapshot.score : undefined;
+  const workflow = snapshot?.period === period ? snapshot.workflow : undefined;
+  const pending = proposals.filter(needsHumanReview);
+  const prepare = async () => {
+    setBusy(true);
+    setRequestError("");
+    try {
+      await onPrepare();
+      setRequested(true);
+    } catch {
+      setRequestError(
+        "The close couldn’t be started. Check that the period is open, then retry.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (props.error)
+    return (
+      <>
+        <Intro title="Live records are unavailable">
+          The connection needs another try.
+        </Intro>
+        <p className="warning-notice" role="alert">
+          {props.error}
+        </p>
+        <p className="drawer-copy">
+          Close this panel and use Retry in the workspace connection banner.
+        </p>
+      </>
+    );
+  if (loading)
+    return (
+      <>
+        <Intro title="Loading live records">
+          Getting the latest information for {period}.
+        </Intro>
+        <p className="drawer-copy" role="status">
+          Sources, decisions, and activity will appear when the server responds.
+        </p>
+      </>
+    );
+  if (type === "scoreboard")
+    return (
+      <>
+        <Intro title="Close summary">Live progress for {period}.</Intro>
+        {loading ? (
+          <p className="drawer-copy" role="status">
+            Loading period totals…
+          </p>
+        ) : (
+          <div className="drawer-stat-grid">
+            <div className="drawer-stat">
+              <span>Bank transactions</span>
+              <strong>{score?.transactions ?? "—"}</strong>
+            </div>
+            <div className="drawer-stat">
+              <span>Matched by code</span>
+              <strong>{score?.closedByCode ?? "—"}</strong>
+            </div>
+            <div className="drawer-stat">
+              <span>Entries posted</span>
+              <strong>{score?.posted ?? "—"}</strong>
+            </div>
+            <div className="drawer-stat">
+              <span>Escalations</span>
+              <strong>{score?.escalated ?? "—"}</strong>
+            </div>
+          </div>
+        )}
+        <section className="drawer-card">
+          <div className="drawer-card-head">
+            <h3>{signed ? "Period signed" : "Prepare the close"}</h3>
+            <span className="badge badge-neutral">
+              {signed
+                ? "Locked"
+                : workflow?.type === "inProgress"
+                  ? "Running"
+                  : "Open"}
+            </span>
+          </div>
+          <p className="drawer-copy">
+            {signed
+              ? "This period is signed and locked on the server."
+              : "Prepare the period to let the workflow investigate unmatched items. New proposals and decisions appear automatically."}
+          </p>
+          <div className="drawer-row">
+            <button
+              className="secondary-button"
+              disabled={
+                loading || signed || busy || workflow?.type === "inProgress"
+              }
+              onClick={() => void prepare()}
+            >
+              <Sparkles size={15} />
+              {busy
+                ? "Starting…"
+                : workflow?.type === "inProgress"
+                  ? "Close running"
+                  : "Prepare close"}
+            </button>
+            <button className="primary-button" disabled>
+              <LockKeyhole size={14} />
+              {signed ? "Signed" : "Sign-off unavailable"}
+            </button>
+          </div>
+          {!signed && (
+            <p className="drawer-label">
+              Live controller approval and sign-off will be available when
+              review actions are enabled.
+            </p>
+          )}
+          {requestError && (
+            <p className="warning-notice" role="alert">
+              {requestError}
+            </p>
+          )}
+          {requested && !requestError && (
+            <p className="success-notice" role="status">
+              The server accepted the close request. Follow the activity as it
+              runs.
+            </p>
+          )}
+          {workflow?.type === "failed" && (
+            <p className="warning-notice" role="alert">
+              The close stopped before finishing. Review the activity before
+              trying again.
+            </p>
+          )}
+        </section>
+        <p className="drawer-label">
+          Only server totals are shown. Time savings and accuracy scores are not
+          available for this close yet.
+        </p>
+      </>
+    );
+  if (type === "approvals")
+    return (
+      <>
+        <Intro title="Review items">
+          {pending.length
+            ? `${pending.length} ${pending.length === 1 ? "item needs" : "items need"} a controller decision.`
+            : "No loaded items are awaiting a controller decision."}
+        </Intro>
+        <p className="readonly-notice">
+          <LockKeyhole size={15} />
+          Live records are read-only. You can inspect the evidence; approval
+          actions aren’t enabled yet.
+        </p>
+        {pending.map((proposal) => (
+          <section className="drawer-card" key={proposal.id}>
+            <div className="drawer-card-head">
+              <h3>{proposal.vendor}</h3>
+              <strong>
+                {proposal.sourceBank.available === false
+                  ? "Amount unavailable"
+                  : money(proposal.amount)}
+              </strong>
+            </div>
+            <span
+              className={`badge ${proposal.status === "held" ? "badge-amber" : "badge-neutral"}`}
+            >
+              {proposal.status === "held" ? "Payment held" : "Needs review"}
+            </span>
+            <p className="drawer-copy">
+              {proposal.decisionReason || proposal.description}
+            </p>
+            <button
+              className="text-button"
+              onClick={() => onSelect(proposal.id)}
+            >
+              Review sources and decision
+              <ArrowRight size={14} />
+            </button>
+          </section>
+        ))}
+      </>
+    );
+  if (type === "activity")
+    return (
+      <>
+        <Intro title="Activity">Server-recorded updates for {period}.</Intro>
+        {loading ? (
+          <p role="status" className="drawer-copy">
+            Loading activity…
+          </p>
+        ) : snapshot?.audit.length ? (
+          <div className="drawer-list">
+            {snapshot.audit.map((event, index) => (
+              <details className="drawer-card" key={`${event.at}-${index}`}>
+                <summary>
+                  {event.title}
+                  <span className="drawer-label">
+                    {" "}
+                    · {event.actor} · {event.time} PT
+                  </span>
+                </summary>
+                <p className="drawer-copy">
+                  {event.detail || "No additional detail recorded."}
+                </p>
+                {event.at && (
+                  <time
+                    className="drawer-label"
+                    dateTime={new Date(event.at).toISOString()}
+                  >
+                    {new Intl.DateTimeFormat("en-US", {
+                      timeZone: "America/Los_Angeles",
+                      dateStyle: "medium",
+                      timeStyle: "medium",
+                    }).format(new Date(event.at))}{" "}
+                    PT
+                  </time>
+                )}
+              </details>
+            ))}
+          </div>
+        ) : (
+          <p className="drawer-copy">
+            No activity has been recorded for this period.
+          </p>
+        )}
+      </>
+    );
+  if (type === "memory")
+    return (
+      <>
+        <Intro title="Decision evidence">
+          Sources attached to the loaded proposals.
+        </Intro>
+        {proposals
+          .filter((p) => p.citations.length)
+          .map((proposal) => (
+            <details className="drawer-card" key={proposal.id}>
+              <summary>
+                {proposal.vendor}
+                <span className="drawer-label">
+                  {" "}
+                  · {proposal.decisionId || proposal.id}
+                </span>
+              </summary>
+              {proposal.citations.map((citation, index) => (
+                <div
+                  className="citation-quote"
+                  key={`${citation.sourceId}-${index}`}
+                >
+                  <strong>{citation.sourceId}</strong>
+                  <p>{citation.text}</p>
+                </div>
+              ))}
+              <button
+                className="text-button"
+                onClick={() => onSelect(proposal.id)}
+              >
+                Open transaction
+                <ArrowRight size={13} />
+              </button>
+            </details>
+          ))}
+        {!proposals.some((p) => p.citations.length) && (
+          <p className="drawer-copy">
+            There are no cited sources in the loaded proposals yet.
+          </p>
+        )}
+      </>
+    );
+  if (type === "permissions")
+    return (
+      <>
+        <Intro title="How approvals work">
+          Three separate roles keep every entry accountable.
+        </Intro>
+        {permissionGroups.map((group) => (
+          <section className="drawer-card" key={group.identity}>
+            <h3>{group.title}</h3>
+            <p className="drawer-copy">{group.description}</p>
+            <p className="drawer-label">{group.restriction}</p>
+            <details>
+              <summary>Allowed tools</summary>
+              <p className="drawer-label">{group.tools.join(" · ")}</p>
+            </details>
+          </section>
+        ))}
+        <p className="readonly-notice">
+          <LockKeyhole size={15} />
+          This view describes permissions. No posting test has been run.
+        </p>
+      </>
+    );
+  return (
+    <>
+      <Intro title={type === "ask" ? "Ask Auditor" : "Add a test scenario"}>
+        {type === "ask"
+          ? "Live questions aren’t available in this workspace yet."
+          : "Test scenarios are available in the demo workspace."}
+      </Intro>
+      <section className="drawer-card">
+        <h3>
+          {type === "ask"
+            ? "The evidence is already here."
+            : "Your live records stay unchanged."}
+        </h3>
+        <p className="drawer-copy">
+          {type === "ask"
+            ? "Open any transaction to read its exact source passages and recorded decision. Live question answering will be enabled when it can use this workspace’s sources."
+            : "Use the workspace menu to open the demo and try a fictional bank transaction, contract change, or payment hold."}
+        </p>
+      </section>
+    </>
+  );
+}
+
 export default function WorkspaceDrawer(props: WorkspaceDrawerProps) {
-  if (props.type === "approvals") return <Approvals {...props} />;
-  if (props.type === "scoreboard") return <Scoreboard {...props} />;
-  if (props.type === "permissions") return <Permissions {...props} />;
-  if (props.type === "inject") return <Inject {...props} />;
-  if (props.type === "ask") return <Ask />;
-  if (props.type === "memory") return <Memory />;
-  return <Activity {...props} />;
+  let content: ReactNode;
+  if (props.mode === "live") content = <LiveDrawerContent {...props} />;
+  else if (props.type === "approvals") content = <Approvals {...props} />;
+  else if (props.type === "scoreboard") content = <Scoreboard {...props} />;
+  else if (props.type === "permissions") content = <Permissions {...props} />;
+  else if (props.type === "inject") content = <Inject {...props} />;
+  else if (props.type === "ask") content = <Ask />;
+  else if (props.type === "memory") content = <Memory />;
+  else content = <Activity {...props} />;
+  return (
+    <DataMode.Provider value={props.mode ?? "demo"}>
+      {content}
+    </DataMode.Provider>
+  );
 }

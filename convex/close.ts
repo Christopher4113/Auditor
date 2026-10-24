@@ -24,7 +24,7 @@ export const closePeriod = workflow
     let posted = 0;
     let escalated = 0;
     for (const breakId of breakIds) {
-      const proposalId = await step.runMutation(internal.agent.propose, { caller: "agent", breakId });
+      const proposalId = await step.runAction(internal.agent.propose, { caller: "agent", breakId });
       const decision = await step.runMutation(internal.controls.review, { caller: "controls", proposalId });
       if (decision.outcome === "posted") {
         const r = await step.runMutation(internal.ledger.postEntry, { caller: "controls", proposalId, decisionId: decision.decisionId });
@@ -36,8 +36,42 @@ export const closePeriod = workflow
         escalated++;
       }
     }
+    // Returned proposals (a rule failed, e.g. missing citation) get a revision in the same run; B4's
+    // revision_cap rule escalates the third, so at most two extra passes.
+    for (let pass = 0; pass < 2; pass++) {
+      const returned = await step.runQuery(internal.close.fetchReturnedBreaks, { entity, period });
+      if (returned.length === 0) break;
+      for (const breakId of returned) {
+        const proposalId = await step.runAction(internal.agent.propose, { caller: "agent", breakId });
+        const decision = await step.runMutation(internal.controls.review, { caller: "controls", proposalId });
+        if (decision.outcome === "posted") {
+          const r = await step.runMutation(internal.ledger.postEntry, { caller: "controls", proposalId, decisionId: decision.decisionId });
+          if (r.ok) {
+            posted++;
+            escalated--;
+            await step.runAction(internal.retrieval.indexDecision, { decisionId: decision.decisionId }, { retry: true });
+          }
+        }
+      }
+    }
     return { breaks: breakIds.length, posted, escalated };
   });
+
+/** Breaks whose latest proposal the engine returned (status failed_rule) and that are not yet resolved. */
+export const fetchReturnedBreaks = internalQuery({
+  args: { entity: v.string(), period: v.string() },
+  returns: v.array(v.id("breaks")),
+  handler: async (ctx, { entity, period }) => {
+    const breaks = await ctx.db.query("breaks").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
+    const out = [];
+    for (const b of breaks) {
+      if (b.status === "resolved" || b.status === "escalated") continue;
+      const latest = await ctx.db.query("proposals").withIndex("by_break", (q) => q.eq("breakId", b._id)).order("desc").first();
+      if (latest?.status === "failed_rule") out.push(b._id);
+    }
+    return out;
+  },
+});
 
 export const fetchUnmatched = internalQuery({
   args: { entity: v.string(), period: v.string() },

@@ -1,7 +1,13 @@
 /** Frontend view models. The Convex adapter can map its eventual API into these shapes. */
 export type Period = "July 2026" | "August 2026" | "September 2026";
 
-export type ProposalStatus = "posted" | "review" | "held" | "rejected";
+export type ProposalStatus =
+  | "pending"
+  | "approved"
+  | "posted"
+  | "review"
+  | "held"
+  | "rejected";
 
 export type Citation = {
   sourceType: "precedent" | "policy" | "contract" | "correction";
@@ -23,6 +29,9 @@ export type AuditItem = {
   title: string;
   detail: string;
   kind: "success" | "info" | "warning" | "error";
+  at?: number;
+  actor?: string;
+  action?: string;
 };
 
 export type ControlRule = {
@@ -41,6 +50,29 @@ export type Proposal = {
   date: string;
   period: Period;
   status: ProposalStatus;
+  backendStatus?:
+    | "under_review"
+    | "approved"
+    | "posted"
+    | "escalated"
+    | "failed_rule"
+    | "rejected";
+  backendId?: string;
+  breakBackendId?: string;
+  provenance?: "demo" | "live";
+  revision?: number;
+  revisionOf?: string;
+  firstRead?: string;
+  reviewer?: "controls" | "human" | "agent";
+  outcome?: string;
+  postedEntryId?: string;
+  decisionReason?: string;
+  instruction?: string;
+  detailsState?: {
+    sources: "loading" | "missing" | "ready";
+    decision: "loading" | "missing" | "ready";
+  };
+  versions?: ProposalVersion[];
   category: string;
   description: string;
   reason: string;
@@ -50,22 +82,40 @@ export type Proposal = {
     amount: number;
     date: string;
     reference: string;
+    available?: boolean;
+    signedAmount?: number;
   };
   sourceLedger: {
     label: string;
     amount: number;
     account: string;
+    available?: boolean;
+    evidenceKind?: "balance" | "posted_entry" | "unavailable";
   };
   contract: {
     title: string;
     clause: string;
     text: string;
+    available?: boolean;
+    sourceId?: string;
   };
   lines: JournalLine[];
   citations: Citation[];
   audit: AuditItem[];
   rules: ControlRule[];
   revisionNote?: string;
+};
+
+export type ProposalVersion = {
+  backendId: string;
+  id: string;
+  revision: number;
+  status: ProposalStatus;
+  reason: string;
+  lines: JournalLine[];
+  citations: Citation[];
+  revisionOf?: string;
+  firstRead?: string;
 };
 
 export type PermissionGroup = {

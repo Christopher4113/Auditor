@@ -11,10 +11,13 @@
 import type * as advance from "../advance.js";
 import type * as agent from "../agent.js";
 import type * as agent_fake from "../agent/fake.js";
+import type * as agent_instructions from "../agent/instructions.js";
+import type * as agent_matcher from "../agent/matcher.js";
 import type * as api_ from "../api.js";
 import type * as audit from "../audit.js";
 import type * as close from "../close.js";
 import type * as controls from "../controls.js";
+import type * as controls_rules from "../controls/rules.js";
 import type * as controls_stub from "../controls/stub.js";
 import type * as crons from "../crons.js";
 import type * as human from "../human.js";
@@ -33,10 +36,13 @@ declare const fullApi: ApiFromModules<{
   advance: typeof advance;
   agent: typeof agent;
   "agent/fake": typeof agent_fake;
+  "agent/instructions": typeof agent_instructions;
+  "agent/matcher": typeof agent_matcher;
   api: typeof api_;
   audit: typeof audit;
   close: typeof close;
   controls: typeof controls;
+  "controls/rules": typeof controls_rules;
   "controls/stub": typeof controls_stub;
   crons: typeof crons;
   human: typeof human;

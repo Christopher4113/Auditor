@@ -1,118 +1,197 @@
-// Live adapter (interface 3): Convex rows -> the frontend's Proposal view model.
-// Function references are by name so the web tsconfig never type-checks convex/ (its lint rules differ);
-// the shapes below mirror the return validators in convex/api.ts.
+// Read-only Phase 2 subscriptions. Raw wire records are adapted in pure, tested functions.
 import { useEffect } from "react";
-import { ConvexReactClient, useQuery } from "convex/react";
+import {
+  ConvexReactClient,
+  useConvexConnectionState,
+  useQuery,
+} from "convex/react";
 import { ConvexHttpClient } from "convex/browser";
 import { makeFunctionReference } from "convex/server";
-import type { Citation, ControlRule, Period, Proposal, ProposalStatus } from "./types";
+import type { AuditItem, Period, Proposal } from "./types";
+import type {
+  EntityArgs,
+  EntityPeriodArgs,
+  GetBreakArgs,
+  GetBreakResult,
+  GetDecisionArgs,
+  GetDecisionResult,
+  LiveProposalRow,
+  ListProposalsArgs,
+  WireAuditEvent,
+  WireCloseStatus,
+  WirePeriod,
+  WireScoreboard,
+} from "./contracts";
+import {
+  mergeProposalDetails,
+  toAuditItem,
+  toPeriodKey,
+  toProposal,
+} from "./adapters";
 
 export const ENTITY = "eo-festival-nyc";
-const url = import.meta.env.CONVEX_URL as string | undefined;
+const configuredUrl = import.meta.env.CONVEX_URL as string | undefined;
+function validUrl(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    return ["https:", "http:"].includes(parsed.protocol)
+      ? parsed.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+const url = validUrl(configuredUrl);
+export const configurationError = Boolean(configuredUrl && !url);
 export const convex = url ? new ConvexReactClient(url) : null;
 const http = url ? new ConvexHttpClient(url) : null;
 
-const PERIOD_LABEL: Record<string, Period> = { "2026-07": "July 2026", "2026-08": "August 2026", "2026-09": "September 2026" };
-const PERIOD_KEY = Object.fromEntries(Object.entries(PERIOD_LABEL).map(([k, v]) => [v, k])) as Record<Period, string>;
-const RULE_LABEL: Record<string, string> = {
-  balance: "Balanced entry",
-  citation: "Source citations",
-  threshold: "P&L materiality",
-  period_lock: "Open period",
-  bank_detail_change: "Bank-detail change",
-  revision_cap: "Revision cap",
-  precedent: "Precedent",
-  correction: "Correction check",
+const refs = {
+  proposals: makeFunctionReference<
+    "query",
+    ListProposalsArgs,
+    LiveProposalRow[]
+  >("api:listProposals"),
+  periods: makeFunctionReference<"query", EntityArgs, WirePeriod[]>(
+    "api:listPeriods",
+  ),
+  score: makeFunctionReference<"query", EntityPeriodArgs, WireScoreboard>(
+    "api:scoreboard",
+  ),
+  status: makeFunctionReference<
+    "query",
+    EntityPeriodArgs,
+    WireCloseStatus | null
+  >("api:closeStatus"),
+  audit: makeFunctionReference<
+    "query",
+    EntityArgs & { period?: string; limit?: number },
+    WireAuditEvent[]
+  >("api:auditTrail"),
+  sources: makeFunctionReference<"query", GetBreakArgs, GetBreakResult | null>(
+    "api:getBreak",
+  ),
+  decision: makeFunctionReference<"query", GetDecisionArgs, GetDecisionResult>(
+    "api:getDecision",
+  ),
+  start: makeFunctionReference<"mutation", EntityPeriodArgs, string | null>(
+    "api:startClose",
+  ),
 };
 
-type Line = { account: string; debit: number; credit: number; memo?: string };
-type LiveRow = {
-  _id: string;
-  proposalId: string;
-  period: string;
-  status: "under_review" | "posted" | "escalated" | "failed_rule" | "approved" | "rejected";
-  lines: Line[];
-  reason: string;
-  citations: { sourceType: "policy" | "contract" | "decision" | "correction"; sourceId: string; text: string; score: number }[];
-  discardedFirstRead?: string;
-  break: { breakId: string; kind: string; description: string; status: string } | null;
-  amount: number | null;
-  counterparty: string | null;
-  date: string | null;
-  reference: string | null;
-  decision: { decisionId: string; outcome: string; reason: string; rulesRun: { rule: string; kind: string; passed: boolean; detail?: string }[] } | null;
+export type LiveSnapshot = {
+  proposals: Proposal[];
+  periods: WirePeriod[];
+  score?: WireScoreboard;
+  workflow?: WireCloseStatus | null;
+  audit: AuditItem[];
+  loading: boolean;
+  connected: boolean;
+  period: Period;
 };
+export type LiveDetails = { id: string; proposal: Proposal; loading: boolean };
 
-const listProposals = makeFunctionReference<"query", { entity: string; period?: string }, LiveRow[]>("api:listProposals");
-const startCloseRef = makeFunctionReference<"mutation", { entity: string; period: string }, string | null>("api:startClose");
-const approveRef = makeFunctionReference<"mutation", { entity: string; proposalId: string; note?: string }, unknown>("api:approve");
-const rejectRef = makeFunctionReference<"mutation", { entity: string; proposalId: string; instruction: string }, unknown>("api:reject");
-const signRef = makeFunctionReference<"mutation", { entity: string; period: string }, unknown>("api:signPeriod");
-
-const dollars = (cents: number) => cents / 100;
-const prettyDate = (iso: string | null) =>
-  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
-const STATUS: Record<LiveRow["status"], ProposalStatus> = {
-  posted: "posted",
-  approved: "posted",
-  rejected: "rejected",
-  under_review: "review",
-  escalated: "review",
-  failed_rule: "review",
-};
-
-export function toProposal(r: LiveRow): Proposal {
-  const vendor = r.counterparty ?? "Unknown";
-  const impact = r.lines.filter((l) => /^[45]/.test(l.account)).reduce((s, l) => s + Math.abs(l.debit - l.credit), 0);
-  const credit = r.lines.find((l) => l.credit > 0);
-  const contractCite = r.citations.find((c) => c.sourceType === "contract");
-  const citations: Citation[] = r.citations
-    .filter((c) => c !== contractCite)
-    .map((c) => ({ ...c, sourceType: c.sourceType === "decision" ? "precedent" : c.sourceType }));
-  const rules: ControlRule[] = (r.decision?.rulesRun ?? []).map((x) => ({ label: RULE_LABEL[x.rule] ?? x.rule, detail: x.detail ?? "", passed: x.passed }));
-  return {
-    id: r.proposalId,
-    title: r.break?.description ?? `${vendor} · ${r.proposalId}`,
-    vendor,
-    amount: dollars(Math.abs(r.amount ?? 0)),
-    impact: dollars(impact),
-    date: prettyDate(r.date),
-    period: PERIOD_LABEL[r.period] ?? "September 2026",
-    status: STATUS[r.status],
-    category: r.break?.kind ?? "unmatched",
-    description: r.break?.description ?? "",
-    reason: r.reason,
-    decisionId: r.decision?.decisionId ?? "",
-    sourceBank: { label: `${vendor} · ${r.break?.description ?? ""}`, amount: dollars(Math.abs(r.amount ?? 0)), date: prettyDate(r.date), reference: r.reference ?? "" },
-    sourceLedger: { label: credit ? `Account ${credit.account}` : "", amount: dollars(credit?.credit ?? 0), account: credit?.account ?? "" },
-    // The contract card shows the cited clause; getBreak carries the full contract for the center panel (D3, Phase 2)
-    contract: contractCite ? { title: vendor, clause: contractCite.sourceId, text: contractCite.text } : { title: "", clause: "", text: "" },
-    lines: r.lines.map((l) => ({ account: l.account, name: l.memo ?? l.account, debit: dollars(l.debit), credit: dollars(l.credit) })),
-    citations,
-    audit: [], // api.getDecision has the audit rows; the right panel wires them in Phase 2 (D4)
-    rules,
-    revisionNote: r.discardedFirstRead ? `First read discarded: ${r.discardedFirstRead}` : undefined,
-  };
-}
-
-/** Subscribes to every proposal for the entity and hands the mapped list up. Renders nothing. */
-export function LiveProposals({ onRows }: { onRows: (rows: Proposal[]) => void }) {
-  const rows = useQuery(listProposals, { entity: ENTITY });
+/** One subscription per feed, with server data remaining authoritative. */
+export function LiveWorkspace({
+  period,
+  onData,
+}: {
+  period: Period;
+  onData: (snapshot: LiveSnapshot) => void;
+}) {
+  const periodKey = toPeriodKey(period);
+  const rows = useQuery(refs.proposals, { entity: ENTITY });
+  const periods = useQuery(refs.periods, { entity: ENTITY });
+  const score = useQuery(refs.score, { entity: ENTITY, period: periodKey });
+  const workflow = useQuery(refs.status, { entity: ENTITY, period: periodKey });
+  const audit = useQuery(refs.audit, {
+    entity: ENTITY,
+    period: periodKey,
+    limit: 100,
+  });
+  const connection = useConvexConnectionState();
   useEffect(() => {
-    if (rows) onRows(rows.map(toProposal));
-  }, [rows, onRows]);
+    onData({
+      proposals: rows?.map(toProposal) ?? [],
+      periods: periods ?? [],
+      score,
+      workflow,
+      audit: audit?.map(toAuditItem) ?? [],
+      loading:
+        rows === undefined ||
+        periods === undefined ||
+        score === undefined ||
+        workflow === undefined ||
+        audit === undefined,
+      connected: connection.isWebSocketConnected,
+      period,
+    });
+  }, [
+    rows,
+    periods,
+    score,
+    workflow,
+    audit,
+    connection.isWebSocketConnected,
+    period,
+    onData,
+  ]);
   return null;
 }
 
-/** "Prepare <period> close": starts the Workflow for that period (idempotent while one is running). */
-export function startClose(period: Period) {
-  return http?.mutation(startCloseRef, { entity: ENTITY, period: PERIOD_KEY[period] }) ?? Promise.resolve(null);
+/** Each selected revision gets its own decision and audit subscription by internal Convex ID. */
+export function LiveSelection({
+  proposal,
+  onData,
+}: {
+  proposal: Proposal;
+  onData: (details: LiveDetails) => void;
+}) {
+  const sources = useQuery(
+    refs.sources,
+    proposal.breakBackendId ? { id: proposal.breakBackendId } : "skip",
+  );
+  const decision = useQuery(
+    refs.decision,
+    proposal.backendId ? { proposalId: proposal.backendId } : "skip",
+  );
+  useEffect(() => {
+    onData({
+      id: proposal.id,
+      proposal: mergeProposalDetails(proposal, sources, decision),
+      loading: sources === undefined || decision === undefined,
+    });
+  }, [proposal, sources, decision, onData]);
+  return null;
 }
 
-/** Human controller moves (C3). proposalId is the rail's external code. Errors carry the policy reason. */
-export const approve = (proposalId: string, note: string) => http!.mutation(approveRef, { entity: ENTITY, proposalId, note });
-export const reject = (proposalId: string, instruction: string) => http!.mutation(rejectRef, { entity: ENTITY, proposalId, instruction });
-export const signPeriod = (period: Period) => http!.mutation(signRef, { entity: ENTITY, period: PERIOD_KEY[period] });
+/** No local success fallback: callers await the actual workflow ID and handle rejection. */
+export async function startClose(period: Period): Promise<string> {
+  if (!http) throw new Error("A live workspace is not configured.");
+  const workflowId = await http.mutation(refs.start, {
+    entity: ENTITY,
+    period: toPeriodKey(period),
+  });
+  if (!workflowId)
+    throw new Error(
+      "This period cannot start a close. It may already be signed.",
+    );
+  return workflowId;
+}
 
-/** Convex wraps thrown errors as "[Request ID: …] Server Error Uncaught Error: <message> at …"; show only the message. */
+// ── Human controller moves (C3). proposalId is the rail's external code, e.g. "P-sample-bank-04-r1". ──
+const human = {
+  approve: makeFunctionReference<"mutation", { entity: string; proposalId: string; note?: string }, unknown>("api:approve"),
+  reject: makeFunctionReference<"mutation", { entity: string; proposalId: string; instruction: string }, unknown>("api:reject"),
+  sign: makeFunctionReference<"mutation", EntityPeriodArgs, unknown>("api:signPeriod"),
+};
+function requireHttp() {
+  if (!http) throw new Error("A live workspace is not configured.");
+  return http;
+}
+export const approve = (proposalId: string, note: string) => requireHttp().mutation(human.approve, { entity: ENTITY, proposalId, note });
+export const reject = (proposalId: string, instruction: string) => requireHttp().mutation(human.reject, { entity: ENTITY, proposalId, instruction });
+export const signPeriod = (period: Period) => requireHttp().mutation(human.sign, { entity: ENTITY, period: toPeriodKey(period) });
+/** Convex wraps thrown errors as "[Request ID: …] Server Error Uncaught Error: <message> at …"; keep only the message. */
 export const reason = (e: Error) => e.message.replace(/^.*?Uncaught Error: /, "").replace(/\s+at .*$/s, "");
