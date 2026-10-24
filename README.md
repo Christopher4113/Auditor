@@ -129,6 +129,14 @@ npx convex run ledger:postEntry '{"caller":"agent","proposalId":"<proposalId>","
 npx convex run api:auditTrail '{"entity":"eo-festival-nyc","period":"2026-09","limit":5}'
 ```
 
+**Observability.** Every unit of work (one bank transaction's journey) carries a correlation id, `T-<txnId>`, minted at seed or ingest and inherited by the break, proposals, decisions, journal entry, corrections and every audit row. `audit()` resolves it from any id on the chain, so a tool only has to pass the id it has. Sidecar calls send it as `X-Trace-Id`. The trace view is one indexed query, by trace id or by a proposal's code:
+
+```bash
+npx convex run api:trace '{"entity":"eo-festival-nyc","proposalId":"P-sample-bank-01-r1"}'
+```
+
+The Convex dashboard adds function logs, table data, schedules and the Workflow component's step status; the audit log is the durable, product-facing record.
+
 **Reading the backend directly.** `api:listProposals`, `api:scoreboard`, `api:closeStatus --watch`, `api:auditTrail`; the dashboard (https://dashboard.convex.dev/d/wary-labrador-928) shows every table and the Workflow component's step log.
 
 **How the lanes connect.** A's `seed.json` → `convex/seed.ts` (interface 5). The Workflow in `convex/close.ts` runs fetch → reconcile → propose → review → post; `convex/agent.ts` and `convex/controls.ts` are B's entry points and use B2's `agent/fake.ts` canned Apex proposal (interface 2). `convex/api.ts` is what the UI subscribes to; `web/src/data/live.ts` maps rows into D's `Proposal` view model (interface 3). `ledger.postEntry` is the only writer of `journalEntries` and refuses the proposer's identity. Every step writes `auditLog` under its seat.

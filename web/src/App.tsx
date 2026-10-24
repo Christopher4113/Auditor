@@ -30,6 +30,10 @@ import {
   convex,
   startClose,
   configurationError,
+  approve as approveLive,
+  reject as rejectLive,
+  signPeriod as signLive,
+  reason,
 } from "./data/live";
 import type { LiveSnapshot, LiveDetails } from "./data/live";
 import {
@@ -1214,8 +1218,20 @@ export default function App() {
             period={period}
             onClose={() => setDrawer(null)}
             onSelect={selectProposal}
-            onApprove={approve}
-            onReject={reject}
+            onApprove={(id, note) =>
+              live
+                ? void approveLive(id, note)
+                    .then(() => notify("Approved and posted under your identity."))
+                    .catch((e: Error) => notify(reason(e)))
+                : approve(id, note)
+            }
+            onReject={(id, instruction) =>
+              live
+                ? void rejectLive(id, instruction)
+                    .then(() => notify("Rejected; the agent is proposing a revision."))
+                    .catch((e: Error) => notify(reason(e)))
+                : reject(id, instruction)
+            }
             onInject={inject}
             mode={mode}
             liveSnapshot={liveSnapshot}
@@ -1235,9 +1251,12 @@ export default function App() {
             }}
             onSign={() => {
               if (live) {
-                notify(
-                  "Live sign-off is not available yet. This workspace is read-only.",
-                );
+                void signLive(period)
+                  .then(() => {
+                    setSignedPeriods((previous) => [...previous, period]);
+                    notify(`${period} signed and locked.`);
+                  })
+                  .catch((e: Error) => notify(reason(e)));
                 return;
               }
               if (!pending) {

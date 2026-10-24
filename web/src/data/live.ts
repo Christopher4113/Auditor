@@ -179,3 +179,19 @@ export async function startClose(period: Period): Promise<string> {
     );
   return workflowId;
 }
+
+// ── Human controller moves (C3). proposalId is the rail's external code, e.g. "P-sample-bank-04-r1". ──
+const human = {
+  approve: makeFunctionReference<"mutation", { entity: string; proposalId: string; note?: string }, unknown>("api:approve"),
+  reject: makeFunctionReference<"mutation", { entity: string; proposalId: string; instruction: string }, unknown>("api:reject"),
+  sign: makeFunctionReference<"mutation", EntityPeriodArgs, unknown>("api:signPeriod"),
+};
+function requireHttp() {
+  if (!http) throw new Error("A live workspace is not configured.");
+  return http;
+}
+export const approve = (proposalId: string, note: string) => requireHttp().mutation(human.approve, { entity: ENTITY, proposalId, note });
+export const reject = (proposalId: string, instruction: string) => requireHttp().mutation(human.reject, { entity: ENTITY, proposalId, instruction });
+export const signPeriod = (period: Period) => requireHttp().mutation(human.sign, { entity: ENTITY, period: toPeriodKey(period) });
+/** Convex wraps thrown errors as "[Request ID: …] Server Error Uncaught Error: <message> at …"; keep only the message. */
+export const reason = (e: Error) => e.message.replace(/^.*?Uncaught Error: /, "").replace(/\s+at .*$/s, "");

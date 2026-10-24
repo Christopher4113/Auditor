@@ -1,15 +1,19 @@
 // Interfaces 3 + 4 (C -> D): everything the UI calls. All take `entity`; `period` is "YYYY-MM".
 // Return validators are the fixture shapes D builds against.
 // Phase 1 (here): listPeriods, listProposals, getBreak, getDecision, auditTrail, scoreboard, startClose, closeStatus.
-// Phase 2 (C3): approve(proposalId, note) writes precedentScope; reject(proposalId, instruction); signPeriod(period).
+// Phase 2 (C3, here): approve(proposalId, note, precedentScope?) writes precedentScope; reject(proposalId, instruction); signPeriod(period); closeSummary.
 // Phase 3 (C5/C6): injectBankTransaction, amendContract, changeVendorBank, resetAll, attemptAgentPost.
 // decisions.citations[]: { sourceType, sourceId, text, score } -- text is verbatim, never paraphrased.
 import { getStatus } from "@convex-dev/workflow";
 import { v } from "convex/values";
 import { components } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { traceFor } from "./audit";
 import { ensureClose } from "./close";
-import schema, { vRuleResult } from "./schema";
+import { approve as approveProposal, reject as rejectProposal, signPeriod as signPeriodFn } from "./human";
+import { trialBalance } from "./ledger";
+import schema, { vPrecedentScope, vRuleResult } from "./schema";
 
 const orNull = <T extends Parameters<typeof v.union>[0]>(t: T) => v.union(t, v.null());
 
@@ -165,5 +169,99 @@ export const closeStatus = query({
     if (!p?.closeWorkflowId) return null;
     const s = await getStatus(ctx, components.workflow, p.closeWorkflowId as never);
     return { type: s.type, running: s.type === "inProgress" ? s.running.length : undefined, error: s.type === "failed" ? s.error : undefined };
+  },
+});
+
+// ── Human controller (C3). proposalId is the external code shown in the rail, e.g. "P-sample-bank-04-r1". ──
+
+/** Approve an escalated proposal: posts it under the human identity and records precedentScope (8.2). */
+export const approve = mutation({
+  args: { entity: v.string(), proposalId: v.string(), note: v.optional(v.string()), precedentScope: v.optional(vPrecedentScope) },
+  returns: v.object({ decisionId: v.id("decisions"), entryId: v.id("journalEntries") }),
+  handler: async (ctx, { entity, proposalId, note, precedentScope }): Promise<{ decisionId: Id<"decisions">; entryId: Id<"journalEntries"> }> =>
+    approveProposal(ctx, entity, proposalId, note, precedentScope),
+});
+
+/** Reject with an instruction: stored as a correction, the break reopens and the Workflow proposes a revision. */
+export const reject = mutation({
+  args: { entity: v.string(), proposalId: v.string(), instruction: v.string() },
+  returns: v.object({ decisionId: v.id("decisions"), correctionId: v.id("corrections") }),
+  handler: async (ctx, { entity, proposalId, instruction }) => rejectProposal(ctx, entity, proposalId, instruction),
+});
+
+/** Sign the period: snapshots the close summary, locks it (3.0), schedules the next period's advance (C4). */
+export const signPeriod = mutation({
+  args: { entity: v.string(), period: v.string() },
+  returns: v.object({ entriesPosted: v.number(), openItemsCarried: v.number(), debits: v.number(), credits: v.number() }),
+  handler: async (ctx, { entity, period }) => signPeriodFn(ctx, entity, period),
+});
+
+/** Close summary drawer: what the controller signs. Live until signed; the stored snapshot after. */
+export const closeSummary = query({
+  args: { entity: v.string(), period: v.string() },
+  returns: v.object({
+    status: v.string(),
+    signedAt: orNull(v.number()),
+    prepared: orNull(v.object({ at: v.number(), unmatched: v.number(), openBreaks: v.number() })),
+    entriesPosted: v.number(),
+    openItems: v.number(),
+    awaitingController: v.number(),
+    trialBalance: v.array(v.object({ code: v.string(), name: v.string(), debit: v.number(), credit: v.number(), balance: v.number() })),
+    debits: v.number(),
+    credits: v.number(),
+  }),
+  handler: async (ctx, { entity, period }) => {
+    const p = await ctx.db.query("periods").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).unique();
+    const proposals = await ctx.db.query("proposals").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
+    const entries = await ctx.db.query("journalEntries").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
+    const tb = await trialBalance(ctx, entity, period);
+    return {
+      status: p?.status ?? "missing",
+      signedAt: p?.signedAt ?? null,
+      prepared: p?.prepared ?? null,
+      entriesPosted: entries.length,
+      openItems: proposals.filter((x) => x.status !== "posted" && x.status !== "approved" && x.status !== "rejected").length,
+      awaitingController: proposals.filter((x) => x.status === "escalated" || x.status === "failed_rule").length,
+      trialBalance: tb.rows,
+      debits: tb.debits,
+      credits: tb.credits,
+    };
+  },
+});
+
+// ── Observability (Phase 2 add-on): one correlation id follows a unit of work through every component. ──
+
+/** Trace view: every audit row for one unit of work, oldest first, plus the chain it produced.
+ *  Pass the traceId, or a proposal's external code and it is resolved. */
+export const trace = query({
+  args: { entity: v.string(), traceId: v.optional(v.string()), proposalId: v.optional(v.string()) },
+  returns: orNull(
+    v.object({
+      traceId: v.string(),
+      bankTransaction: orNull(schema.doc("bankTransactions")),
+      proposals: v.array(schema.doc("proposals")),
+      decisions: v.array(schema.doc("decisions")),
+      entries: v.array(schema.doc("journalEntries")),
+      events: v.array(schema.doc("auditLog")),
+    }),
+  ),
+  handler: async (ctx, { entity, traceId: given, proposalId }) => {
+    let traceId = given;
+    if (!traceId && proposalId) {
+      const p = await ctx.db.query("proposals").withIndex("by_entity_proposalId", (q) => q.eq("entity", entity).eq("proposalId", proposalId)).unique();
+      traceId = p ? await traceFor(ctx, { proposalId: p._id }) : undefined;
+    }
+    if (!traceId) return null;
+    const events = await ctx.db.query("auditLog").withIndex("by_entity_traceId", (q) => q.eq("entity", entity).eq("traceId", traceId)).take(500);
+    const txnId = traceId.startsWith("T-") ? traceId.slice(2) : null;
+    const bankTransaction = txnId ? await ctx.db.query("bankTransactions").withIndex("by_entity_txnId", (q) => q.eq("entity", entity).eq("txnId", txnId)).unique() : null;
+    // ponytail: rows stamped by other lanes may not carry traceId yet; the chain is rebuilt from the audit rows' ids
+    const proposalIds = [...new Set(events.map((e) => e.proposalId).filter((x): x is NonNullable<typeof x> => !!x))];
+    const proposals = (await Promise.all(proposalIds.map((id) => ctx.db.get(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+    const decisionIds = [...new Set(events.map((e) => e.decisionId).filter((x): x is NonNullable<typeof x> => !!x))];
+    const decisions = (await Promise.all(decisionIds.map((id) => ctx.db.get(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+    const entryIds = [...new Set(events.map((e) => e.entryId).filter((x): x is NonNullable<typeof x> => !!x))];
+    const entries = (await Promise.all(entryIds.map((id) => ctx.db.get(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+    return { traceId, bankTransaction, proposals, decisions, entries, events };
   },
 });

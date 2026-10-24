@@ -53,7 +53,7 @@ export const review = internalMutation({
       .take(200);
     const precedentScopes = allDecisions
       .filter((d) => d.precedentScope !== undefined && d.precedentScope !== null)
-      .map((d) => d.precedentScope as string);
+      .map((d) => JSON.stringify(d.precedentScope));
     // Also check other periods (a July precedent covers September).
     const allDecisionsAllPeriods = await ctx.db
       .query("decisions")
@@ -61,7 +61,7 @@ export const review = internalMutation({
       .take(500);
     const allPrecedentScopes = allDecisionsAllPeriods
       .filter((d) => d.precedentScope !== undefined && d.precedentScope !== null)
-      .map((d) => d.precedentScope as string);
+      .map((d) => JSON.stringify(d.precedentScope));
 
     // Source texts for citation verification (policy 9.0).
     // Policy clauses: keyed as "policy-{id}"
