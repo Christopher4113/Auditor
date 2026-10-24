@@ -1,6 +1,6 @@
 # Auditor
 
-Three-seat month-end close for Harbor Lights Festival: a Reconciler agent (Sonnet) proposes entries, a Controller agent (Opus) reviews them against policy and precedent, a human signs off above $5,000. Nothing posts without a review it did not write. Brief and design doc are in the shared drive.
+Month-end cash close for Experts Only Festival NYC: one staff accountant agent proposes entries with citations, a TypeScript controls engine reviews them, and a human controller handles exceptions and signs the period. Every financial number, vendor, and contract in the demo is fictitious. The final v2 brief and design doc are in the shared drive.
 
 ## Layout
 
@@ -29,6 +29,8 @@ pnpm dev:web             # http://localhost:5173
 pnpm dev:retrieval       # http://localhost:8000/docs
 cd datagen && uv run generate.py
 ```
+
+Group A's Phase 1 is ready to consume: [data contract and Convex handoff](datagen/README.md), [10-transaction sample](datagen/sample.seed.json), and [retrieval stub guide](retrieval/README.md). Run `pnpm data:generate`, `pnpm data:validate`, and `pnpm data:test` from the root. Generation and validation require Python/uv; no API credentials or running services.
 
 Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
 

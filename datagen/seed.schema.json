@@ -1,20 +1,731 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Auditor seed.json (interface 5, A -> C)",
-  "description": "Agreed Friday night. Section item shapes are A2's Phase 1 deliverable; C seeds from a 10-transaction hand-written sample until A1 lands.",
+  "title": "Auditor seed.json (Interface 5, A to C)",
+  "description": "Version 1.0.0. Synthetic Phase 1 data; all monetary fields are integer USD cents. IDs are external keys, not Convex document IDs. Validate cross-record invariants with validate.py.",
   "type": "object",
-  "required": ["seed", "accounts", "openingBalances", "periods", "bankTransactions", "stripePayouts", "contracts", "policyClauses", "vendors", "breaks", "answerKey"],
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "seed",
+    "dataset",
+    "entity",
+    "currency",
+    "company",
+    "accounts",
+    "openingBalances",
+    "periods",
+    "bankTransactions",
+    "stripePayouts",
+    "contracts",
+    "policyClauses",
+    "vendors",
+    "breaks",
+    "answerKey"
+  ],
   "properties": {
-    "seed": { "type": "integer" },
-    "accounts": { "type": "array", "items": { "type": "object" } },
-    "openingBalances": { "type": "array", "items": { "type": "object" } },
-    "periods": { "type": "array", "items": { "type": "object" } },
-    "bankTransactions": { "type": "array", "items": { "type": "object" } },
-    "stripePayouts": { "type": "array", "items": { "type": "object" } },
-    "contracts": { "type": "array", "items": { "type": "object" } },
-    "policyClauses": { "type": "array", "items": { "type": "object" } },
-    "vendors": { "type": "array", "items": { "type": "object" }, "description": "carries crsTestIdentity per vendor" },
-    "breaks": { "type": "array", "items": { "type": "object" } },
-    "answerKey": { "type": "array", "items": { "type": "object" } }
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "dataset": {
+      "enum": [
+        "generated",
+        "sample"
+      ]
+    },
+    "entity": {
+      "$ref": "#/$defs/id"
+    },
+    "currency": {
+      "$ref": "#/$defs/currency"
+    },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "synthetic",
+        "eventStartDate",
+        "eventEndDate",
+        "paidAttendance"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/text"
+        },
+        "synthetic": {
+          "const": true
+        },
+        "eventStartDate": {
+          "$ref": "#/$defs/date"
+        },
+        "eventEndDate": {
+          "$ref": "#/$defs/date"
+        },
+        "paidAttendance": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/account"
+      },
+      "minItems": 1
+    },
+    "openingBalances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/openingBalance"
+      },
+      "minItems": 2
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/period"
+      },
+      "minItems": 1
+    },
+    "bankTransactions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/bankTransaction"
+      }
+    },
+    "stripePayouts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stripePayout"
+      }
+    },
+    "contracts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/contract"
+      }
+    },
+    "policyClauses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/policyClause"
+      }
+    },
+    "vendors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/vendor"
+      }
+    },
+    "breaks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/break"
+      },
+      "description": "Empty in Phase 1; A3 adds planted breaks in Phase 2."
+    },
+    "answerKey": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/answer"
+      },
+      "description": "Empty in Phase 1. Future scoring data must never enter agent context or retrieval indexes."
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^2026-[0-9]{2}-[0-9]{2}$"
+    },
+    "currency": {
+      "const": "USD"
+    },
+    "accountCode": {
+      "type": "string",
+      "pattern": "^[0-9]{4}$"
+    },
+    "cents": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "periodId": {
+      "type": "string",
+      "pattern": "^2026-(07|08|09)$"
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "code",
+        "name",
+        "type",
+        "normalBalance",
+        "currency"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "$ref": "#/$defs/accountCode"
+        },
+        "name": {
+          "$ref": "#/$defs/text"
+        },
+        "type": {
+          "enum": [
+            "asset",
+            "liability",
+            "equity",
+            "revenue",
+            "expense"
+          ]
+        },
+        "normalBalance": {
+          "enum": [
+            "debit",
+            "credit"
+          ]
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        }
+      }
+    },
+    "journalLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountCode",
+        "debit",
+        "credit"
+      ],
+      "properties": {
+        "accountCode": {
+          "$ref": "#/$defs/accountCode"
+        },
+        "debit": {
+          "$ref": "#/$defs/cents"
+        },
+        "credit": {
+          "$ref": "#/$defs/cents"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "debit": {
+              "minimum": 1
+            },
+            "credit": {
+              "const": 0
+            }
+          }
+        },
+        {
+          "properties": {
+            "debit": {
+              "const": 0
+            },
+            "credit": {
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "openingBalance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "date",
+        "accountCode",
+        "debit",
+        "credit"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "accountCode": {
+          "$ref": "#/$defs/accountCode"
+        },
+        "debit": {
+          "$ref": "#/$defs/cents"
+        },
+        "credit": {
+          "$ref": "#/$defs/cents"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "debit": {
+              "minimum": 1
+            },
+            "credit": {
+              "const": 0
+            }
+          }
+        },
+        {
+          "properties": {
+            "debit": {
+              "const": 0
+            },
+            "credit": {
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "startDate",
+        "endDate",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/periodId"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "startDate": {
+          "$ref": "#/$defs/date"
+        },
+        "endDate": {
+          "$ref": "#/$defs/date"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "closing",
+            "closed"
+          ]
+        }
+      }
+    },
+    "bankTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "period",
+        "date",
+        "amount",
+        "currency",
+        "counterparty",
+        "description",
+        "reference",
+        "vendorId",
+        "stripePayoutId",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "period": {
+          "$ref": "#/$defs/periodId"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "amount": {
+          "type": "integer",
+          "not": {
+            "const": 0
+          }
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "counterparty": {
+          "$ref": "#/$defs/text"
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        },
+        "reference": {
+          "$ref": "#/$defs/text"
+        },
+        "vendorId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stripePayoutId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "unmatched",
+            "matched"
+          ]
+        }
+      }
+    },
+    "stripePayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "period",
+        "arrivalDate",
+        "currency",
+        "gross",
+        "fee",
+        "net",
+        "chargeCount",
+        "bankTransactionId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "period": {
+          "$ref": "#/$defs/periodId"
+        },
+        "arrivalDate": {
+          "$ref": "#/$defs/date"
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "gross": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fee": {
+          "$ref": "#/$defs/cents"
+        },
+        "net": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "chargeCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bankTransactionId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "description": "Normalized weekly report, not a raw Stripe API object. Gross less fee equals net, a positive bank receipt. Bank amount equals net."
+    },
+    "contractClause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number",
+        "text",
+        "effectiveDate"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "$ref": "#/$defs/text"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "effectiveDate": {
+          "$ref": "#/$defs/date"
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "vendorId",
+        "title",
+        "signedDate",
+        "startDate",
+        "endDate",
+        "currency",
+        "clauses"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "vendorId": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "signedDate": {
+          "$ref": "#/$defs/date"
+        },
+        "startDate": {
+          "$ref": "#/$defs/date"
+        },
+        "endDate": {
+          "$ref": "#/$defs/date"
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "clauses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contractClause"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "policyClause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "policyPackId",
+        "number",
+        "text",
+        "effectiveDate"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "policyPackId": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "$ref": "#/$defs/text"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "effectiveDate": {
+          "$ref": "#/$defs/date"
+        }
+      }
+    },
+    "vendor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "name",
+        "category",
+        "bankAccountLast4",
+        "crsTestIdentity"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/text"
+        },
+        "category": {
+          "$ref": "#/$defs/text"
+        },
+        "bankAccountLast4": {
+          "type": "string",
+          "pattern": "^[0-9]{4}$"
+        },
+        "crsTestIdentity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sponsor-issued sandbox test identity ID only. Null means not configured; verification must fail closed. Never real PII or an invented ID."
+        }
+      }
+    },
+    "break": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "period",
+        "kind",
+        "description",
+        "bankTransactionIds",
+        "contractIds",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "period": {
+          "$ref": "#/$defs/periodId"
+        },
+        "kind": {
+          "enum": [
+            "stripe_fee",
+            "duplicate_invoice",
+            "artist_cancellation",
+            "sponsor_amendment",
+            "bank_detail_change",
+            "missing_accrual",
+            "deposit_shortfall"
+          ]
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        },
+        "bankTransactionIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "contractIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved",
+            "escalated"
+          ]
+        }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "breakId",
+        "period",
+        "expectedAction",
+        "expectedLines",
+        "citationIds",
+        "expectedEscalation",
+        "pnlImpact",
+        "explanation"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "breakId": {
+          "$ref": "#/$defs/id"
+        },
+        "period": {
+          "$ref": "#/$defs/periodId"
+        },
+        "expectedAction": {
+          "$ref": "#/$defs/text"
+        },
+        "expectedLines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/journalLine"
+          }
+        },
+        "citationIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "expectedEscalation": {
+          "type": "boolean"
+        },
+        "pnlImpact": {
+          "$ref": "#/$defs/cents"
+        },
+        "explanation": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    }
   }
 }

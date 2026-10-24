@@ -1,0 +1,798 @@
+{
+  "schemaVersion": "1.0.0",
+  "seed": 1328,
+  "dataset": "sample",
+  "entity": "experts-only-nyc",
+  "currency": "USD",
+  "company": {
+    "name": "Experts Only Festival NYC",
+    "synthetic": true,
+    "eventStartDate": "2026-09-19",
+    "eventEndDate": "2026-09-20",
+    "paidAttendance": 50000
+  },
+  "accounts": [
+    {
+      "id": "acct-1000",
+      "entity": "experts-only-nyc",
+      "code": "1000",
+      "name": "Cash",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1010",
+      "entity": "experts-only-nyc",
+      "code": "1010",
+      "name": "Stripe clearing",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1100",
+      "entity": "experts-only-nyc",
+      "code": "1100",
+      "name": "Accounts receivable",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1150",
+      "entity": "experts-only-nyc",
+      "code": "1150",
+      "name": "Sponsorship receivable",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1200",
+      "entity": "experts-only-nyc",
+      "code": "1200",
+      "name": "Vendor deposits",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1250",
+      "entity": "experts-only-nyc",
+      "code": "1250",
+      "name": "Artist deposits",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1300",
+      "entity": "experts-only-nyc",
+      "code": "1300",
+      "name": "Prepaid expenses",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-1400",
+      "entity": "experts-only-nyc",
+      "code": "1400",
+      "name": "Payments under review",
+      "type": "asset",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-2000",
+      "entity": "experts-only-nyc",
+      "code": "2000",
+      "name": "Accounts payable",
+      "type": "liability",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-2100",
+      "entity": "experts-only-nyc",
+      "code": "2100",
+      "name": "Accrued liabilities",
+      "type": "liability",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-2200",
+      "entity": "experts-only-nyc",
+      "code": "2200",
+      "name": "Deferred ticket revenue",
+      "type": "liability",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-2250",
+      "entity": "experts-only-nyc",
+      "code": "2250",
+      "name": "Deferred sponsorship revenue",
+      "type": "liability",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-3000",
+      "entity": "experts-only-nyc",
+      "code": "3000",
+      "name": "Common stock",
+      "type": "equity",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-3100",
+      "entity": "experts-only-nyc",
+      "code": "3100",
+      "name": "Retained earnings",
+      "type": "equity",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-4000",
+      "entity": "experts-only-nyc",
+      "code": "4000",
+      "name": "Ticket revenue",
+      "type": "revenue",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-4100",
+      "entity": "experts-only-nyc",
+      "code": "4100",
+      "name": "Sponsorship revenue",
+      "type": "revenue",
+      "normalBalance": "credit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5000",
+      "entity": "experts-only-nyc",
+      "code": "5000",
+      "name": "Artist fees",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5050",
+      "entity": "experts-only-nyc",
+      "code": "5050",
+      "name": "Artist cancellation fees",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5100",
+      "entity": "experts-only-nyc",
+      "code": "5100",
+      "name": "Production",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5150",
+      "entity": "experts-only-nyc",
+      "code": "5150",
+      "name": "Staging and equipment",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5160",
+      "entity": "experts-only-nyc",
+      "code": "5160",
+      "name": "Equipment inspection and damage fees",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5200",
+      "entity": "experts-only-nyc",
+      "code": "5200",
+      "name": "Security",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5300",
+      "entity": "experts-only-nyc",
+      "code": "5300",
+      "name": "Catering",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5400",
+      "entity": "experts-only-nyc",
+      "code": "5400",
+      "name": "Payment processing fees",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5500",
+      "entity": "experts-only-nyc",
+      "code": "5500",
+      "name": "Venue and permits",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5600",
+      "entity": "experts-only-nyc",
+      "code": "5600",
+      "name": "Marketing",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    },
+    {
+      "id": "acct-5900",
+      "entity": "experts-only-nyc",
+      "code": "5900",
+      "name": "G&A",
+      "type": "expense",
+      "normalBalance": "debit",
+      "currency": "USD"
+    }
+  ],
+  "openingBalances": [
+    {
+      "id": "opening-1000",
+      "entity": "experts-only-nyc",
+      "date": "2026-07-01",
+      "accountCode": "1000",
+      "debit": 38000000,
+      "credit": 0
+    },
+    {
+      "id": "opening-1300",
+      "entity": "experts-only-nyc",
+      "date": "2026-07-01",
+      "accountCode": "1300",
+      "debit": 6000000,
+      "credit": 0
+    },
+    {
+      "id": "opening-3000",
+      "entity": "experts-only-nyc",
+      "date": "2026-07-01",
+      "accountCode": "3000",
+      "debit": 0,
+      "credit": 50000000
+    },
+    {
+      "id": "opening-3100",
+      "entity": "experts-only-nyc",
+      "date": "2026-07-01",
+      "accountCode": "3100",
+      "debit": 6000000,
+      "credit": 0
+    }
+  ],
+  "periods": [
+    {
+      "id": "2026-07",
+      "entity": "experts-only-nyc",
+      "startDate": "2026-07-01",
+      "endDate": "2026-07-31",
+      "status": "open"
+    },
+    {
+      "id": "2026-08",
+      "entity": "experts-only-nyc",
+      "startDate": "2026-08-01",
+      "endDate": "2026-08-31",
+      "status": "open"
+    },
+    {
+      "id": "2026-09",
+      "entity": "experts-only-nyc",
+      "startDate": "2026-09-01",
+      "endDate": "2026-09-30",
+      "status": "open"
+    }
+  ],
+  "bankTransactions": [
+    {
+      "id": "sample-bank-01",
+      "entity": "experts-only-nyc",
+      "period": "2026-07",
+      "date": "2026-07-02",
+      "amount": -6000000,
+      "currency": "USD",
+      "counterparty": "The Northern Lines",
+      "description": "Artist deposit, 50% on signing",
+      "reference": "NL-DEPOSIT",
+      "vendorId": "northern-lines",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-02",
+      "entity": "experts-only-nyc",
+      "period": "2026-07",
+      "date": "2026-07-10",
+      "amount": 4718000,
+      "currency": "USD",
+      "counterparty": "Stripe",
+      "description": "Weekly ticket payout, net of fees",
+      "reference": "po_sample_jul",
+      "vendorId": null,
+      "stripePayoutId": "po_sample_jul",
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-03",
+      "entity": "experts-only-nyc",
+      "period": "2026-07",
+      "date": "2026-07-15",
+      "amount": -125000,
+      "currency": "USD",
+      "counterparty": "Beacon Creative",
+      "description": "Campaign creative",
+      "reference": "BC-0715",
+      "vendorId": "beacon",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-04",
+      "entity": "experts-only-nyc",
+      "period": "2026-07",
+      "date": "2026-07-23",
+      "amount": -1850000,
+      "currency": "USD",
+      "counterparty": "SoundWave Production",
+      "description": "Production services",
+      "reference": "SW-1041",
+      "vendorId": "soundwave",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-05",
+      "entity": "experts-only-nyc",
+      "period": "2026-08",
+      "date": "2026-08-07",
+      "amount": 9710000,
+      "currency": "USD",
+      "counterparty": "Stripe",
+      "description": "Weekly ticket payout, net of fees",
+      "reference": "po_sample_aug",
+      "vendorId": null,
+      "stripePayoutId": "po_sample_aug",
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-06",
+      "entity": "experts-only-nyc",
+      "period": "2026-08",
+      "date": "2026-08-20",
+      "amount": -1600000,
+      "currency": "USD",
+      "counterparty": "Apex Staging",
+      "description": "Refundable equipment damage deposit",
+      "reference": "APEX-DEPOSIT",
+      "vendorId": "apex",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-07",
+      "entity": "experts-only-nyc",
+      "period": "2026-08",
+      "date": "2026-08-28",
+      "amount": -240000,
+      "currency": "USD",
+      "counterparty": "Island Event Permits",
+      "description": "Permit administration",
+      "reference": "IEP-0828",
+      "vendorId": "city-permits",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-08",
+      "entity": "experts-only-nyc",
+      "period": "2026-09",
+      "date": "2026-09-09",
+      "amount": -23500,
+      "currency": "USD",
+      "counterparty": "Backstage Office Supply",
+      "description": "Event operations supplies",
+      "reference": "BOS-0909",
+      "vendorId": "office",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-09",
+      "entity": "experts-only-nyc",
+      "period": "2026-09",
+      "date": "2026-09-18",
+      "amount": 1942000,
+      "currency": "USD",
+      "counterparty": "Stripe",
+      "description": "Weekly ticket payout, net of fees",
+      "reference": "po_sample_sep",
+      "vendorId": null,
+      "stripePayoutId": "po_sample_sep",
+      "status": "unmatched"
+    },
+    {
+      "id": "sample-bank-10",
+      "entity": "experts-only-nyc",
+      "period": "2026-09",
+      "date": "2026-09-25",
+      "amount": 1360000,
+      "currency": "USD",
+      "counterparty": "Apex Staging",
+      "description": "Deposit returned less contractual inspection fee",
+      "reference": "APEX-RETURN",
+      "vendorId": "apex",
+      "stripePayoutId": null,
+      "status": "unmatched"
+    }
+  ],
+  "stripePayouts": [
+    {
+      "id": "po_sample_jul",
+      "entity": "experts-only-nyc",
+      "period": "2026-07",
+      "arrivalDate": "2026-07-10",
+      "currency": "USD",
+      "gross": 4860000,
+      "fee": 142000,
+      "net": 4718000,
+      "chargeCount": 200,
+      "bankTransactionId": "sample-bank-02"
+    },
+    {
+      "id": "po_sample_aug",
+      "entity": "experts-only-nyc",
+      "period": "2026-08",
+      "arrivalDate": "2026-08-07",
+      "currency": "USD",
+      "gross": 10000000,
+      "fee": 290000,
+      "net": 9710000,
+      "chargeCount": 400,
+      "bankTransactionId": "sample-bank-05"
+    },
+    {
+      "id": "po_sample_sep",
+      "entity": "experts-only-nyc",
+      "period": "2026-09",
+      "arrivalDate": "2026-09-18",
+      "currency": "USD",
+      "gross": 2000000,
+      "fee": 58000,
+      "net": 1942000,
+      "chargeCount": 80,
+      "bankTransactionId": "sample-bank-09"
+    }
+  ],
+  "contracts": [
+    {
+      "id": "contract-northern-lines",
+      "vendorId": "northern-lines",
+      "title": "The Northern Lines headliner agreement",
+      "signedDate": "2026-07-01",
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-20",
+      "clauses": [
+        {
+          "id": "northern-lines-2.1",
+          "number": "2.1",
+          "text": "The total artist fee is $120,000 for the September 19–20, 2026 festival.",
+          "effectiveDate": "2026-07-01"
+        },
+        {
+          "id": "northern-lines-3.1",
+          "number": "3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "effectiveDate": "2026-07-01"
+        },
+        {
+          "id": "northern-lines-7.2",
+          "number": "7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "effectiveDate": "2026-07-01"
+        }
+      ],
+      "entity": "experts-only-nyc",
+      "currency": "USD"
+    },
+    {
+      "id": "contract-apex",
+      "vendorId": "apex",
+      "title": "Apex Staging equipment agreement",
+      "signedDate": "2026-07-01",
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-25",
+      "clauses": [
+        {
+          "id": "apex-9.4",
+          "number": "9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "effectiveDate": "2026-07-01"
+        }
+      ],
+      "entity": "experts-only-nyc",
+      "currency": "USD"
+    },
+    {
+      "id": "contract-brightwater",
+      "vendorId": "brightwater",
+      "title": "Brightwater Beverage sponsorship agreement",
+      "signedDate": "2026-07-01",
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-20",
+      "clauses": [
+        {
+          "id": "brightwater-3.1",
+          "number": "3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "effectiveDate": "2026-07-01"
+        },
+        {
+          "id": "brightwater-amendment-1",
+          "number": "Amendment 1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "effectiveDate": "2026-08-10"
+        }
+      ],
+      "entity": "experts-only-nyc",
+      "currency": "USD"
+    },
+    {
+      "id": "contract-ironclad",
+      "vendorId": "ironclad",
+      "title": "Ironclad Security service schedule",
+      "signedDate": "2026-07-01",
+      "startDate": "2026-08-30",
+      "endDate": "2026-09-20",
+      "clauses": [
+        {
+          "id": "ironclad-2.1",
+          "number": "2.1",
+          "text": "Site setup on August 30–31, 2026 costs $9,400. Event coverage on September 19–20, 2026 costs $28,000. Each service is invoiced net 30 after service.",
+          "effectiveDate": "2026-07-01"
+        }
+      ],
+      "entity": "experts-only-nyc",
+      "currency": "USD"
+    },
+    {
+      "id": "contract-field-flame",
+      "vendorId": "field-flame",
+      "title": "Field & Flame catering agreement",
+      "signedDate": "2026-07-01",
+      "startDate": "2026-09-19",
+      "endDate": "2026-09-20",
+      "clauses": [
+        {
+          "id": "field-flame-5.1",
+          "number": "5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "effectiveDate": "2026-07-01"
+        }
+      ],
+      "entity": "experts-only-nyc",
+      "currency": "USD"
+    },
+    {
+      "id": "contract-soundwave",
+      "vendorId": "soundwave",
+      "title": "SoundWave Production purchase order",
+      "signedDate": "2026-07-01",
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-20",
+      "clauses": [
+        {
+          "id": "soundwave-2.1",
+          "number": "2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "effectiveDate": "2026-07-01"
+        }
+      ],
+      "entity": "experts-only-nyc",
+      "currency": "USD"
+    }
+  ],
+  "policyClauses": [
+    {
+      "id": "policy-1.0",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "1.0",
+      "text": "The controller owns the books and signs each period close.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-2.0",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "2.0",
+      "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-3.0",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "3.0",
+      "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-4.3",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "4.3",
+      "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-5.1",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "5.1",
+      "text": "Where a contract makes a fee, penalty or deduction non-recoverable, the amount is expensed in the period it becomes certain. It is not carried as a receivable.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-6.1",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "6.1",
+      "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-6.2",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "6.2",
+      "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-7.1",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "7.1",
+      "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-8.0",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "8.0",
+      "text": "Materiality is P&L impact, the sum of revenue and expense lines. Under $5,000 the controls engine may post when every rule passes and a policy clause is cited. $5,000 or more, and any control exception, requires the controller.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-8.1",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "8.1",
+      "text": "No person or system approves an entry it proposed.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-8.2",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "8.2",
+      "text": "A human-decided precedent with matching scope, under threshold, is pre-approved and does not re-escalate.",
+      "effectiveDate": "2026-07-01"
+    },
+    {
+      "id": "policy-9.0",
+      "entity": "experts-only-nyc",
+      "policyPackId": "policy-nyc-v1",
+      "number": "9.0",
+      "text": "Every decision records the proposal, reviewer, rules run, verbatim citations, and outcome.",
+      "effectiveDate": "2026-07-01"
+    }
+  ],
+  "vendors": [
+    {
+      "id": "northern-lines",
+      "entity": "experts-only-nyc",
+      "name": "The Northern Lines",
+      "category": "artist",
+      "bankAccountLast4": "1024",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "apex",
+      "entity": "experts-only-nyc",
+      "name": "Apex Staging",
+      "category": "staging",
+      "bankAccountLast4": "2846",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "brightwater",
+      "entity": "experts-only-nyc",
+      "name": "Brightwater Beverage",
+      "category": "sponsor",
+      "bankAccountLast4": "3165",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "ironclad",
+      "entity": "experts-only-nyc",
+      "name": "Ironclad Security",
+      "category": "security",
+      "bankAccountLast4": "6680",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "field-flame",
+      "entity": "experts-only-nyc",
+      "name": "Field & Flame",
+      "category": "catering",
+      "bankAccountLast4": "4471",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "soundwave",
+      "entity": "experts-only-nyc",
+      "name": "SoundWave Production",
+      "category": "production",
+      "bankAccountLast4": "5912",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "city-permits",
+      "entity": "experts-only-nyc",
+      "name": "Island Event Permits",
+      "category": "venue",
+      "bankAccountLast4": "7403",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "beacon",
+      "entity": "experts-only-nyc",
+      "name": "Beacon Creative",
+      "category": "marketing",
+      "bankAccountLast4": "6284",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "office",
+      "entity": "experts-only-nyc",
+      "name": "Backstage Office Supply",
+      "category": "administration",
+      "bankAccountLast4": "9157",
+      "crsTestIdentity": null
+    }
+  ],
+  "breaks": [],
+  "answerKey": []
+}
