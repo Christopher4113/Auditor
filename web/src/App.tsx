@@ -12,9 +12,7 @@ import {
   ChevronRight,
   CircleCheck,
   Download,
-  FileText,
   History,
-  Landmark,
   Layers3,
   LockKeyhole,
   MoreHorizontal,
@@ -26,7 +24,27 @@ import {
 import WorkspaceDrawer from "./components/WorkspaceDrawer";
 import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
-import { LiveProposals, convex, startClose } from "./data/live";
+import {
+  LiveWorkspace,
+  LiveSelection,
+  convex,
+  startClose,
+  configurationError,
+  approve as approveLive,
+  reject as rejectLive,
+  signPeriod as signLive,
+  reason,
+} from "./data/live";
+import type { LiveSnapshot, LiveDetails } from "./data/live";
+import {
+  latestProposals,
+  revisionsFor,
+  needsHumanReview,
+  proposalProgress,
+} from "./data/selectors";
+import { toPeriodKey } from "./data/adapters";
+import QueryBoundary from "./components/QueryBoundary";
+import TransactionDetail from "./components/TransactionDetail";
 import type { Period, Proposal, ProposalStatus } from "./data/types";
 
 const money = (value: number, cents = false) =>
@@ -37,6 +55,8 @@ const money = (value: number, cents = false) =>
     maximumFractionDigits: cents ? 2 : 0,
   }).format(value);
 const statusLabel: Record<ProposalStatus, string> = {
+  pending: "Checking",
+  approved: "Approved",
   posted: "Handled",
   review: "Needs review",
   held: "On hold",
@@ -50,24 +70,6 @@ const drawerLabels: Record<DrawerType, string> = {
   ask: "Ask Auditor",
   memory: "Past decisions",
   activity: "Activity history",
-};
-const simpleSummary: Record<string, string> = {
-  "apex-sep":
-    "The missing $2,400 is an agreed inspection fee. Auditor recorded it as an expense and cleared the deposit.",
-  "field-flame-sep":
-    "The vendor changed their bank details. This $42,000 payment is paused until those details are independently confirmed.",
-  "stripe-sep":
-    "The $1,420 difference is Stripe processing fees. Auditor used a previously approved decision to reconcile the payout.",
-  "ironclad-sep":
-    "This cost was already recorded in August. The September invoice was matched without counting the expense twice.",
-  "soundwave-jul":
-    "The same $18,500 invoice arrived twice. Review the duplicate before the correction is finalized.",
-  "northern-lines-jul":
-    "The artist’s cancellation fee was recorded as a $9,000 expense after controller approval.",
-  "brightwater-aug":
-    "The sponsorship terms changed. Review the adjustment so the books match the new agreement.",
-  "ironclad-aug":
-    "The site setup happened in August. Its $9,400 cost belongs in August, even though the invoice arrived later.",
 };
 const shortCategory: Record<string, string> = {
   "apex-sep": "Deposit refund",
@@ -187,17 +189,23 @@ function Dialog({
 
 export default function App() {
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
+  const [mode, setMode] = useState<"demo" | "live">(convex ? "live" : "demo");
+  const [liveSnapshot, setLiveSnapshot] = useState<LiveSnapshot | null>(null);
+  const [liveDetails, setLiveDetails] = useState<LiveDetails | null>(null);
+  const [liveFailure, setLiveFailure] = useState(false);
+  const [detailFailure, setDetailFailure] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const [detailRetryKey, setDetailRetryKey] = useState(0);
+  const [revisionFallback, setRevisionFallback] = useState<Proposal | null>(
+    null,
+  );
+  const live = mode === "live";
   const [period, setPeriod] = useState<Period>("September 2026");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerType | null>(null);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
-  const [source, setSource] = useState<{
-    title: string;
-    text: string;
-    id?: string;
-  } | null>(null);
   const [signedPeriods, setSignedPeriods] = useState<string[]>([]);
   const [denialCount, setDenialCount] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -205,18 +213,63 @@ export default function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const activityRef = useRef<HTMLElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
-  const periodProposals = proposals.filter((item) => item.period === period);
-  const selected = periodProposals.find((item) => item.id === selectedId);
-  const attention = periodProposals.filter(
-    (item) => item.status === "review" || item.status === "held",
+  const dataRows = live ? (liveSnapshot?.proposals ?? []) : proposals;
+  const latestRows = latestProposals(dataRows);
+  const periodProposals = latestRows.filter((item) => item.period === period);
+  const selectedBase =
+    dataRows.find((item) => item.id === selectedId) ?? revisionFallback;
+  const selected =
+    live && liveDetails && selectedBase && liveDetails.id === selectedBase.id
+      ? liveDetails.proposal
+      : selectedBase;
+  const attention = periodProposals.filter(needsHumanReview);
+  const progress = proposalProgress(periodProposals);
+  const pending = progress.pending;
+  const posted = progress.posted;
+  const livePeriod = liveSnapshot?.periods.find(
+    (item) => item.period === toPeriodKey(period),
   );
-  const pending = periodProposals.filter(
-    (item) => item.status !== "posted",
-  ).length;
-  const posted = periodProposals.filter(
-    (item) => item.status === "posted",
-  ).length;
-  const signed = signedPeriods.includes(period);
+  const signed = live
+    ? livePeriod?.status === "signed"
+    : signedPeriods.includes(period);
+  const liveLoading =
+    live &&
+    (!liveSnapshot || liveSnapshot.loading || liveSnapshot.period !== period) &&
+    !liveFailure;
+  const score =
+    liveSnapshot?.period === period ? liveSnapshot.score : undefined;
+  const workflow =
+    liveSnapshot?.period === period ? liveSnapshot.workflow : undefined;
+  const percent = live ? progress.percent : 95;
+  const detailLoading =
+    live &&
+    (!liveDetails ||
+      liveDetails.id !== selectedBase?.id ||
+      liveDetails.loading) &&
+    !detailFailure;
+  const versions =
+    selected?.versions?.map(
+      (version): Proposal => ({
+        ...selected,
+        ...version,
+        decisionId: "",
+        decisionReason: undefined,
+        reviewer: undefined,
+        postedEntryId: undefined,
+        outcome: undefined,
+        instruction: undefined,
+        revisionNote: undefined,
+        audit: [],
+        rules: [],
+        backendStatus:
+          version.status === "pending"
+            ? "under_review"
+            : version.status === "review" || version.status === "held"
+              ? "escalated"
+              : version.status,
+        detailsState: { sources: "loading", decision: "loading" },
+      }),
+    ) ?? (selected ? revisionsFor(dataRows, selected) : []);
   const visible = periodProposals.filter(
     (item) =>
       (filter === "all" || item.status !== "posted") &&
@@ -269,8 +322,11 @@ export default function App() {
     setMoreOpen(false);
   };
   const selectProposal = (id: string) => {
-    const item = proposals.find((p) => p.id === id);
+    const item = dataRows.find((p) => p.id === id);
     if (item) {
+      setDetailFailure(false);
+      setLiveDetails(null);
+      setRevisionFallback(null);
       setPeriod(item.period);
       setSelectedId(id);
       setDrawer(null);
@@ -281,10 +337,20 @@ export default function App() {
     setSelectedId(null);
     setSearch("");
     setFilter("all");
+    setLiveFailure(false);
+    setDetailFailure(false);
+    setLiveDetails(null);
+    setRevisionFallback(null);
   };
   const auditTime = () =>
     new Date().toLocaleTimeString("en-US", { hour12: false });
   const approve = (id: string, note: string) => {
+    if (live) {
+      notify(
+        "Live review actions are not available yet. This workspace is read-only.",
+      );
+      return;
+    }
     const item = proposals.find((p) => p.id === id);
     if (
       !item ||
@@ -322,6 +388,12 @@ export default function App() {
     );
   };
   const reject = (id: string, instruction: string) => {
+    if (live) {
+      notify(
+        "Live review actions are not available yet. This workspace is read-only.",
+      );
+      return;
+    }
     const item = proposals.find((p) => p.id === id);
     if (!item || signedPeriods.includes(item.period)) return;
     setProposals((previous) =>
@@ -359,6 +431,10 @@ export default function App() {
     amount: number,
     note: string,
   ) => {
+    if (live) {
+      notify("Test scenarios are available only in the demo workspace.");
+      return;
+    }
     if (signed) {
       notify("This period is locked. Choose an open period first.");
       return;
@@ -431,7 +507,7 @@ export default function App() {
   };
   const exportClose = () => {
     const payload = {
-      mode: "local frontend demo",
+      mode,
       entity: "Experts Only Festival NYC",
       period,
       signed,
@@ -444,10 +520,10 @@ export default function App() {
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `auditor-${period.toLowerCase().replace(" ", "-")}-demo.json`;
+    anchor.download = `auditor-${period.toLowerCase().replace(" ", "-")}-${mode}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    notify("Demo close exported with evidence and audit history.");
+    notify(`${live ? "Live" : "Demo"} close records exported.`);
   };
   const goTo = (view: string) => {
     setActiveNav(view);
@@ -460,7 +536,22 @@ export default function App() {
   };
   return (
     <div className="app-shell">
-      {convex && <LiveProposals onRows={setProposals} />}
+      {live && convex && (
+        <QueryBoundary
+          key={`workspace-${period}-${retryKey}`}
+          onError={() => setLiveFailure(true)}
+        >
+          <LiveWorkspace period={period} onData={setLiveSnapshot} />
+        </QueryBoundary>
+      )}
+      {live && selectedBase?.backendId && selectedBase.breakBackendId && (
+        <QueryBoundary
+          key={`details-${selectedBase.backendId}-${detailRetryKey}`}
+          onError={() => setDetailFailure(true)}
+        >
+          <LiveSelection proposal={selectedBase} onData={setLiveDetails} />
+        </QueryBoundary>
+      )}
       <header className="site-header">
         <div className="header-inner">
           <a
@@ -495,7 +586,9 @@ export default function App() {
             </button>
           </nav>
           <div className="header-actions">
-            <span className="demo-tag">Demo</span>
+            <span className={`demo-tag ${live ? "live-mode-tag" : ""}`}>
+              {live ? "Live data" : "Demo"}
+            </span>
             <button className="ask-header" onClick={() => openDrawer("ask")}>
               <Sparkles size={15} />
               Ask Auditor
@@ -547,6 +640,22 @@ export default function App() {
               {moreOpen && (
                 <div className="tools-menu">
                   <span>WORKSPACE TOOLS</span>
+                  <button
+                    disabled={!convex}
+                    onClick={() => {
+                      setMode(live ? "demo" : "live");
+                      setSelectedId(null);
+                      setRevisionFallback(null);
+                      setLiveDetails(null);
+                      setLiveSnapshot(null);
+                      setLiveFailure(false);
+                      setDetailFailure(false);
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Layers3 size={16} />
+                    {live ? "Open demo workspace" : "Open live workspace"}
+                  </button>
                   <button onClick={() => openDrawer("scoreboard")}>
                     <CircleCheck size={16} />
                     Close summary
@@ -575,6 +684,12 @@ export default function App() {
                   <div />
                   <button
                     onClick={() => {
+                      if (live) {
+                        notify(
+                          "Switch to the demo workspace to reset sample records.",
+                        );
+                        return;
+                      }
                       setProposals(initialProposals);
                       setSignedPeriods([]);
                       setDenialCount(0);
@@ -590,6 +705,43 @@ export default function App() {
             </div>
           </div>
         </div>
+        {configurationError && (
+          <div className="connection-banner warning-notice" role="status">
+            The live connection URL is invalid. You are viewing demo records.
+          </div>
+        )}
+        {live && (
+          <div
+            className={`connection-banner ${liveFailure ? "connection-error" : ""}`}
+            role="status"
+          >
+            <span
+              className={`connection-dot ${liveSnapshot?.connected && !liveFailure ? "connected" : ""}`}
+            />
+            <span>
+              {liveFailure
+                ? "We couldn’t load the live workspace. Retry the connection or open the demo."
+                : liveLoading
+                  ? "Loading the live close…"
+                  : !liveSnapshot?.connected
+                    ? "Reconnecting. Showing the last received records."
+                    : "Connected to live data · review actions are read-only for now"}
+            </span>
+            {liveFailure && (
+              <button
+                className="text-button"
+                onClick={() => {
+                  setLiveFailure(false);
+                  setLiveSnapshot(null);
+                  setRetryKey((value) => value + 1);
+                }}
+              >
+                Retry
+                <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+        )}
         <section className="hero-section">
           <div className="hero-copy">
             <span className="eyebrow">
@@ -601,7 +753,9 @@ export default function App() {
               <span>made simple.</span>
             </h1>
             <p>
-              The busywork is handled.
+              {live
+                ? "The records, sources, and decisions are connected."
+                : "The busywork is handled."}
               <br className="desktop-break" />
               You just take care of the decisions that matter.
             </p>
@@ -637,7 +791,11 @@ export default function App() {
                 YOUR MONTH AT A GLANCE
               </span>
               <span className="progress-state">
-                {signed ? "Signed off" : "In progress"}
+                {signed
+                  ? "Signed off"
+                  : live && workflow?.type === "inProgress"
+                    ? "Closing"
+                    : "In progress"}
               </span>
             </div>
             <div className="progress-body">
@@ -650,36 +808,71 @@ export default function App() {
                     cy="68"
                     r="56"
                     strokeDasharray="351.86"
-                    strokeDashoffset="16.89"
+                    strokeDashoffset={String(
+                      351.86 * (1 - (percent ?? 0) / 100),
+                    )}
                   />
                 </svg>
                 <div>
                   <strong>
-                    95<span>%</span>
+                    {liveLoading || liveFailure || percent === null
+                      ? "—"
+                      : percent}
+                    <span>
+                      {liveLoading || liveFailure || percent === null
+                        ? ""
+                        : "%"}
+                    </span>
                   </strong>
-                  <small>reconciled</small>
+                  <small>{live ? "entries handled" : "reconciled"}</small>
                 </div>
               </div>
               <div className="progress-message">
-                <h2>Looking good.</h2>
+                <h2>
+                  {liveLoading
+                    ? "Loading…"
+                    : liveFailure
+                      ? "Connection paused."
+                      : live
+                        ? signed
+                          ? "Signed and locked."
+                          : attention.length
+                            ? "Ready for review."
+                            : progress.total
+                              ? "Following the close."
+                              : "Ready when you are."
+                        : "Looking good."}
+                </h2>
                 <p>
-                  118 of 124 transactions
+                  {live
+                    ? liveLoading || liveFailure
+                      ? "Waiting for the latest entries."
+                      : `${posted} of ${progress.total} latest entries handled.`
+                    : "118 of 124 transactions"}
                   <br />
-                  have been reconciled.
+                  {live
+                    ? score
+                      ? `${score.transactions} bank transactions in this period.`
+                      : "Waiting for period totals."
+                    : "have been reconciled."}
                 </p>
                 <span>
                   <Check size={12} />
-                  Sample close progress
+                  {live
+                    ? "Actual loaded proposal progress"
+                    : "Sample close progress"}
                 </span>
               </div>
             </div>
             <div className="progress-card-bottom">
               <div>
-                <strong>{posted}</strong>
+                <strong>{liveLoading || liveFailure ? "—" : posted}</strong>
                 <span>entries handled</span>
               </div>
               <div>
-                <strong>{attention.length}</strong>
+                <strong>
+                  {liveLoading || liveFailure ? "—" : attention.length}
+                </strong>
                 <span>need your review</span>
               </div>
               <button onClick={() => openDrawer("scoreboard")}>
@@ -689,7 +882,28 @@ export default function App() {
             </div>
           </div>
         </section>
-        {attention.length > 0 ? (
+        {liveLoading || liveFailure ? (
+          <section
+            className="attention-banner loading-banner"
+            aria-live="polite"
+          >
+            <span className="attention-symbol">
+              <Layers3 size={21} />
+            </span>
+            <div>
+              <h2>
+                {liveFailure
+                  ? "Your live records couldn’t be loaded."
+                  : "Getting the full picture."}
+              </h2>
+              <p>
+                {liveFailure
+                  ? "Use Retry above to reconnect, or switch to the demo from the workspace menu."
+                  : "Review items and progress will appear when the server responds."}
+              </p>
+            </div>
+          </section>
+        ) : attention.length > 0 ? (
           <section className="attention-banner">
             <span className="attention-symbol">
               <LockKeyhole size={21} />
@@ -702,7 +916,7 @@ export default function App() {
               </h2>
               <p>
                 {attention[0].status === "held"
-                  ? `${attention[0].vendor} changed their bank details. We’ve paused the ${money(attention[0].amount)} payment.`
+                  ? `${attention[0].vendor} has a payment on hold. Check the evidence before taking the next step.`
                   : `${attention[0].vendor} needs your approval before we can finish.`}
               </p>
             </div>
@@ -722,13 +936,19 @@ export default function App() {
             <div>
               <h2>
                 {pending
-                  ? "Your instructions are with Auditor."
-                  : "You’re all caught up."}
+                  ? "This close is still in progress."
+                  : progress.total
+                    ? "You’re all caught up."
+                    : "Ready to start this close."}
               </h2>
               <p>
                 {pending
-                  ? "Returned items still need a correction before sign-off."
-                  : "All entries have been handled. Your close summary is ready."}
+                  ? live
+                    ? "Follow the entries below as proposals and decisions arrive."
+                    : "Returned items still need a correction before sign-off."
+                  : progress.total
+                    ? "All loaded entries have been handled. Your close summary is ready."
+                    : "There are no proposals for this period yet."}
               </p>
             </div>
             <button
@@ -825,7 +1045,9 @@ export default function App() {
                       </small>
                     </span>
                     <strong className="transaction-amount">
-                      {money(item.amount)}
+                      {item.sourceBank.available === false
+                        ? "Amount unavailable"
+                        : money(item.amount)}
                     </strong>
                     <Status status={item.status} />
                     <ChevronRight size={16} />
@@ -834,8 +1056,20 @@ export default function App() {
                 {visible.length === 0 && (
                   <div className="empty-state">
                     <Search size={26} />
-                    <h3>Nothing here just yet.</h3>
-                    <p>Try a different search, or view all activity.</p>
+                    <h3>
+                      {liveLoading
+                        ? "Loading entries…"
+                        : liveFailure
+                          ? "Live data is unavailable."
+                          : "Nothing here just yet."}
+                    </h3>
+                    <p>
+                      {liveLoading
+                        ? "Fetching the latest proposals for this period."
+                        : live && !search && filter === "all"
+                          ? "Prepare the close from the summary, or select another period."
+                          : "Try a different search, or view all activity."}
+                    </p>
                     <button
                       className="text-button"
                       onClick={() => {
@@ -922,7 +1156,8 @@ export default function App() {
             <span>Less busywork. More clarity.</span>
           </a>
           <span>
-            Sample workspace<span>·</span>Fictitious financial data
+            {live ? "Live workspace" : "Sample workspace"}
+            <span>·</span>Fictitious financial data
           </span>
           <button onClick={() => openDrawer("permissions")}>
             <ShieldCheck size={13} />
@@ -930,217 +1165,45 @@ export default function App() {
           </button>
         </footer>
       </main>
-      {selected && !drawer && !source && (
+      {selected && !drawer && (
         <Dialog
           title="Transaction details"
-          onClose={() => setSelectedId(null)}
+          onClose={() => {
+            setSelectedId(null);
+            setRevisionFallback(null);
+            setLiveDetails(null);
+          }}
           wide
         >
-          <div className="record-detail">
-            <div className="record-detail-top">
-              <span className={`transaction-icon icon-${selected.status}`}>
-                {selected.status === "held" ? (
-                  <LockKeyhole size={23} />
-                ) : (
-                  <ArrowDownLeft size={25} />
-                )}
-              </span>
-              <Status status={selected.status} />
-            </div>
-            <span className="detail-eyebrow">
-              {shortCategory[selected.id] ?? selected.category} ·{" "}
-              {selected.date}
-            </span>
-            <h2>{selected.vendor}</h2>
-            <div className="detail-amount">
-              {money(selected.amount)}
-              <span>USD</span>
-            </div>
-            <div
-              className={`outcome-summary ${selected.status === "held" ? "summary-hold" : ""}`}
-            >
-              <strong>
-                {selected.status === "posted"
-                  ? "Taken care of."
-                  : selected.status === "held"
-                    ? "Paused to protect your payment."
-                    : selected.status === "rejected"
-                      ? "Changes have been requested."
-                      : "This one needs your review."}
-              </strong>
-              <p>{simpleSummary[selected.id] ?? selected.description}</p>
-            </div>
-            {selected.status === "held" && (
-              <div className="detail-next-step">
-                <h3>What happens next?</h3>
-                <p>
-                  Confirm the new bank details directly with the vendor. The
-                  payment stays on hold while verification is unavailable.
-                </p>
-                <button
-                  className="primary-button"
-                  onClick={() => openDrawer("approvals")}
-                >
-                  Review this payment
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-            )}
-            {selected.status === "review" && (
-              <button
-                className="primary-button detail-review-button"
-                onClick={() => openDrawer("approvals")}
-              >
-                Review & decide
-                <ArrowRight size={15} />
-              </button>
-            )}
-            {selected.revisionNote && (
-              <div className="controller-note">
-                <strong>Your instruction</strong>
-                <p>{selected.revisionNote}</p>
-              </div>
-            )}
-            <div className="detail-more-heading">
-              A little more context, if you need it.
-            </div>
-            <details className="detail-disclosure">
-              <summary>
-                <FileText size={17} />
-                <span>Supporting documents</span>
-                <span className="disclosure-count">
-                  {selected.citations.length}
-                </span>
-                <ChevronDown size={16} />
-              </summary>
-              <div className="disclosure-body">
-                <div className="evidence-summary-grid">
-                  <div>
-                    <Landmark size={16} />
-                    <span>Bank record</span>
-                    <strong>{money(selected.sourceBank.amount, true)}</strong>
-                    <small>{selected.sourceBank.label}</small>
-                  </div>
-                  <div>
-                    <BookOpen size={16} />
-                    <span>Book balance</span>
-                    <strong>{money(selected.sourceLedger.amount, true)}</strong>
-                    <small>{selected.sourceLedger.label}</small>
-                  </div>
-                </div>
-                <div className="source-excerpt">
-                  <span>
-                    {selected.contract.title} · {selected.contract.clause}
-                  </span>
-                  <p>“{selected.contract.text}”</p>
-                </div>
-                {selected.citations.map((citation) => (
-                  <div className="source-excerpt" key={citation.sourceId}>
-                    <span>
-                      {citation.sourceType} · {citation.sourceId}
-                    </span>
-                    <p>“{citation.text}”</p>
-                  </div>
-                ))}
-              </div>
-            </details>
-            <details className="detail-disclosure">
-              <summary>
-                <ShieldCheck size={17} />
-                <span>Why this decision?</span>
-                <ChevronDown size={16} />
-              </summary>
-              <div className="disclosure-body">
-                <p className="drawer-copy">{selected.reason}</p>
-                <div className="simple-rules">
-                  {selected.rules.map((rule) => (
-                    <div key={rule.label}>
-                      {rule.passed ? (
-                        <Check size={14} />
-                      ) : (
-                        <LockKeyhole size={14} />
-                      )}
-                      <span>{rule.label}</span>
-                      <span>{rule.passed ? "Passed" : "Needs review"}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="drawer-label">
-                  {money(selected.impact)} effect on profit and loss · $5,000
-                  approval threshold
-                </p>
-              </div>
-            </details>
-            <details className="detail-disclosure">
-              <summary>
-                <Layers3 size={17} />
-                <span>Accounting entry</span>
-                <ChevronDown size={16} />
-              </summary>
-              <div className="disclosure-body">
-                <div className="journal-table-wrap">
-                  <table className="journal-table">
-                    <thead>
-                      <tr>
-                        <th>Account</th>
-                        <th>Debit</th>
-                        <th>Credit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.lines.map((line) => (
-                        <tr key={line.account}>
-                          <td>
-                            <small>{line.account}</small>
-                            {line.name}
-                          </td>
-                          <td>{line.debit ? money(line.debit, true) : "—"}</td>
-                          <td>
-                            {line.credit ? money(line.credit, true) : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {!selected.lines.length && (
-                    <p className="drawer-copy">
-                      No entry proposed yet. This item needs investigation.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </details>
-            <details className="detail-disclosure">
-              <summary>
-                <History size={17} />
-                <span>Activity history</span>
-                <ChevronDown size={16} />
-              </summary>
-              <div className="disclosure-body">
-                <div className="detail-timeline">
-                  {selected.audit.map((event, index) => (
-                    <div key={`${event.time}-${index}`}>
-                      <span
-                        className={
-                          event.kind === "error" || event.kind === "warning"
-                            ? "timeline-dot warning"
-                            : "timeline-dot"
-                        }
-                      />
-                      <div>
-                        <strong>{event.title}</strong>
-                        <p>{event.detail}</p>
-                        <time>{event.time}</time>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </details>
-            <p className="detail-footnote">
-              Demo record · {selected.decisionId}
-            </p>
-          </div>
+          <TransactionDetail
+            proposal={selected}
+            mode={mode}
+            loading={detailLoading}
+            error={
+              detailFailure
+                ? "We couldn’t load the supporting records. Please retry."
+                : null
+            }
+            revisions={versions}
+            onReview={(id) => {
+              selectProposal(id);
+              openDrawer("approvals");
+            }}
+            onSelectRevision={(id) => {
+              const version = versions.find((item) => item.id === id);
+              if (version) {
+                setSelectedId(id);
+                setRevisionFallback(version);
+                setLiveDetails(null);
+                setDetailFailure(false);
+              }
+            }}
+            onRetry={() => {
+              setDetailFailure(false);
+              setLiveDetails(null);
+              setDetailRetryKey((value) => value + 1);
+            }}
+          />
         </Dialog>
       )}
       {drawer && (
@@ -1155,21 +1218,59 @@ export default function App() {
             period={period}
             onClose={() => setDrawer(null)}
             onSelect={selectProposal}
-            onApprove={approve}
-            onReject={reject}
+            onApprove={(id, note) =>
+              live
+                ? void approveLive(id, note)
+                    .then(() => notify("Approved and posted under your identity."))
+                    .catch((e: Error) => notify(reason(e)))
+                : approve(id, note)
+            }
+            onReject={(id, instruction) =>
+              live
+                ? void rejectLive(id, instruction)
+                    .then(() => notify("Rejected; the agent is proposing a revision."))
+                    .catch((e: Error) => notify(reason(e)))
+                : reject(id, instruction)
+            }
             onInject={inject}
-            onPrepare={() => {
-              if (convex) {
-                void startClose(period).then(() => notify(`${period} close started; the rail updates as it runs.`));
+            mode={mode}
+            liveSnapshot={liveSnapshot}
+            loading={liveLoading}
+            error={
+              liveFailure
+                ? "We couldn’t load the live workspace. Please retry the connection."
+                : undefined
+            }
+            onPrepare={async () => {
+              if (live) {
+                await startClose(period);
+                notify(
+                  `${period} close started. New entries will appear as it runs.`,
+                );
               } else notify(`${period} demo close is ready to review.`);
             }}
             onSign={() => {
+              if (live) {
+                void signLive(period)
+                  .then(() => {
+                    setSignedPeriods((previous) => [...previous, period]);
+                    notify(`${period} signed and locked.`);
+                  })
+                  .catch((e: Error) => notify(reason(e)));
+                return;
+              }
               if (!pending) {
                 setSignedPeriods((previous) => [...previous, period]);
                 notify(`${period} signed and locked in this demo.`);
               }
             }}
             onDeny={() => {
+              if (live) {
+                notify(
+                  "Posting tests are available only in the demo workspace.",
+                );
+                return;
+              }
               setDenialCount((count) => count + 1);
               const target = periodProposals[0];
               setProposals((previous) =>
@@ -1196,13 +1297,6 @@ export default function App() {
             signed={signed}
             denialCount={denialCount}
           />
-        </Dialog>
-      )}
-      {source && (
-        <Dialog title={source.title} onClose={() => setSource(null)}>
-          <span className="eyebrow">DEMO RECORD</span>
-          <h2>{source.id ?? source.title}</h2>
-          <p className="drawer-copy">{source.text}</p>
         </Dialog>
       )}
       {toast && (

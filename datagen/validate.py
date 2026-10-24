@@ -56,7 +56,7 @@ def validate_seed(data: dict) -> list[str]:
     def check_money(value, path: str = "$") -> None:
         if isinstance(value, dict):
             for key, item in value.items():
-                if key in {"amount", "gross", "fee", "net", "debit", "credit", "pnlImpact"}:
+                if item is not None and key in {"amount", "gross", "fee", "net", "debit", "credit", "pnlImpact"}:
                     check(type(item) is int, f"{path}.{key}: amount must be integer cents")
                 check_money(item, f"{path}.{key}")
         elif isinstance(value, list):
@@ -66,8 +66,8 @@ def validate_seed(data: dict) -> list[str]:
     check_money(data)
 
     indexes = {}
-    for section in SECTIONS:
-        rows = data[section]
+    for section in (*SECTIONS, "ledgerEntries", "sourceDocuments"):
+        rows = data.get(section, [])
         counts = Counter(row["id"] for row in rows)
         for id, count in counts.items():
             check(count == 1, f"{section}: duplicate id {id}")
@@ -144,6 +144,27 @@ def validate_seed(data: dict) -> list[str]:
             check(bank["counterparty"] == "Stripe", f"stripePayouts/{row['id']}: counterparty must be Stripe")
             check(bank["vendorId"] is None, f"stripePayouts/{row['id']}: payout must not refer to a vendor")
 
+    for row in data.get("ledgerEntries", []):
+        in_period(row, "date", "ledgerEntries")
+        check(sum(l["debit"] for l in row["lines"]) == sum(l["credit"] for l in row["lines"]),
+              f"ledgerEntries/{row['id']}: imported entry unbalanced")
+        for item in row["lines"]:
+            check(item["accountCode"] in accounts, f"ledgerEntries/{row['id']}: unknown account")
+        if row["vendorId"]:
+            check(row["vendorId"] in indexes["vendors"], f"ledgerEntries/{row['id']}: unknown vendor")
+        if row["bankTransactionId"]:
+            check(row["bankTransactionId"] in banks, f"ledgerEntries/{row['id']}: unknown bank transaction")
+        # Deliberately do not require bank cash == imported book cash: A3 plants
+        # those mismatches. Validate the sources, not away the intended errors.
+
+    for row in data.get("sourceDocuments", []):
+        in_period(row, "date", "sourceDocuments")
+        check(row["vendorId"] in indexes["vendors"], f"sourceDocuments/{row['id']}: unknown vendor")
+        contract = indexes["contracts"].get(row["contractId"])
+        check(contract is not None, f"sourceDocuments/{row['id']}: unknown contract")
+        if contract:
+            check(contract["vendorId"] == row["vendorId"], f"sourceDocuments/{row['id']}: contract/vendor mismatch")
+
     # Citation IDs form a namespace independent of bank/account IDs.
     citation_ids = [row["id"] for row in data["policyClauses"]]
     policy_numbers = [(row["policyPackId"], row["number"]) for row in data["policyClauses"]]
@@ -165,6 +186,11 @@ def validate_seed(data: dict) -> list[str]:
             check(id in banks, f"breaks/{row['id']}: unknown bank transaction {id}")
         for id in row["contractIds"]:
             check(id in indexes["contracts"], f"breaks/{row['id']}: unknown contract {id}")
+        for field, section in (("sourceDocumentIds", "sourceDocuments"), ("ledgerEntryIds", "ledgerEntries")):
+            for id in row.get(field, []):
+                check(id in indexes[section], f"breaks/{row['id']}: unknown {section} {id}")
+        if "date" in row:
+            in_period(row, "date", "breaks")
     answer_breaks = [row["breakId"] for row in data["answerKey"]]
     check(len(answer_breaks) == len(set(answer_breaks)), "answerKey: duplicate answer for break")
     for row in data["answerKey"]:
@@ -177,6 +203,19 @@ def validate_seed(data: dict) -> list[str]:
             check(line["accountCode"] in accounts, f"answerKey/{row['id']}: unknown account {line['accountCode']}")
         for id in row["citationIds"]:
             check(id in citation_ids, f"answerKey/{row['id']}: unknown citation {id}")
+        case = indexes["breaks"].get(row["breakId"])
+        if case:
+            check(case["period"] == row["period"], f"answerKey/{row['id']}: case/answer period mismatch")
+            check(case.get("breakNumber") == row.get("breakNumber"), f"answerKey/{row['id']}: break family mismatch")
+        impact = sum(abs(l["debit"] - l["credit"]) for l in lines if l["accountCode"].startswith(("4", "5")))
+        check(impact == row["pnlImpact"], f"answerKey/{row['id']}: P&L impact mismatch")
+        for dependency in row.get("dependsOn", []):
+            prior = indexes["breaks"].get(dependency)
+            check(prior is not None and prior["period"] < row["period"], f"answerKey/{row['id']}: invalid prior-period dependency")
+    if data["schemaVersion"] == "2.0.0":
+        check({row.get("breakNumber") for row in data["breaks"]} == set(range(1, 7)),
+              "breaks: Phase 2 must cover all six families")
+        check(set(answer_breaks) == set(indexes["breaks"]), "answerKey: every planted case requires exactly one answer")
     return errors
 
 

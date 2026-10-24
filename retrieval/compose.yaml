@@ -1,0 +1,21 @@
+# One-command host for the retrieval sidecar (Moss + CRS). From the repo root on the server:
+#   cp retrieval/.env.example retrieval/.env && edit it, then: docker compose -f retrieval/compose.yaml up -d --build
+services:
+  retrieval:
+    build:
+      context: ..
+      dockerfile: retrieval/Dockerfile
+    env_file: .env
+    ports:
+      - "80:8000"
+    volumes:
+      - retrieval-data:/app/retrieval/.data   # SQLite mirror + Moss model cache survive restarts
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s   # Moss index warm-up before the first ready
+      retries: 5
+volumes:
+  retrieval-data:

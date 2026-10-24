@@ -28,7 +28,15 @@ export const vCitation = v.object({
   score: v.number(),
 });
 
-export const vClause = v.object({ id: v.string(), number: v.optional(v.string()), text: v.string() });
+export const vClause = v.object({ id: v.string(), number: v.optional(v.string()), text: v.string(), effectiveDate: v.optional(v.string()) });
+
+// A3 evidence. Bank changes, invoices and service schedules remain source
+// documents; they are never disguised as settled bank transactions.
+export const vSourceDocument = v.object({
+  id: v.string(), entity: v.string(), period: v.string(), date: v.string(), kind: v.string(),
+  vendorId: v.string(), contractId: v.string(), title: v.string(), text: v.string(),
+  amount: v.union(v.number(), v.null()), reference: v.union(v.string(), v.null()),
+});
 
 export const vRuleResult = v.object({
   rule: v.string(), // "balance", "citation", "threshold", "bank_detail_change", "period_lock", "revision_cap", "precedent", "correction"
@@ -38,6 +46,8 @@ export const vRuleResult = v.object({
 });
 
 export const vPeriodStatus = v.union(v.literal("open"), v.literal("closing"), v.literal("signed"));
+// Rule 8.2 matches a new proposal against a human-decided precedent on this scope (same shape as tools.ts approve).
+export const vPrecedentScope = v.object({ breakKind: v.string(), policyClause: v.optional(v.string()), counterparty: v.optional(v.string()) });
 export const vProposalStatus = v.union(
   v.literal("under_review"),
   v.literal("posted"),
@@ -72,7 +82,9 @@ export default defineSchema({
     end: v.string(),
     status: vPeriodStatus,
     closeWorkflowId: v.optional(v.string()),
+    prepared: v.optional(v.object({ at: v.number(), unmatched: v.number(), openBreaks: v.number() })), // scheduled advance (C4)
     signedAt: v.optional(v.number()),
+    closeSummary: v.optional(v.object({ entriesPosted: v.number(), openItemsCarried: v.number(), debits: v.number(), credits: v.number() })),
   }).index("by_entity_period", ["entity", "period"]),
 
   bankTransactions: defineTable({
@@ -89,6 +101,7 @@ export default defineSchema({
     status: v.union(v.literal("unmatched"), v.literal("matched"), v.literal("flagged")),
     matchedEntryId: v.optional(v.id("journalEntries")),
     plantedBreak: v.optional(v.number()), // 1-6 from the answer key; never shown to the agent
+    traceId: v.optional(v.string()), // correlation id for one unit of work; minted at seed/ingest, inherited downstream
   })
     .index("by_entity_period_status", ["entity", "period", "status"])
     .index("by_entity_txnId", ["entity", "txnId"]),
@@ -99,9 +112,14 @@ export default defineSchema({
     date: v.string(),
     lines: v.array(vLine),
     memo: v.string(),
-    source: v.union(v.literal("opening"), v.literal("post_entry")),
+    source: v.union(v.literal("opening"), v.literal("import"), v.literal("post_entry")),
     postedBy: vActor,
+    reference: v.optional(v.string()),
+    counterparty: v.optional(v.string()),
+    vendorId: v.optional(v.string()),
+    txnId: v.optional(v.string()),
     proposalId: v.optional(v.id("proposals")),
+    traceId: v.optional(v.string()),
   }).index("by_entity_period", ["entity", "period"]),
 
   contracts: defineTable({
@@ -111,6 +129,7 @@ export default defineSchema({
     counterparty: v.string(), // vendor name
     title: v.string(),
     clauses: v.array(vClause), // chunked into Moss; amendments append a clause
+    documents: v.optional(v.array(vSourceDocument)),
   }).index("by_entity_contractId", ["entity", "contractId"]),
 
   vendors: defineTable({
@@ -131,6 +150,7 @@ export default defineSchema({
     description: v.string(),
     status: v.union(v.literal("open"), v.literal("proposed"), v.literal("resolved"), v.literal("escalated")),
     planted: v.optional(v.number()),
+    traceId: v.optional(v.string()),
   })
     .index("by_entity_period", ["entity", "period"])
     .index("by_bankTransaction", ["bankTransactionId"]),
@@ -148,6 +168,7 @@ export default defineSchema({
     discardedFirstRead: v.optional(v.string()),
     correctionsApplied: v.array(v.string()), // correction ids the agent addressed
     proposedBy: vActor,
+    traceId: v.optional(v.string()),
   })
     .index("by_entity_period", ["entity", "period"])
     .index("by_break", ["breakId"])
@@ -162,10 +183,11 @@ export default defineSchema({
     reason: v.string(),
     rulesRun: v.array(vRuleResult),
     citations: v.array(vCitation),
-    precedentScope: v.optional(v.string()), // set by human approve; rule 8.2 matches on it
+    precedentScope: v.optional(vPrecedentScope), // set by human approve; rule 8.2 matches on it
     instruction: v.optional(v.string()), // human reject carries one
     latencyMs: v.optional(v.number()),
     entryId: v.optional(v.id("journalEntries")),
+    traceId: v.optional(v.string()),
   })
     .index("by_proposal", ["proposalId"])
     .index("by_entity_period", ["entity", "period"]),
@@ -178,11 +200,15 @@ export default defineSchema({
     proposalId: v.optional(v.id("proposals")),
     decisionId: v.optional(v.id("decisions")),
     entryId: v.optional(v.id("journalEntries")),
+    breakId: v.optional(v.id("breaks")),
+    bankTransactionId: v.optional(v.id("bankTransactions")),
+    traceId: v.optional(v.string()), // resolved by audit() from any id above when not passed
     detail: v.optional(v.string()),
     at: v.number(),
   })
     .index("by_entity_period", ["entity", "period"])
-    .index("by_proposal", ["proposalId"]),
+    .index("by_proposal", ["proposalId"])
+    .index("by_entity_traceId", ["entity", "traceId"]),
 
   answerKey: defineTable({
     ...scoped,
@@ -191,6 +217,13 @@ export default defineSchema({
     txnId: v.string(), // the planted bank transaction
     expectedKind: v.string(),
     expectedLines: v.array(vLine),
+    caseId: v.optional(v.string()),
+    expectedAction: v.optional(v.string()),
+    expectedEscalation: v.optional(v.boolean()),
+    pnlImpact: v.optional(v.number()),
+    citationIds: v.optional(v.array(v.string())),
+    sourceDocumentIds: v.optional(v.array(v.string())),
+    dependsOn: v.optional(v.array(v.string())),
     result: v.optional(v.object({ caught: v.boolean(), correct: v.boolean(), scoredAt: v.number() })),
   }).index("by_entity_period", ["entity", "period"]),
 
@@ -218,5 +251,6 @@ export default defineSchema({
     proposalId: v.optional(v.id("proposals")),
     decisionId: v.optional(v.id("decisions")),
     appliedBy: v.array(v.string()), // proposal ids that addressed it
+    traceId: v.optional(v.string()),
   }).index("by_entity_period", ["entity", "period"]),
 });

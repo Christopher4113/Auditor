@@ -1,16 +1,15 @@
 [project]
 name = "retrieval"
-version = "0.1.0"
-description = "FastAPI sidecar: Moss retrieval (/index, /query, /stats) and CRS payee verification (/verify)"
+version = "0.2.0"
+description = "Persistent scoped Moss retrieval with an explicit local provider; CRS fails closed until Phase 3"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.162.0",
+    "httpx>=0.28,<1",
     "moss>=1.21.0",
     "pyyaml>=6.0.3",
     "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
-dev = [
-    "httpx>=0.28,<1",
-]
+dev = []

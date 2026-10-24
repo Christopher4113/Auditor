@@ -13,7 +13,7 @@ import unittest
 DATAGEN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DATAGEN))
 
-from generate import generate  # noqa: E402
+from generate import generate_clean as generate  # noqa: E402
 from reference_data import master_data  # noqa: E402
 from validate import load_seed, validate_seed  # noqa: E402
 
@@ -194,7 +194,7 @@ class SeedAcceptanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "nested" / "seed.json"
             generated = subprocess.run(
-                [sys.executable, str(DATAGEN / "generate.py"), "--out", str(output)],
+                [sys.executable, str(DATAGEN / "generate.py"), "--phase", "1", "--out", str(output)],
                 cwd=directory, capture_output=True, text=True,
             )
             self.assertEqual(generated.returncode, 0, generated.stderr)

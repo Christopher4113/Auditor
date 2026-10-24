@@ -1,0 +1,13 @@
+# Keep the retrieval image build context small and credential-free (build from the repo root).
+node_modules
+**/node_modules
+**/.venv
+**/.data
+**/*.sqlite3
+**/__pycache__
+.git
+web
+convex
+.env*
+**/.env*
+datagen/seed.json

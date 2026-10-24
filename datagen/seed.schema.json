@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Auditor seed.json (Interface 5, A to C)",
-  "description": "Version 1.0.0. Synthetic Phase 1 data; all monetary fields are integer USD cents. IDs are external keys, not Convex document IDs. Validate cross-record invariants with validate.py.",
+  "description": "Interface 5. Versions 1/2: synthetic USD financial sources and scoring-only answer key. All money is exact integer cents. Validate relations with validate.py.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,7 +25,10 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": "1.0.0"
+      "enum": [
+        "1.0.0",
+        "2.0.0"
+      ]
     },
     "seed": {
       "type": "integer"
@@ -128,19 +131,31 @@
       "items": {
         "$ref": "#/$defs/break"
       },
-      "description": "Empty in Phase 1; A3 adds planted breaks in Phase 2."
+      "description": "Scoring annotations for six families; recurring and cross-period cases have distinct IDs. Never supply planted flags or answerKey to the agent."
     },
     "answerKey": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/answer"
       },
-      "description": "Empty in Phase 1. Future scoring data must never enter agent context or retrieval indexes."
+      "description": "Scoring-only corrective entries, separate from imported books. Never index into retrieval or expose to an agent."
     },
     "fxRates": {
       "type": "array",
       "maxItems": 0,
       "description": "Reserved for the second-entity stretch. Must be empty for this USD-only Phase 1 contract."
+    },
+    "ledgerEntries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ledgerEntry"
+      }
+    },
+    "sourceDocuments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourceDocument"
+      }
     }
   },
   "$defs": {
@@ -649,13 +664,13 @@
         },
         "kind": {
           "enum": [
-            "stripe_fee",
-            "duplicate_invoice",
-            "artist_cancellation",
-            "sponsor_amendment",
+            "stripe_fee_netting",
+            "duplicate_payable",
+            "deposit_shortfall",
+            "contract_amendment",
             "bank_detail_change",
             "missing_accrual",
-            "deposit_shortfall"
+            "other"
           ]
         },
         "description": {
@@ -681,6 +696,28 @@
             "resolved",
             "escalated"
           ]
+        },
+        "breakNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "sourceDocumentIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "ledgerEntryIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
         }
       }
     },
@@ -736,8 +773,173 @@
         },
         "explanation": {
           "$ref": "#/$defs/text"
+        },
+        "breakNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "dependsOn": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "ledgerEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "period",
+        "date",
+        "lines",
+        "memo",
+        "reference",
+        "vendorId",
+        "bankTransactionId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "period": {
+          "$ref": "#/$defs/periodId"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/journalLine"
+          }
+        },
+        "memo": {
+          "$ref": "#/$defs/text"
+        },
+        "reference": {
+          "$ref": "#/$defs/text"
+        },
+        "vendorId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bankTransactionId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "sourceDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entity",
+        "period",
+        "date",
+        "kind",
+        "vendorId",
+        "contractId",
+        "title",
+        "text",
+        "amount",
+        "reference"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "entity": {
+          "$ref": "#/$defs/id"
+        },
+        "period": {
+          "$ref": "#/$defs/periodId"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "kind": {
+          "enum": [
+            "invoice",
+            "cancellation",
+            "amendment",
+            "attendance",
+            "bank_change",
+            "payment_request",
+            "service_schedule"
+          ]
+        },
+        "vendorId": {
+          "$ref": "#/$defs/id"
+        },
+        "contractId": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/cents"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "const": "2.0.0"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "ledgerEntries",
+          "sourceDocuments"
+        ]
+      }
+    }
+  ]
 }

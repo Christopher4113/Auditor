@@ -2,8 +2,8 @@
 // approve calls it after approving. Policy 8.1: it refuses the proposer's identity regardless of who
 // calls it, server-side, and logs the denial. It never throws on a denial so the audit row commits.
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
-import { audit } from "./audit";
+import { internalMutation, type QueryCtx } from "./_generated/server";
+import { audit, traceFor } from "./audit";
 import { vIdentity } from "./schema";
 
 export const postEntry = internalMutation({
@@ -39,7 +39,9 @@ export const postEntry = internalMutation({
 
     const brk = await ctx.db.get(proposal.breakId);
     const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+    const traceId = await traceFor(ctx, { proposalId });
     const entryId = await ctx.db.insert("journalEntries", {
+      traceId,
       entity,
       period,
       entryId: `JE-${proposal.proposalId}`,
@@ -58,3 +60,24 @@ export const postEntry = internalMutation({
     return { ok: true as const, entryId };
   },
 });
+
+/** Trial balance through a period: per-account debit and credit totals from every posted entry. */
+export async function trialBalance(ctx: QueryCtx, entity: string, throughPeriod: string) {
+  // ponytail: full scan of the entity's entries (a few hundred rows); aggregate component if it grows
+  const entries = await ctx.db.query("journalEntries").withIndex("by_entity_period", (q) => q.eq("entity", entity)).take(5000);
+  const accounts = await ctx.db.query("accounts").withIndex("by_entity_code", (q) => q.eq("entity", entity)).take(100);
+  const totals = new Map<string, { debit: number; credit: number }>();
+  for (const e of entries) {
+    if (e.period > throughPeriod) continue;
+    for (const l of e.lines) {
+      const t = totals.get(l.account) ?? { debit: 0, credit: 0 };
+      t.debit += l.debit;
+      t.credit += l.credit;
+      totals.set(l.account, t);
+    }
+  }
+  const rows = [...totals.entries()]
+    .map(([code, t]) => ({ code, name: accounts.find((a) => a.code === code)?.name ?? code, debit: t.debit, credit: t.credit, balance: t.debit - t.credit }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+  return { rows, debits: rows.reduce((s, r) => s + r.debit, 0), credits: rows.reduce((s, r) => s + r.credit, 0) };
+}
