@@ -1,5 +1,8 @@
 """Interface 1 (A -> B). Stub: three hardcoded chunks for any query, /verify fails closed.
 
+Moss note (measured Oct 23): load_index ~36 s cold, query ~2 ms. Load every index once in a
+startup hook, never per request, and give Railway a health check that waits for it.
+
 A4 replaces the bodies with Moss; A6 wires /verify to the CRS sandbox. The shapes do not change.
 Run: uv run uvicorn main:app --reload --port 8000
 Spec: uv run python -c "import yaml, main; print(yaml.safe_dump(main.app.openapi(), sort_keys=False))" > openapi.yaml
