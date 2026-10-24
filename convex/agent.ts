@@ -51,6 +51,8 @@ export const propose = internalMutation({
     if (!brk) throw new Error("break not found");
     const txn = await ctx.db.get(brk.bankTransactionId);
     if (!txn) throw new Error("bank transaction not found");
+    const prior = await ctx.db.query("proposals").withIndex("by_break", (q) => q.eq("breakId", breakId)).order("desc").take(10);
+    const revision = prior.length + 1; // after a human reject the break reopens and the next proposal is a revision
     const amt = Math.abs(txn.amount);
     const canned = txn.vendorId === "apex" && txn.amount === 1360000 ? cannedApexProposal(brk.entity) : null;
     const lines = canned
@@ -67,14 +69,15 @@ export const propose = internalMutation({
     const proposalId = await ctx.db.insert("proposals", {
       entity: brk.entity,
       period: brk.period,
-      proposalId: `P-${txn.txnId}-r1`,
+      proposalId: `P-${txn.txnId}-r${revision}`,
       breakId,
       lines,
       reason: canned?.reason ?? `Stub proposal for ${txn.counterparty} ${txn.memo} (B3 replaces)`,
       // ponytail: fixed scores until A4 returns real ones from Moss
       citations: canned?.citations.map((c) => ({ ...c, sourceType: c.sourceType as "policy" | "contract" | "decision" | "correction", score: 0.9 })) ?? [],
       status: "under_review",
-      revision: 1,
+      revision,
+      revisionOf: prior[0]?._id,
       discardedFirstRead: canned?.firstRead,
       correctionsApplied: canned?.correctionsApplied ?? [],
       proposedBy: caller,

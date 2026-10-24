@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as advance from "../advance.js";
 import type * as agent from "../agent.js";
 import type * as agent_fake from "../agent/fake.js";
 import type * as api_ from "../api.js";
@@ -15,7 +16,10 @@ import type * as audit from "../audit.js";
 import type * as close from "../close.js";
 import type * as controls from "../controls.js";
 import type * as controls_stub from "../controls/stub.js";
+import type * as crons from "../crons.js";
+import type * as human from "../human.js";
 import type * as ledger from "../ledger.js";
+import type * as retrieval from "../retrieval.js";
 import type * as seed from "../seed.js";
 import type * as tools from "../tools.js";
 
@@ -26,6 +30,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  advance: typeof advance;
   agent: typeof agent;
   "agent/fake": typeof agent_fake;
   api: typeof api_;
@@ -33,7 +38,10 @@ declare const fullApi: ApiFromModules<{
   close: typeof close;
   controls: typeof controls;
   "controls/stub": typeof controls_stub;
+  crons: typeof crons;
+  human: typeof human;
   ledger: typeof ledger;
+  retrieval: typeof retrieval;
   seed: typeof seed;
   tools: typeof tools;
 }>;

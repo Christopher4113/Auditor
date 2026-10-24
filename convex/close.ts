@@ -17,7 +17,10 @@ export const closePeriod = workflow
   })
   .handler(async (step, { entity, period }): Promise<{ breaks: number; posted: number; escalated: number }> => {
     const bankTransactionIds = await step.runQuery(internal.close.fetchUnmatched, { entity, period });
-    const breakIds = await step.runMutation(internal.agent.reconcile, { caller: "agent", entity, period, bankTransactionIds });
+    const reconciled = await step.runMutation(internal.agent.reconcile, { caller: "agent", entity, period, bankTransactionIds });
+    // Breaks a human rejection reopened get a revision in the same run (C3 loop).
+    const reopened = await step.runQuery(internal.close.fetchOpenBreaks, { entity, period });
+    const breakIds = [...new Set([...reconciled, ...reopened])];
     let posted = 0;
     let escalated = 0;
     for (const breakId of breakIds) {
@@ -25,8 +28,10 @@ export const closePeriod = workflow
       const decision = await step.runMutation(internal.controls.review, { caller: "controls", proposalId });
       if (decision.outcome === "posted") {
         const r = await step.runMutation(internal.ledger.postEntry, { caller: "controls", proposalId, decisionId: decision.decisionId });
-        if (r.ok) posted++;
-        else escalated++;
+        if (r.ok) {
+          posted++;
+          await step.runAction(internal.retrieval.indexDecision, { decisionId: decision.decisionId }, { retry: true }); // index_decision (C4)
+        } else escalated++;
       } else {
         escalated++;
       }
@@ -44,6 +49,15 @@ export const fetchUnmatched = internalQuery({
       .withIndex("by_entity_period_status", (q) => q.eq("entity", entity).eq("period", period).eq("status", "unmatched"))
       .take(500);
     return rows.map((r) => r._id);
+  },
+});
+
+export const fetchOpenBreaks = internalQuery({
+  args: { entity: v.string(), period: v.string() },
+  returns: v.array(v.id("breaks")),
+  handler: async (ctx, { entity, period }) => {
+    const rows = await ctx.db.query("breaks").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
+    return rows.filter((b) => b.status === "open").map((b) => b._id);
   },
 });
 
