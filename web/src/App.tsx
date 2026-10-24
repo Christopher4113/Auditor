@@ -1028,12 +1028,14 @@ export default function App() {
                     <small>{selected.sourceLedger.label}</small>
                   </div>
                 </div>
-                <div className="source-excerpt">
-                  <span>
-                    {selected.contract.title} · {selected.contract.clause}
-                  </span>
-                  <p>“{selected.contract.text}”</p>
-                </div>
+                {selected.contract.text && (
+                  <div className="source-excerpt">
+                    <span>
+                      {selected.contract.title} · {selected.contract.clause}
+                    </span>
+                    <p>“{selected.contract.text}”</p>
+                  </div>
+                )}
                 {selected.citations.map((citation) => (
                   <div className="source-excerpt" key={citation.sourceId}>
                     <span>

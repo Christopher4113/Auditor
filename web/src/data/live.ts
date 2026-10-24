@@ -62,7 +62,10 @@ export function toProposal(r: LiveRow): Proposal {
   const vendor = r.counterparty ?? "Unknown";
   const impact = r.lines.filter((l) => /^[45]/.test(l.account)).reduce((s, l) => s + Math.abs(l.debit - l.credit), 0);
   const credit = r.lines.find((l) => l.credit > 0);
-  const citations: Citation[] = r.citations.map((c) => ({ ...c, sourceType: c.sourceType === "decision" ? "precedent" : c.sourceType }));
+  const contractCite = r.citations.find((c) => c.sourceType === "contract");
+  const citations: Citation[] = r.citations
+    .filter((c) => c !== contractCite)
+    .map((c) => ({ ...c, sourceType: c.sourceType === "decision" ? "precedent" : c.sourceType }));
   const rules: ControlRule[] = (r.decision?.rulesRun ?? []).map((x) => ({ label: RULE_LABEL[x.rule] ?? x.rule, detail: x.detail ?? "", passed: x.passed }));
   return {
     id: r.proposalId,
@@ -79,7 +82,8 @@ export function toProposal(r: LiveRow): Proposal {
     decisionId: r.decision?.decisionId ?? "",
     sourceBank: { label: `${vendor} · ${r.break?.description ?? ""}`, amount: dollars(Math.abs(r.amount ?? 0)), date: prettyDate(r.date), reference: r.reference ?? "" },
     sourceLedger: { label: credit ? `Account ${credit.account}` : "", amount: dollars(credit?.credit ?? 0), account: credit?.account ?? "" },
-    contract: { title: "", clause: "", text: "" }, // getBreak carries the contract; the center panel wires it in Phase 2 (D3)
+    // The contract card shows the cited clause; getBreak carries the full contract for the center panel (D3, Phase 2)
+    contract: contractCite ? { title: vendor, clause: contractCite.sourceId, text: contractCite.text } : { title: "", clause: "", text: "" },
     lines: r.lines.map((l) => ({ account: l.account, name: l.memo ?? l.account, debit: dollars(l.debit), credit: dollars(l.credit) })),
     citations,
     audit: [], // api.getDecision has the audit rows; the right panel wires them in Phase 2 (D4)
