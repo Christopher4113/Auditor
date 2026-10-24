@@ -10,10 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2",
+    "@ai-sdk/anthropic": "^4",
     "@convex-dev/agent": "latest",
     "@convex-dev/workflow": "latest",
-    "ai": "^5",
+    "ai": "^7",
     "convex": "^1",
     "zod": "^4"
   },
