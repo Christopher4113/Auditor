@@ -45,6 +45,9 @@ type LiveRow = {
 
 const listProposals = makeFunctionReference<"query", { entity: string; period?: string }, LiveRow[]>("api:listProposals");
 const startCloseRef = makeFunctionReference<"mutation", { entity: string; period: string }, string | null>("api:startClose");
+const approveRef = makeFunctionReference<"mutation", { entity: string; proposalId: string; note?: string }, unknown>("api:approve");
+const rejectRef = makeFunctionReference<"mutation", { entity: string; proposalId: string; instruction: string }, unknown>("api:reject");
+const signRef = makeFunctionReference<"mutation", { entity: string; period: string }, unknown>("api:signPeriod");
 
 const dollars = (cents: number) => cents / 100;
 const prettyDate = (iso: string | null) =>
@@ -101,3 +104,8 @@ export function LiveProposals({ onRows }: { onRows: (rows: Proposal[]) => void }
 export function startClose(period: Period) {
   return http?.mutation(startCloseRef, { entity: ENTITY, period: PERIOD_KEY[period] }) ?? Promise.resolve(null);
 }
+
+/** Human controller moves (C3). proposalId is the rail's external code. Errors carry the policy reason. */
+export const approve = (proposalId: string, note: string) => http!.mutation(approveRef, { entity: ENTITY, proposalId, note });
+export const reject = (proposalId: string, instruction: string) => http!.mutation(rejectRef, { entity: ENTITY, proposalId, instruction });
+export const signPeriod = (period: Period) => http!.mutation(signRef, { entity: ENTITY, period: PERIOD_KEY[period] });

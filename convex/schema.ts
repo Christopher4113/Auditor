@@ -38,6 +38,8 @@ export const vRuleResult = v.object({
 });
 
 export const vPeriodStatus = v.union(v.literal("open"), v.literal("closing"), v.literal("signed"));
+// Rule 8.2 matches a new proposal against a human-decided precedent on this scope (same shape as tools.ts approve).
+export const vPrecedentScope = v.object({ breakKind: v.string(), policyClause: v.optional(v.string()), counterparty: v.optional(v.string()) });
 export const vProposalStatus = v.union(
   v.literal("under_review"),
   v.literal("posted"),
@@ -72,7 +74,9 @@ export default defineSchema({
     end: v.string(),
     status: vPeriodStatus,
     closeWorkflowId: v.optional(v.string()),
+    prepared: v.optional(v.object({ at: v.number(), unmatched: v.number(), openBreaks: v.number() })), // scheduled advance (C4)
     signedAt: v.optional(v.number()),
+    closeSummary: v.optional(v.object({ entriesPosted: v.number(), openItemsCarried: v.number(), debits: v.number(), credits: v.number() })),
   }).index("by_entity_period", ["entity", "period"]),
 
   bankTransactions: defineTable({
@@ -162,7 +166,7 @@ export default defineSchema({
     reason: v.string(),
     rulesRun: v.array(vRuleResult),
     citations: v.array(vCitation),
-    precedentScope: v.optional(v.string()), // set by human approve; rule 8.2 matches on it
+    precedentScope: v.optional(vPrecedentScope), // set by human approve; rule 8.2 matches on it
     instruction: v.optional(v.string()), // human reject carries one
     latencyMs: v.optional(v.number()),
     entryId: v.optional(v.id("journalEntries")),
