@@ -26,6 +26,7 @@ import {
 import WorkspaceDrawer from "./components/WorkspaceDrawer";
 import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
+import { LiveProposals, convex, startClose } from "./data/live";
 import type { Period, Proposal, ProposalStatus } from "./data/types";
 
 const money = (value: number, cents = false) =>
@@ -459,6 +460,7 @@ export default function App() {
   };
   return (
     <div className="app-shell">
+      {convex && <LiveProposals onRows={setProposals} />}
       <header className="site-header">
         <div className="header-inner">
           <a
@@ -1156,7 +1158,11 @@ export default function App() {
             onApprove={approve}
             onReject={reject}
             onInject={inject}
-            onPrepare={() => notify(`${period} demo close is ready to review.`)}
+            onPrepare={() => {
+              if (convex) {
+                void startClose(period).then(() => notify(`${period} close started; the rail updates as it runs.`));
+              } else notify(`${period} demo close is ready to review.`);
+            }}
             onSign={() => {
               if (!pending) {
                 setSignedPeriods((previous) => [...previous, period]);

@@ -9,7 +9,7 @@ import { v } from "convex/values";
 import { components } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { ensureClose } from "./close";
-import schema from "./schema";
+import schema, { vRuleResult } from "./schema";
 
 const orNull = <T extends Parameters<typeof v.union>[0]>(t: T) => v.union(t, v.null());
 
@@ -21,31 +21,39 @@ export const listPeriods = query({
     ctx.db.query("periods").withIndex("by_entity_period", (q) => q.eq("entity", entity)).take(24),
 });
 
-/** The left rail: every proposal in the period, newest first, with its break and bank amount. */
+/** The left rail: every proposal (one period, or all when period is omitted), newest first, with its break,
+ *  bank transaction and latest decision so the rail and the right panel render from one subscription. */
 export const listProposals = query({
-  args: { entity: v.string(), period: v.string() },
+  args: { entity: v.string(), period: v.optional(v.string()) },
   returns: v.array(
     schema.doc("proposals").extend({
       break: orNull(v.object({ breakId: v.string(), kind: v.string(), description: v.string(), status: v.string() })),
       amount: orNull(v.number()),
       counterparty: orNull(v.string()),
+      date: orNull(v.string()),
+      reference: orNull(v.string()),
+      decision: orNull(v.object({ decisionId: v.string(), outcome: v.string(), reason: v.string(), rulesRun: v.array(vRuleResult) })),
     }),
   ),
   handler: async (ctx, { entity, period }) => {
     const proposals = await ctx.db
       .query("proposals")
-      .withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period))
+      .withIndex("by_entity_period", (q) => (period ? q.eq("entity", entity).eq("period", period) : q.eq("entity", entity)))
       .order("desc")
       .take(200);
     return Promise.all(
       proposals.map(async (p) => {
         const brk = await ctx.db.get(p.breakId);
         const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+        const d = await ctx.db.query("decisions").withIndex("by_proposal", (q) => q.eq("proposalId", p._id)).order("desc").first();
         return {
           ...p,
           break: brk ? { breakId: brk.breakId, kind: brk.kind, description: brk.description, status: brk.status } : null,
           amount: txn?.amount ?? null,
           counterparty: txn?.counterparty ?? null,
+          date: txn?.date ?? null,
+          reference: txn?.reference ?? null,
+          decision: d ? { decisionId: d.decisionId, outcome: d.outcome, reason: d.reason, rulesRun: d.rulesRun } : null,
         };
       }),
     );

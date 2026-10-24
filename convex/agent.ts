@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { audit } from "./audit";
 import { vIdentity } from "./schema";
+import { cannedApexProposal } from "./agent/fake";
 
 /** Code matcher + flag_break. Returns the breaks the agent must now investigate. */
 export const reconcile = internalMutation({
@@ -40,7 +41,8 @@ export const reconcile = internalMutation({
   },
 });
 
-/** propose_entry(lines, reason, citations). Stub: cash in parks in 1400, cash out expenses to 5100. */
+/** propose_entry(lines, reason, citations). The Apex refund gets B2's canned proposal with its three verbatim
+ *  citations (the moment); everything else: cash in parks in 1400, cash out expenses to 5100. */
 export const propose = internalMutation({
   args: { caller: vIdentity, breakId: v.id("breaks") },
   returns: v.id("proposals"),
@@ -50,8 +52,10 @@ export const propose = internalMutation({
     const txn = await ctx.db.get(brk.bankTransactionId);
     if (!txn) throw new Error("bank transaction not found");
     const amt = Math.abs(txn.amount);
-    const lines =
-      txn.amount >= 0
+    const canned = txn.vendorId === "apex" && txn.amount === 1360000 ? cannedApexProposal(brk.entity) : null;
+    const lines = canned
+      ? canned.lines.map((l) => ({ account: l.account, debit: l.debitCents, credit: l.creditCents, memo: l.memo }))
+      : txn.amount >= 0
         ? [
             { account: "1000", debit: amt, credit: 0 },
             { account: "1400", debit: 0, credit: amt },
@@ -66,11 +70,13 @@ export const propose = internalMutation({
       proposalId: `P-${txn.txnId}-r1`,
       breakId,
       lines,
-      reason: `Stub proposal for ${txn.counterparty} ${txn.memo} (B2 replaces)`,
-      citations: [],
+      reason: canned?.reason ?? `Stub proposal for ${txn.counterparty} ${txn.memo} (B3 replaces)`,
+      // ponytail: fixed scores until A4 returns real ones from Moss
+      citations: canned?.citations.map((c) => ({ ...c, sourceType: c.sourceType as "policy" | "contract" | "decision" | "correction", score: 0.9 })) ?? [],
       status: "under_review",
       revision: 1,
-      correctionsApplied: [],
+      discardedFirstRead: canned?.firstRead,
+      correctionsApplied: canned?.correctionsApplied ?? [],
       proposedBy: caller,
     });
     await ctx.db.patch("breaks", breakId, { status: "proposed" });
