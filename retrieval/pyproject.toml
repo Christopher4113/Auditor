@@ -1,0 +1,10 @@
+[project]
+name = "retrieval"
+version = "0.1.0"
+description = "FastAPI sidecar: Moss retrieval (/index, /query, /stats) and CRS payee verification (/verify)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.162.0",
+    "pyyaml>=6.0.3",
+    "uvicorn[standard]>=0.54.0",
+]

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Auditor seed.json (interface 5, A -> C)",
+  "description": "Agreed Friday night. Section item shapes are A2's Phase 1 deliverable; C seeds from a 10-transaction hand-written sample until A1 lands.",
+  "type": "object",
+  "required": ["seed", "accounts", "openingBalances", "periods", "bankTransactions", "stripePayouts", "contracts", "policyClauses", "vendors", "breaks", "answerKey"],
+  "properties": {
+    "seed": { "type": "integer" },
+    "accounts": { "type": "array", "items": { "type": "object" } },
+    "openingBalances": { "type": "array", "items": { "type": "object" } },
+    "periods": { "type": "array", "items": { "type": "object" } },
+    "bankTransactions": { "type": "array", "items": { "type": "object" } },
+    "stripePayouts": { "type": "array", "items": { "type": "object" } },
+    "contracts": { "type": "array", "items": { "type": "object" } },
+    "policyClauses": { "type": "array", "items": { "type": "object" } },
+    "vendors": { "type": "array", "items": { "type": "object" }, "description": "carries crsTestIdentity per vendor" },
+    "breaks": { "type": "array", "items": { "type": "object" } },
+    "answerKey": { "type": "array", "items": { "type": "object" } }
+  }
+}
