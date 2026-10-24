@@ -21,11 +21,13 @@ import type * as controls_rules from "../controls/rules.js";
 import type * as controls_stub from "../controls/stub.js";
 import type * as crons from "../crons.js";
 import type * as human from "../human.js";
+import type * as inject from "../inject.js";
 import type * as ledger from "../ledger.js";
 import type * as retrieval from "../retrieval.js";
 import type * as retrievalClient from "../retrievalClient.js";
 import type * as seed from "../seed.js";
 import type * as tools from "../tools.js";
+import type * as trace from "../trace.js";
 
 import type {
   ApiFromModules,
@@ -47,11 +49,13 @@ declare const fullApi: ApiFromModules<{
   "controls/stub": typeof controls_stub;
   crons: typeof crons;
   human: typeof human;
+  inject: typeof inject;
   ledger: typeof ledger;
   retrieval: typeof retrieval;
   retrievalClient: typeof retrievalClient;
   seed: typeof seed;
   tools: typeof tools;
+  trace: typeof trace;
 }>;
 
 /**
