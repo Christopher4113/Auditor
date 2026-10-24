@@ -4,6 +4,8 @@ A1 (generator core) and A2 (seed contract + sample), based on **Auditor — Cal 
 
 Phase 1 supplies clean source data and the canned fixture needed by the team's fake close. A3 (six planted breaks + answer key), A4 (Moss indexing/querying), A5 (scoring), and A6 (CRS + live statistics) are later phases. `breaks` and `answerKey` are present but empty. The overall Phase 1 gate still requires the other developers' Convex seed mutation, fake agent, Workflow, and live rail.
 
+The October 24 sync with `main` adopts its shared entity ID, `eo-festival-nyc`, and the empty `fxRates` section. Regenerate any earlier local `seed.json` before loading it. See [the verification record](AUDIT.md) for the checks performed and remaining integration work.
+
 ## Run
 
 From the repository root:
@@ -33,11 +35,11 @@ uv run generate.py --transactions-per-month 20 --out /tmp/small-seed.json
 uv run validate.py /tmp/auditor-seed.json
 ```
 
-Default seed: `1328`. Default output: `seed.json` in the current working directory. The default command from this directory writes the gitignored `datagen/seed.json`. The same seed and volume produce identical bytes, with no current timestamps or global random state. Generated files elsewhere are your responsibility to keep out of commits. The minimum volume is five transactions per month to accommodate weekly payouts.
+Default seed: `1328`. Default output: `seed.json` in the current working directory. The default command from this directory writes the gitignored `datagen/seed.json`. At the same generator revision, the same seed and volume produce identical bytes, with no current timestamps or global random state. Generated files elsewhere are your responsibility to keep out of commits. The minimum volume is five transactions per month to accommodate weekly payouts.
 
 ## Interface 5
 
-`seed.schema.json` is a strict Draft 2020-12 JSON Schema, version `1.0.0`. Both `sample.seed.json` and the full generated file conform to it. Every top-level key is required; unknown fields are rejected. `validate.py` also checks cross-record references and accounting invariants, which JSON Schema alone cannot express.
+`seed.schema.json` is a strict Draft 2020-12 JSON Schema, version `1.0.0`. Both `sample.seed.json` and the full generated file conform to it. Every top-level key is required; unknown fields are rejected. `validate.py` also checks cross-record references and accounting invariants, which JSON Schema alone cannot express. Its file loader rejects duplicate JSON keys, `NaN`, and `Infinity` instead of silently accepting ambiguous data.
 
 | Section | Default output | Consumer guidance |
 | --- | --- | --- |
@@ -49,10 +51,11 @@ Default seed: `1328`. Default output: `seed.json` in the current working directo
 | `stripePayouts` | 12 weekly reports: 5 July, 4 August, 3 September | Positive `gross - fee = net`; `net` equals the linked bank receipt. |
 | `contracts` | Six signed agreements, including five scenario contracts and SoundWave | Clauses retain exact text, external citation IDs, and `effectiveDate`. |
 | `policyClauses` | Twelve clauses from one `policyPackId`, `policy-nyc-v1` | Group into a `policyPacks` record if that is the Convex table shape. Preserve each clause's ID/text. |
-| `vendors` | Nine fictitious counterparties | Only account last four digits; `crsTestIdentity` is present and `null` until sponsor test IDs are supplied. |
+| `vendors` | Fifteen fictitious counterparties, including freight, power, site services, staffing, communications, and print | Only account last four digits; `crsTestIdentity` is present and `null` until sponsor test IDs are supplied. |
 | `breaks`, `answerKey` | Empty arrays | A3 extends these in Phase 2. Never expose the answer key to the agent or retrieval. |
+| `fxRates` | Empty array, matching `main` | This version is USD only. A later second-entity contract must define FX records before populating this section. |
 
-Every section record has `entity: "experts-only-nyc"`. Nested contract clauses inherit their parent's entity. All money is **integer USD cents**, including `amount`, `gross`, `fee`, `net`, `debit`, `credit`, and `pnlImpact`. For example, `$13,600` is `1360000`; `$2,400` is `240000`. There are no floating point monetary values. Currency is normalized to `USD`.
+Every section record has `entity: "eo-festival-nyc"`. Nested contract clauses inherit their parent's entity. All money is **integer USD cents**, including `amount`, `gross`, `fee`, `net`, `debit`, `credit`, and `pnlImpact`. For example, `$13,600` is `1360000`; `$2,400` is `240000`. There are no floating point monetary values. Values are bounded to JavaScript's safe integer range so TypeScript/Convex consumers can preserve the same exact cents. Currency is normalized to `USD`.
 
 Dates are ISO `YYYY-MM-DD` without times; periods are calendar months. All references are external string keys, **not Convex `_id` values**:
 
@@ -74,7 +77,7 @@ Dates are ISO `YYYY-MM-DD` without times; periods are calendar months. All refer
 4. Load the bank feed, contracts, policies, and associated vendor/payout metadata. Group C owns the table layout: keep vendor and payout source records available in the backend even if embedded in existing table documents, since there are no separate vendor/payout tables in the current design. An idempotent seed mutation should upsert by `(entity, externalId)` or reject a second load before inserting anything.
 5. Do not seed proposals, decisions, corrections, or invented precedent. The fake Workflow creates those during the Phase 1 gate. There are no FX records because Phase 1 has one USD entity.
 
-This branch does not define or change `convex/schema.ts`, agent tools, or frontend code. The seed mutation and end-to-end gate remain Group C/B/D work. JSON shape is fixed here for those consumers; coordinate any interface changes before merging.
+Convex table definitions, agent tools, and frontend implementation remain Group C/B/D responsibilities; their upstream changes are preserved by the sync. The seed mutation and end-to-end gate remain team integration work. JSON shape is defined here for those consumers; coordinate interface changes before merging.
 
 ### Sample fixture
 

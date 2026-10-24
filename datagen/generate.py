@@ -19,6 +19,12 @@ ROUTINE_PURCHASES = [
     ("beacon", "Campaign creative", 25_000, 350_000),
     ("city-permits", "Permit and site administration", 15_000, 180_000),
     ("office", "Event operations supplies", 5_000, 65_000),
+    ("ridgeway", "Equipment freight and local delivery", 35_000, 240_000),
+    ("livewire", "Temporary power services", 45_000, 320_000),
+    ("island-clean", "Site preparation and sanitation", 25_000, 190_000),
+    ("signal", "Crew radio rental and communications", 12_000, 85_000),
+    ("crew", "Temporary event operations crew", 65_000, 480_000),
+    ("printworks", "Event signage and printed materials", 15_000, 160_000),
 ]
 
 

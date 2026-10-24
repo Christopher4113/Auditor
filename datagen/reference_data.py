@@ -6,7 +6,7 @@ existing retrieval fixtures, so later indexing can preserve the verbatim text.
 
 from copy import deepcopy
 
-ENTITY = "experts-only-nyc"
+ENTITY = "eo-festival-nyc"  # Shared entity ID from main's final-design skeleton.
 CURRENCY = "USD"
 
 ACCOUNT_ROWS = [
@@ -64,6 +64,12 @@ VENDOR_ROWS = [
     ("city-permits", "Island Event Permits", "venue", "7403"),
     ("beacon", "Beacon Creative", "marketing", "6284"),
     ("office", "Backstage Office Supply", "administration", "9157"),
+    ("ridgeway", "Ridgeway Event Freight", "logistics", "4208"),
+    ("livewire", "Livewire Temporary Power", "production", "5316"),
+    ("island-clean", "Island Clean Site Services", "venue", "6842"),
+    ("signal", "Signal Crew Communications", "administration", "7930"),
+    ("crew", "Stage Door Event Staffing", "staffing", "8061"),
+    ("printworks", "Festival Printworks", "marketing", "9240"),
 ]
 
 
@@ -160,5 +166,5 @@ def master_data(seed: int, dataset: str = "generated") -> dict:
              "bankAccountLast4": last4, "crsTestIdentity": None}
             for id, name, category, last4 in VENDOR_ROWS
         ],
-        "breaks": [], "answerKey": [],
+        "breaks": [], "answerKey": [], "fxRates": [],
     }

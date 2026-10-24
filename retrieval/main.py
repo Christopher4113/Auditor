@@ -8,22 +8,26 @@ Run: uv run uvicorn main:app --reload --port 8000
 Spec: uv run python -c "import yaml, main; print(yaml.safe_dump(main.app.openapi(), sort_keys=False))" > openapi.yaml
 """
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-app = FastAPI(title="Auditor retrieval", version="0.1.0")
+app = FastAPI(
+    title="Auditor retrieval", version="0.1.0",
+    description="Phase 1 fixture service. Queries return canned citations, indexing does not persist, "
+                "statistics are placeholders, and CRS verification is unavailable.",
+)
 
 
 class Chunk(BaseModel):
-    collection: str  # policy | contracts | decisions
-    id: str
-    text: str
-    meta: dict = {}
+    collection: str = Field(min_length=1, pattern=r"\S")  # policy | contracts | decisions
+    id: str = Field(min_length=1, pattern=r"\S")
+    text: str = Field(min_length=1, pattern=r"\S")
+    meta: dict = Field(default_factory=dict)
 
 
 class Query(BaseModel):
-    collection: str
-    text: str
-    k: int = 3
+    collection: str = Field(min_length=1, pattern=r"\S")
+    text: str = Field(min_length=1, pattern=r"\S")
+    k: int = Field(default=3, ge=1, le=50, strict=True)
 
 
 class Hit(BaseModel):
@@ -33,7 +37,7 @@ class Hit(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    testIdentityId: str
+    testIdentityId: str = Field(min_length=1, pattern=r"\S")
 
 
 class VerifyResult(BaseModel):
@@ -66,5 +70,5 @@ def stats() -> dict:
 
 @app.post("/verify")
 def verify(_: VerifyRequest) -> VerifyResult:
-    # ponytail: fail closed until A6 wires the CRS sandbox; Controller escalates on available=False
+    # ponytail: fail closed until A6 wires the CRS sandbox; the controls engine escalates on available=False
     return VerifyResult(identityMatch=False, fraudFlags=[], available=False)

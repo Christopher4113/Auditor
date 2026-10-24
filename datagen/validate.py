@@ -20,6 +20,23 @@ SECTIONS = (
 )
 
 
+def load_seed(path: Path) -> dict:
+    """Reject ambiguous or nonstandard JSON rather than silently normalizing it."""
+    def unique_keys(pairs: list[tuple]) -> dict:
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"nonstandard JSON constant: {value}")
+
+    return json.loads(path.read_text(encoding="utf-8"),
+                      object_pairs_hook=unique_keys, parse_constant=reject_constant)
+
+
 def validate_seed(data: dict) -> list[str]:
     """Return actionable errors; malformed schemas raise rather than silently pass."""
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
@@ -129,9 +146,13 @@ def validate_seed(data: dict) -> list[str]:
 
     # Citation IDs form a namespace independent of bank/account IDs.
     citation_ids = [row["id"] for row in data["policyClauses"]]
+    policy_numbers = [(row["policyPackId"], row["number"]) for row in data["policyClauses"]]
+    check(len(policy_numbers) == len(set(policy_numbers)), "policyClauses: duplicate clause number within policy pack")
     for row in data["contracts"]:
         check(row["vendorId"] in indexes["vendors"], f"contracts/{row['id']}: unknown vendor")
         check(row["signedDate"] <= row["startDate"] <= row["endDate"], f"contracts/{row['id']}: invalid contract dates")
+        numbers = [clause["number"] for clause in row["clauses"]]
+        check(len(numbers) == len(set(numbers)), f"contracts/{row['id']}: duplicate clause number")
         for clause in row["clauses"]:
             citation_ids.append(clause["id"])
             check(row["signedDate"] <= clause["effectiveDate"] <= row["endDate"],
@@ -164,7 +185,7 @@ def main() -> int:
     parser.add_argument("path", nargs="?", type=Path, default=Path("seed.json"))
     args = parser.parse_args()
     try:
-        data = json.loads(args.path.read_text(encoding="utf-8"))
+        data = load_seed(args.path)
     except (OSError, ValueError) as exc:
         print(f"cannot read {args.path}: {exc}", file=sys.stderr)
         return 1

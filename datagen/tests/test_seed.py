@@ -15,7 +15,7 @@ sys.path.insert(0, str(DATAGEN))
 
 from generate import generate  # noqa: E402
 from reference_data import master_data  # noqa: E402
-from validate import validate_seed  # noqa: E402
+from validate import load_seed, validate_seed  # noqa: E402
 
 
 class SeedAcceptanceTests(unittest.TestCase):
@@ -71,6 +71,49 @@ class SeedAcceptanceTests(unittest.TestCase):
                     for row in self.generated["openingBalances"]}
         self.assertEqual(balances, {"1000": (38000000, 0), "1300": (6000000, 0),
                                     "3000": (0, 50000000), "3100": (6000000, 0)})
+        self.assertEqual({row["code"] for row in self.generated["accounts"]}, set(
+            "1000 1010 1100 1150 1200 1250 1300 1400 2000 2100 2200 2250 3000 3100 "
+            "4000 4100 5000 5050 5100 5150 5160 5200 5300 5400 5500 5600 5900".split()))
+        self.assertEqual({row["number"] for row in self.generated["policyClauses"]},
+                         {"1.0", "2.0", "3.0", "4.3", "5.1", "6.1", "6.2", "7.1", "8.0", "8.1", "8.2", "9.0"})
+
+    def test_entity_and_fx_match_shared_main_contract(self):
+        for data in (self.generated, self.sample):
+            self.assertEqual(data["entity"], "eo-festival-nyc")
+            self.assertEqual(data["fxRates"], [])
+
+    def test_sample_master_data_matches_full_generator(self):
+        for section in ("accounts", "openingBalances", "periods", "contracts", "policyClauses", "vendors", "fxRates"):
+            with self.subTest(section=section):
+                self.assertEqual(self.sample[section], self.generated[section])
+
+    def test_contract_evidence_covers_demo_amounts_and_effective_dates(self):
+        clauses = {clause["id"]: clause for contract in self.generated["contracts"]
+                   for clause in contract["clauses"]}
+        for id, amounts in {
+            "northern-lines-2.1": ("$120,000",), "northern-lines-3.1": ("$60,000",),
+            "northern-lines-7.2": ("15%", "30 days"), "apex-9.4": ("$16,000", "15%"),
+            "brightwater-amendment-1": ("$30,000", "$2.00", "$70,000"),
+            "ironclad-2.1": ("$9,400", "$28,000"), "field-flame-5.1": ("$42,000", "4471"),
+        }.items():
+            for amount in amounts:
+                self.assertIn(amount, clauses[id]["text"])
+        self.assertEqual(clauses["brightwater-amendment-1"]["effectiveDate"], "2026-08-10")
+
+    def test_100_seeds_validate_without_cash_overdrafts(self):
+        for seed in range(100):
+            with self.subTest(seed=seed):
+                data = generate(seed)
+                self.assertEqual(validate_seed(data), [])
+                cash = 38_000_000
+                for row in data["bankTransactions"]:
+                    cash += row["amount"]
+                    self.assertGreaterEqual(cash, 0)
+
+    def test_routine_feed_covers_multiple_event_operations(self):
+        counterparties = {row["vendorId"] for row in self.generated["bankTransactions"] if row["vendorId"]}
+        self.assertGreaterEqual(len(counterparties), 9)
+        self.assertNotIn("field-flame", counterparties)  # A3 must model the held payment separately.
 
     def test_phase1_does_not_plant_or_score_errors(self):
         for data in (self.generated, self.sample):
@@ -97,9 +140,12 @@ class SeedAcceptanceTests(unittest.TestCase):
         cases = [
             ("missing field", lambda d: d["bankTransactions"][0].pop("amount"), "required"),
             ("unknown field", lambda d: d["bankTransactions"][0].update(secret="invalid"), "Additional properties"),
+            ("missing FX slot", lambda d: d.pop("fxRates"), "required"),
+            ("unexpected FX data", lambda d: d["fxRates"].append({"rate": 1.2}), "empty"),
             ("fractional cents", lambda d: d["bankTransactions"][0].update(amount=12.5), "integer"),
             ("float cents", lambda d: d["bankTransactions"][0].update(amount=1200.0), "integer cents"),
             ("boolean cents", lambda d: d["bankTransactions"][0].update(amount=True), "integer"),
+            ("unsafe JS cents", lambda d: d["bankTransactions"][0].update(amount=2**53), "maximum"),
             ("zero cash movement", lambda d: d["bankTransactions"][0].update(amount=0), "not"),
             ("bad date", lambda d: d["bankTransactions"][0].update(date="2026-07-32"), "date"),
             ("wrong period", lambda d: d["bankTransactions"][0].update(period="2026-09"), "outside period"),
@@ -118,9 +164,14 @@ class SeedAcceptanceTests(unittest.TestCase):
             ("payout arithmetic", lambda d: d["stripePayouts"][0].update(fee=0), "gross - fee"),
             ("missing bank receipt", lambda d: d["stripePayouts"][0].update(bankTransactionId="missing"), "unknown bank transaction"),
             ("settlement mismatch", lambda d: d["bankTransactions"][1].update(amount=1), "bank amount differs"),
+            ("settlement date", lambda d: d["stripePayouts"][0].update(arrivalDate="2026-07-11"), "settlement date/period differs"),
+            ("reused receipt", lambda d: d["stripePayouts"][1].update(bankTransactionId="sample-bank-02"), "receipt is reused"),
+            ("missing receipt link", lambda d: d["bankTransactions"][1].update(stripePayoutId=None), "back-reference differs"),
             ("contract vendor", lambda d: d["contracts"][0].update(vendorId="missing"), "unknown vendor"),
             ("future clause", lambda d: d["contracts"][0]["clauses"][0].update(effectiveDate="2026-12-01"), "outside agreement"),
             ("duplicate citation", lambda d: d["policyClauses"][0].update(id="apex-9.4"), "duplicate clause id"),
+            ("duplicate policy number", lambda d: d["policyClauses"][1].update(number="1.0"), "duplicate clause number"),
+            ("duplicate contract number", lambda d: d["contracts"][0]["clauses"][1].update(number="2.1"), "duplicate clause number"),
         ]
         for name, corrupt, expected in cases:
             with self.subTest(name=name):
@@ -128,6 +179,16 @@ class SeedAcceptanceTests(unittest.TestCase):
                 corrupt(data)
                 self.assertTrue(any(expected in error for error in validate_seed(data)),
                                 f"expected {expected!r} in {validate_seed(data)}")
+
+    def test_loader_rejects_duplicate_keys_and_nonstandard_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "invalid.json"
+            for raw in ('{"seed": 1, "seed": 2}', '{"nested": {"amount": 1, "amount": 2}}',
+                        '{"amount": NaN}', '{"amount": Infinity}'):
+                with self.subTest(raw=raw):
+                    output.write_text(raw)
+                    with self.assertRaises(ValueError):
+                        load_seed(output)
 
     def test_commands_work_from_another_directory_and_reject_invalid_json(self):
         with tempfile.TemporaryDirectory() as directory:

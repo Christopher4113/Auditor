@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0",
   "seed": 1328,
   "dataset": "sample",
-  "entity": "experts-only-nyc",
+  "entity": "eo-festival-nyc",
   "currency": "USD",
   "company": {
     "name": "Experts Only Festival NYC",
@@ -14,7 +14,7 @@
   "accounts": [
     {
       "id": "acct-1000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1000",
       "name": "Cash",
       "type": "asset",
@@ -23,7 +23,7 @@
     },
     {
       "id": "acct-1010",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1010",
       "name": "Stripe clearing",
       "type": "asset",
@@ -32,7 +32,7 @@
     },
     {
       "id": "acct-1100",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1100",
       "name": "Accounts receivable",
       "type": "asset",
@@ -41,7 +41,7 @@
     },
     {
       "id": "acct-1150",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1150",
       "name": "Sponsorship receivable",
       "type": "asset",
@@ -50,7 +50,7 @@
     },
     {
       "id": "acct-1200",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1200",
       "name": "Vendor deposits",
       "type": "asset",
@@ -59,7 +59,7 @@
     },
     {
       "id": "acct-1250",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1250",
       "name": "Artist deposits",
       "type": "asset",
@@ -68,7 +68,7 @@
     },
     {
       "id": "acct-1300",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1300",
       "name": "Prepaid expenses",
       "type": "asset",
@@ -77,7 +77,7 @@
     },
     {
       "id": "acct-1400",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "1400",
       "name": "Payments under review",
       "type": "asset",
@@ -86,7 +86,7 @@
     },
     {
       "id": "acct-2000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "2000",
       "name": "Accounts payable",
       "type": "liability",
@@ -95,7 +95,7 @@
     },
     {
       "id": "acct-2100",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "2100",
       "name": "Accrued liabilities",
       "type": "liability",
@@ -104,7 +104,7 @@
     },
     {
       "id": "acct-2200",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "2200",
       "name": "Deferred ticket revenue",
       "type": "liability",
@@ -113,7 +113,7 @@
     },
     {
       "id": "acct-2250",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "2250",
       "name": "Deferred sponsorship revenue",
       "type": "liability",
@@ -122,7 +122,7 @@
     },
     {
       "id": "acct-3000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "3000",
       "name": "Common stock",
       "type": "equity",
@@ -131,7 +131,7 @@
     },
     {
       "id": "acct-3100",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "3100",
       "name": "Retained earnings",
       "type": "equity",
@@ -140,7 +140,7 @@
     },
     {
       "id": "acct-4000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "4000",
       "name": "Ticket revenue",
       "type": "revenue",
@@ -149,7 +149,7 @@
     },
     {
       "id": "acct-4100",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "4100",
       "name": "Sponsorship revenue",
       "type": "revenue",
@@ -158,7 +158,7 @@
     },
     {
       "id": "acct-5000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5000",
       "name": "Artist fees",
       "type": "expense",
@@ -167,7 +167,7 @@
     },
     {
       "id": "acct-5050",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5050",
       "name": "Artist cancellation fees",
       "type": "expense",
@@ -176,7 +176,7 @@
     },
     {
       "id": "acct-5100",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5100",
       "name": "Production",
       "type": "expense",
@@ -185,7 +185,7 @@
     },
     {
       "id": "acct-5150",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5150",
       "name": "Staging and equipment",
       "type": "expense",
@@ -194,7 +194,7 @@
     },
     {
       "id": "acct-5160",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5160",
       "name": "Equipment inspection and damage fees",
       "type": "expense",
@@ -203,7 +203,7 @@
     },
     {
       "id": "acct-5200",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5200",
       "name": "Security",
       "type": "expense",
@@ -212,7 +212,7 @@
     },
     {
       "id": "acct-5300",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5300",
       "name": "Catering",
       "type": "expense",
@@ -221,7 +221,7 @@
     },
     {
       "id": "acct-5400",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5400",
       "name": "Payment processing fees",
       "type": "expense",
@@ -230,7 +230,7 @@
     },
     {
       "id": "acct-5500",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5500",
       "name": "Venue and permits",
       "type": "expense",
@@ -239,7 +239,7 @@
     },
     {
       "id": "acct-5600",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5600",
       "name": "Marketing",
       "type": "expense",
@@ -248,7 +248,7 @@
     },
     {
       "id": "acct-5900",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "code": "5900",
       "name": "G&A",
       "type": "expense",
@@ -259,7 +259,7 @@
   "openingBalances": [
     {
       "id": "opening-1000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "date": "2026-07-01",
       "accountCode": "1000",
       "debit": 38000000,
@@ -267,7 +267,7 @@
     },
     {
       "id": "opening-1300",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "date": "2026-07-01",
       "accountCode": "1300",
       "debit": 6000000,
@@ -275,7 +275,7 @@
     },
     {
       "id": "opening-3000",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "date": "2026-07-01",
       "accountCode": "3000",
       "debit": 0,
@@ -283,7 +283,7 @@
     },
     {
       "id": "opening-3100",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "date": "2026-07-01",
       "accountCode": "3100",
       "debit": 6000000,
@@ -293,21 +293,21 @@
   "periods": [
     {
       "id": "2026-07",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "startDate": "2026-07-01",
       "endDate": "2026-07-31",
       "status": "open"
     },
     {
       "id": "2026-08",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "startDate": "2026-08-01",
       "endDate": "2026-08-31",
       "status": "open"
     },
     {
       "id": "2026-09",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "startDate": "2026-09-01",
       "endDate": "2026-09-30",
       "status": "open"
@@ -316,7 +316,7 @@
   "bankTransactions": [
     {
       "id": "sample-bank-01",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-07",
       "date": "2026-07-02",
       "amount": -6000000,
@@ -330,7 +330,7 @@
     },
     {
       "id": "sample-bank-02",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-07",
       "date": "2026-07-10",
       "amount": 4718000,
@@ -344,7 +344,7 @@
     },
     {
       "id": "sample-bank-03",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-07",
       "date": "2026-07-15",
       "amount": -125000,
@@ -358,7 +358,7 @@
     },
     {
       "id": "sample-bank-04",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-07",
       "date": "2026-07-23",
       "amount": -1850000,
@@ -372,7 +372,7 @@
     },
     {
       "id": "sample-bank-05",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-08",
       "date": "2026-08-07",
       "amount": 9710000,
@@ -386,7 +386,7 @@
     },
     {
       "id": "sample-bank-06",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-08",
       "date": "2026-08-20",
       "amount": -1600000,
@@ -400,7 +400,7 @@
     },
     {
       "id": "sample-bank-07",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-08",
       "date": "2026-08-28",
       "amount": -240000,
@@ -414,7 +414,7 @@
     },
     {
       "id": "sample-bank-08",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-09",
       "date": "2026-09-09",
       "amount": -23500,
@@ -428,7 +428,7 @@
     },
     {
       "id": "sample-bank-09",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-09",
       "date": "2026-09-18",
       "amount": 1942000,
@@ -442,7 +442,7 @@
     },
     {
       "id": "sample-bank-10",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-09",
       "date": "2026-09-25",
       "amount": 1360000,
@@ -458,7 +458,7 @@
   "stripePayouts": [
     {
       "id": "po_sample_jul",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-07",
       "arrivalDate": "2026-07-10",
       "currency": "USD",
@@ -470,7 +470,7 @@
     },
     {
       "id": "po_sample_aug",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-08",
       "arrivalDate": "2026-08-07",
       "currency": "USD",
@@ -482,7 +482,7 @@
     },
     {
       "id": "po_sample_sep",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "period": "2026-09",
       "arrivalDate": "2026-09-18",
       "currency": "USD",
@@ -521,7 +521,7 @@
           "effectiveDate": "2026-07-01"
         }
       ],
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "currency": "USD"
     },
     {
@@ -539,7 +539,7 @@
           "effectiveDate": "2026-07-01"
         }
       ],
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "currency": "USD"
     },
     {
@@ -563,7 +563,7 @@
           "effectiveDate": "2026-08-10"
         }
       ],
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "currency": "USD"
     },
     {
@@ -581,7 +581,7 @@
           "effectiveDate": "2026-07-01"
         }
       ],
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "currency": "USD"
     },
     {
@@ -599,7 +599,7 @@
           "effectiveDate": "2026-07-01"
         }
       ],
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "currency": "USD"
     },
     {
@@ -617,14 +617,14 @@
           "effectiveDate": "2026-07-01"
         }
       ],
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "currency": "USD"
     }
   ],
   "policyClauses": [
     {
       "id": "policy-1.0",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "1.0",
       "text": "The controller owns the books and signs each period close.",
@@ -632,7 +632,7 @@
     },
     {
       "id": "policy-2.0",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "2.0",
       "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
@@ -640,7 +640,7 @@
     },
     {
       "id": "policy-3.0",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "3.0",
       "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
@@ -648,7 +648,7 @@
     },
     {
       "id": "policy-4.3",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "4.3",
       "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
@@ -656,7 +656,7 @@
     },
     {
       "id": "policy-5.1",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "5.1",
       "text": "Where a contract makes a fee, penalty or deduction non-recoverable, the amount is expensed in the period it becomes certain. It is not carried as a receivable.",
@@ -664,7 +664,7 @@
     },
     {
       "id": "policy-6.1",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "6.1",
       "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
@@ -672,7 +672,7 @@
     },
     {
       "id": "policy-6.2",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "6.2",
       "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
@@ -680,7 +680,7 @@
     },
     {
       "id": "policy-7.1",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "7.1",
       "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
@@ -688,7 +688,7 @@
     },
     {
       "id": "policy-8.0",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "8.0",
       "text": "Materiality is P&L impact, the sum of revenue and expense lines. Under $5,000 the controls engine may post when every rule passes and a policy clause is cited. $5,000 or more, and any control exception, requires the controller.",
@@ -696,7 +696,7 @@
     },
     {
       "id": "policy-8.1",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "8.1",
       "text": "No person or system approves an entry it proposed.",
@@ -704,7 +704,7 @@
     },
     {
       "id": "policy-8.2",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "8.2",
       "text": "A human-decided precedent with matching scope, under threshold, is pre-approved and does not re-escalate.",
@@ -712,7 +712,7 @@
     },
     {
       "id": "policy-9.0",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "policyPackId": "policy-nyc-v1",
       "number": "9.0",
       "text": "Every decision records the proposal, reviewer, rules run, verbatim citations, and outcome.",
@@ -722,7 +722,7 @@
   "vendors": [
     {
       "id": "northern-lines",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "The Northern Lines",
       "category": "artist",
       "bankAccountLast4": "1024",
@@ -730,7 +730,7 @@
     },
     {
       "id": "apex",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Apex Staging",
       "category": "staging",
       "bankAccountLast4": "2846",
@@ -738,7 +738,7 @@
     },
     {
       "id": "brightwater",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Brightwater Beverage",
       "category": "sponsor",
       "bankAccountLast4": "3165",
@@ -746,7 +746,7 @@
     },
     {
       "id": "ironclad",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Ironclad Security",
       "category": "security",
       "bankAccountLast4": "6680",
@@ -754,7 +754,7 @@
     },
     {
       "id": "field-flame",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Field & Flame",
       "category": "catering",
       "bankAccountLast4": "4471",
@@ -762,7 +762,7 @@
     },
     {
       "id": "soundwave",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "SoundWave Production",
       "category": "production",
       "bankAccountLast4": "5912",
@@ -770,7 +770,7 @@
     },
     {
       "id": "city-permits",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Island Event Permits",
       "category": "venue",
       "bankAccountLast4": "7403",
@@ -778,7 +778,7 @@
     },
     {
       "id": "beacon",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Beacon Creative",
       "category": "marketing",
       "bankAccountLast4": "6284",
@@ -786,13 +786,62 @@
     },
     {
       "id": "office",
-      "entity": "experts-only-nyc",
+      "entity": "eo-festival-nyc",
       "name": "Backstage Office Supply",
       "category": "administration",
       "bankAccountLast4": "9157",
       "crsTestIdentity": null
+    },
+    {
+      "id": "ridgeway",
+      "entity": "eo-festival-nyc",
+      "name": "Ridgeway Event Freight",
+      "category": "logistics",
+      "bankAccountLast4": "4208",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "livewire",
+      "entity": "eo-festival-nyc",
+      "name": "Livewire Temporary Power",
+      "category": "production",
+      "bankAccountLast4": "5316",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "island-clean",
+      "entity": "eo-festival-nyc",
+      "name": "Island Clean Site Services",
+      "category": "venue",
+      "bankAccountLast4": "6842",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "signal",
+      "entity": "eo-festival-nyc",
+      "name": "Signal Crew Communications",
+      "category": "administration",
+      "bankAccountLast4": "7930",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "crew",
+      "entity": "eo-festival-nyc",
+      "name": "Stage Door Event Staffing",
+      "category": "staffing",
+      "bankAccountLast4": "8061",
+      "crsTestIdentity": null
+    },
+    {
+      "id": "printworks",
+      "entity": "eo-festival-nyc",
+      "name": "Festival Printworks",
+      "category": "marketing",
+      "bankAccountLast4": "9240",
+      "crsTestIdentity": null
     }
   ],
   "breaks": [],
-  "answerKey": []
+  "answerKey": [],
+  "fxRates": []
 }
