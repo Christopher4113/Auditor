@@ -120,6 +120,10 @@ uv run python -m unittest discover -s tests -v
 
 The tests use isolated local catalogs and mock the SDK boundary; no credentials are needed. The real Moss runs are recorded separately in [PHASE2_AUDIT.md](PHASE2_AUDIT.md). Regenerate the agreed specification with `uv run python export_openapi.py`.
 
+## Vultr deployment
+
+The shared synthetic demo is hosted on Vultr. See [the verified deployment handoff](VULTR.md) for the server, health checks, update commands, and current close-review limitations.
+
 ## Railway package / team connection
 
 `Dockerfile` and `railway.env.example` are included as the deployment package. They were prepared here; no Railway service was created and the Docker image was not built in this environment.

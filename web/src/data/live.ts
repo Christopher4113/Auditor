@@ -1,4 +1,4 @@
-// Read-only Phase 2 subscriptions. Raw wire records are adapted in pure, tested functions.
+// Reactive workspace subscriptions and explicit controller actions. Server results stay authoritative.
 import { useEffect } from "react";
 import {
   ConvexReactClient,
@@ -7,6 +7,7 @@ import {
 } from "convex/react";
 import { ConvexHttpClient } from "convex/browser";
 import { makeFunctionReference } from "convex/server";
+import { assertCurrentApproval } from "./controller-preflight";
 import type { AuditItem, Period, Proposal } from "./types";
 import type {
   EntityArgs,
@@ -21,6 +22,13 @@ import type {
   WireCloseStatus,
   WirePeriod,
   WireScoreboard,
+  WireCloseSummary,
+  WireRuleResult,
+  ApproveArgs,
+  ApproveResult,
+  RejectArgs,
+  RejectResult,
+  SignPeriodResult,
 } from "./contracts";
 import {
   mergeProposalDetails,
@@ -48,6 +56,9 @@ export const convex = url ? new ConvexReactClient(url) : null;
 const http = url ? new ConvexHttpClient(url) : null;
 
 const refs = {
+  summary: makeFunctionReference<"query", EntityPeriodArgs, WireCloseSummary>(
+    "api:closeSummary",
+  ),
   proposals: makeFunctionReference<
     "query",
     ListProposalsArgs,
@@ -80,10 +91,15 @@ const refs = {
   ),
 };
 
+export type LiveControlResult = WireRuleResult & { proposalId: string };
+
 export type LiveSnapshot = {
   proposals: Proposal[];
   periods: WirePeriod[];
   score?: WireScoreboard;
+  summary?: WireCloseSummary;
+  controlResults: LiveControlResult[];
+  feedComplete: boolean;
   workflow?: WireCloseStatus | null;
   audit: AuditItem[];
   loading: boolean;
@@ -101,7 +117,8 @@ export function LiveWorkspace({
   onData: (snapshot: LiveSnapshot) => void;
 }) {
   const periodKey = toPeriodKey(period);
-  const rows = useQuery(refs.proposals, { entity: ENTITY });
+  const rows = useQuery(refs.proposals, { entity: ENTITY, period: periodKey });
+  const summary = useQuery(refs.summary, { entity: ENTITY, period: periodKey });
   const periods = useQuery(refs.periods, { entity: ENTITY });
   const score = useQuery(refs.score, { entity: ENTITY, period: periodKey });
   const workflow = useQuery(refs.status, { entity: ENTITY, period: periodKey });
@@ -116,12 +133,22 @@ export function LiveWorkspace({
       proposals: rows?.map(toProposal) ?? [],
       periods: periods ?? [],
       score,
+      summary,
+      controlResults:
+        rows?.flatMap((row) =>
+          (row.decision?.rulesRun ?? []).map((rule) => ({
+            ...rule,
+            proposalId: row.proposalId,
+          })),
+        ) ?? [],
+      feedComplete: rows !== undefined && rows.length < 200,
       workflow,
       audit: audit?.map(toAuditItem) ?? [],
       loading:
         rows === undefined ||
         periods === undefined ||
         score === undefined ||
+        summary === undefined ||
         workflow === undefined ||
         audit === undefined,
       connected: connection.isWebSocketConnected,
@@ -131,6 +158,7 @@ export function LiveWorkspace({
     rows,
     periods,
     score,
+    summary,
     workflow,
     audit,
     connection.isWebSocketConnected,
@@ -182,16 +210,44 @@ export async function startClose(period: Period): Promise<string> {
 
 // ── Human controller moves (C3). proposalId is the rail's external code, e.g. "P-sample-bank-04-r1". ──
 const human = {
-  approve: makeFunctionReference<"mutation", { entity: string; proposalId: string; note?: string }, unknown>("api:approve"),
-  reject: makeFunctionReference<"mutation", { entity: string; proposalId: string; instruction: string }, unknown>("api:reject"),
-  sign: makeFunctionReference<"mutation", EntityPeriodArgs, unknown>("api:signPeriod"),
+  approve: makeFunctionReference<"mutation", ApproveArgs, ApproveResult>(
+    "api:approve",
+  ),
+  reject: makeFunctionReference<"mutation", RejectArgs, RejectResult>(
+    "api:reject",
+  ),
+  sign: makeFunctionReference<"mutation", EntityPeriodArgs, SignPeriodResult>(
+    "api:signPeriod",
+  ),
 };
 function requireHttp() {
   if (!http) throw new Error("A live workspace is not configured.");
   return http;
 }
-export const approve = (proposalId: string, note: string) => requireHttp().mutation(human.approve, { entity: ENTITY, proposalId, note });
-export const reject = (proposalId: string, instruction: string) => requireHttp().mutation(human.reject, { entity: ENTITY, proposalId, instruction });
-export const signPeriod = (period: Period) => requireHttp().mutation(human.sign, { entity: ENTITY, period: toPeriodKey(period) });
-/** Convex wraps thrown errors as "[Request ID: …] Server Error Uncaught Error: <message> at …"; keep only the message. */
-export const reason = (e: Error) => e.message.replace(/^.*?Uncaught Error: /, "").replace(/\s+at .*$/s, "");
+/** Refresh payment holds and revision state immediately before an explicit approval. */
+export async function checkApproval(proposal: Proposal): Promise<void> {
+  if (!proposal.backendId || !proposal.breakBackendId)
+    throw new Error(
+      "The proposal's source identifiers are unavailable. Reconnect and try again.",
+    );
+  const client = requireHttp();
+  const [sources, decision] = await Promise.all([
+    client.query(refs.sources, { id: proposal.breakBackendId }),
+    client.query(refs.decision, { proposalId: proposal.backendId }),
+  ]);
+  assertCurrentApproval(proposal, sources, decision);
+}
+export const approve = (proposalId: string, note: string) =>
+  requireHttp().mutation(human.approve, { entity: ENTITY, proposalId, note });
+export const reject = (proposalId: string, instruction: string) =>
+  requireHttp().mutation(human.reject, {
+    entity: ENTITY,
+    proposalId,
+    instruction,
+  });
+export const signPeriod = (period: Period) =>
+  requireHttp().mutation(human.sign, {
+    entity: ENTITY,
+    period: toPeriodKey(period),
+  });
+export { controllerError as reason } from "./controller";
