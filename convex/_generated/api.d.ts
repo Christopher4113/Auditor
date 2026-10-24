@@ -23,6 +23,7 @@ import type * as crons from "../crons.js";
 import type * as human from "../human.js";
 import type * as ledger from "../ledger.js";
 import type * as retrieval from "../retrieval.js";
+import type * as retrievalClient from "../retrievalClient.js";
 import type * as seed from "../seed.js";
 import type * as tools from "../tools.js";
 
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   human: typeof human;
   ledger: typeof ledger;
   retrieval: typeof retrieval;
+  retrievalClient: typeof retrievalClient;
   seed: typeof seed;
   tools: typeof tools;
 }>;
