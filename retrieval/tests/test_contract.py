@@ -40,7 +40,8 @@ class RetrievalContractTests(unittest.IsolatedAsyncioTestCase):
     async def index_memory(self, id="D-test", entity="eo-festival-nyc", effective="2026-07-31"):
         return await self.client.post("/index", json={"collection":"decisions", "id":id,
             "text":"Controller approved expensing a non-recoverable deposit inspection fee.",
-            "meta":{"entity":entity,"effectiveDate":effective,"reviewer":"human","fixture":True}})
+            "meta":{"entity":entity,"effectiveDate":effective,"reviewer":"human","fixture":True,
+                    "scope":json.dumps({"breakKind":"deposit_shortfall"})}})
 
     async def test_query_returns_ranked_verbatim_contracts(self):
         response = await self.query()
@@ -67,6 +68,8 @@ class RetrievalContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.index_memory()).status_code, 200)
         hits = (await self.query(collection="decisions")).json()
         self.assertEqual([hit["id"] for hit in hits], ["D-test"])
+        resolved = await self.client.post("/resolve", json={"collection":"decisions","id":"D-test"})
+        self.assertEqual(resolved.json()["meta"]["scope"], {"breakKind":"deposit_shortfall"})
         await self.stop()
         await self.start()
         self.assertEqual((await self.query(collection="decisions")).json()[0]["id"], "D-test")
@@ -115,7 +118,8 @@ class RetrievalContractTests(unittest.IsolatedAsyncioTestCase):
                      {"collection":"policy","text":"   "},
                      {"collection":"policy","text":"fee","asOf":"not-a-date"}):
             self.assertEqual((await self.client.post("/query", json=body)).status_code, 422)
-        self.assertEqual((await self.client.post("/index",json={"collection":"decisions","id":"D","text":"approval"})).status_code,422)
+        for collection in ("policy","contracts","decisions","corrections"):
+            self.assertEqual((await self.client.post("/index",json={"collection":collection,"id":"D","text":"approval"})).status_code,422)
 
     async def test_stats_are_measured_and_estimates_labelled(self):
         self.assertEqual((await self.client.get("/stats")).json()["retrievals"], 0)
@@ -168,9 +172,15 @@ class RetrievalContractTests(unittest.IsolatedAsyncioTestCase):
                          (await self.client.get("/openapi.json")).json())
 
     async def test_batch_rejects_duplicates(self):
-        chunk={"collection":"policy","id":"same","text":"a clause"}
+        chunk={"collection":"policy","id":"same","text":"a clause","meta":{"effectiveDate":"2026-07-01"}}
         response=await self.client.post("/index/batch",json={"chunks":[chunk,chunk]})
         self.assertEqual(response.status_code,422)
+
+    async def test_trace_id_is_preserved_without_changing_response_contract(self):
+        response = await self.client.post("/query", json={"collection":"contracts","text":"inspection fee"},
+            headers={"X-Trace-Id":"T-bank-apex-refund"})
+        self.assertEqual(response.headers.get("X-Trace-Id"), "T-bank-apex-refund")
+        self.assertIsInstance(response.json(), list)
 
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@ Scope: Group A's A3 data/evidence/answer key and A4 local + real Moss retrieval,
 | Check | Evidence |
 | --- | --- |
 | Python data suite | 32 tests, including 100 clean Phase 1 seeds and default + four other Phase 2 seeds |
-| Python retrieval suite | 20 tests: real local search, persistence, idempotency, corrections, entity/date isolation, input/auth failure behavior, exact resolution, SDK upserts and warm-once query behavior |
-| Repository suite | 134 Vitest tests across Convex tools/controls, matching, seed integration, HTTP adapter, and existing frontend tests |
+| Python retrieval suite | 21 tests: real local search, persistence, idempotency, corrections, entity/date isolation, input/auth failure behavior, exact resolution, trace propagation, SDK upserts and warm-once query behavior |
+| Repository suite | 139 Vitest tests across Convex tools/controls, matching, seed integration, C4 publishing, HTTP adapters, and existing frontend tests |
 | TypeScript | Convex check passed; frontend typecheck passed as part of the production build |
 | Frontend | Production build passed |
 | Actual JSON load | Full generated 368-bank-row / 387-import-entry file loaded into an isolated `convex-test` database; one opening journal produces 388 entries total |
@@ -20,7 +20,7 @@ Scope: Group A's A3 data/evidence/answer key and A4 local + real Moss retrieval,
 | Time | August amendment and September documents cannot be read as July evidence |
 | Large-seed command | `node scripts/seed.mjs --dry-run` validated the ~400 KB Phase 2 JSON without a shell argument-size failure or a deployment write |
 
-Total: **186 automated tests passed**. Oracle checks prove the dataset is internally coherent; they are not a measurement of the agent's precision or recall.
+Total: **192 automated tests passed**. Oracle checks prove the dataset is internally coherent; they are not a measurement of the agent's precision or recall.
 
 ## Real Moss checks (separate from mocked unit tests)
 
@@ -43,6 +43,7 @@ Using the supplied project credentials from the ignored local `.env`:
 - **Interface 1:** existing field names and array responses remain; entity/as-of scoping, batch indexing, exact resolution and readiness are additive. The old agent HTTP adapter sent `query` and expected `{hits}` despite the agreed array response; it now sends `text`/scope and consumes the array, forwarding an optional service token.
 - **Read path:** contract reads filter future evidence; ledger investigation supplies real relevant imported books instead of a placeholder. Real retrieved relevance scores are retained on proposals.
 - **Matcher:** cash matching uses bank account 1000 only. Including Stripe clearing 1010 previously cancelled valid net cash settlements and would route routine payouts to the model.
+- **Latest C4 sync:** merged `phase-2` through `625529f`. Aligned dates, shared token, batch indexing, stats return fields, and trace headers. Tests exercise C4 decision/correction publication with mocked HTTP, including the real source-clause dates and human scope metadata.
 
 ## Reproduce
 
@@ -61,7 +62,7 @@ corepack pnpm retrieval:demo:moss
 ## Team integration still required before claiming the complete demo
 
 - Group C/B's event/period path must consume the **non-cash source documents**: duplicate payables, August service accrual and September bank change. No fictitious bank row is inserted to make a bank-only scan appear sufficient.
-- C4 must publish **actual reviewed decisions and corrections** through `/index` with the actual ID, reviewer/outcome/scope and simulated effective date. `D-0417` is only a labelled fixture in the isolated rehearsal until a real July approval is indexed.
+- C4 publishing actions are now present and tested at their HTTP boundary. The integrated close still needs to exercise them with **actual reviewed decisions and corrections**. `D-0417` is only a labelled fixture in the isolated rehearsal until a real July approval is indexed.
 - Railway configuration is included but was not built/deployed here, per the selected local-delivery scope. Hosted Convex needs a reachable `RETRIEVAL_URL`; the local machine's loopback address is for local tests. The shared service token must match the backend configuration when enabled.
 - The sponsorship answer key uses an explicit **82-day cumulative** proration. Its $15,121.95 August catch-up differs from the brief's approximate ~$6,700; see the documented arithmetic and have the team's controller review that assumption.
 - CRS remains unavailable and fail-closed, with null sponsor test identity IDs. A6 needs sponsor-issued sandbox identities and live verification; none is invented here.

@@ -2,10 +2,11 @@
 export type RetrievalHit = { id: string; text: string; score: number };
 export type RetrievalQuery = { collection: string; text: string; k: number; entity: string; asOf: string };
 
-export async function searchRetrieval(url: string, query: RetrievalQuery, apiKey = ""): Promise<RetrievalHit[]> {
+export async function searchRetrieval(url: string, query: RetrievalQuery, apiKey = "", traceId?: string): Promise<RetrievalHit[]> {
   const response = await fetch(`${url.replace(/\/$/, "")}/query`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+    headers: { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      ...(traceId ? { "X-Trace-Id": traceId } : {}) },
     body: JSON.stringify(query),
   });
   if (!response.ok) throw new Error(`Retrieval HTTP ${response.status}`);

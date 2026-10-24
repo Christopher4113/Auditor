@@ -103,7 +103,7 @@ Runtime decision example (send only after actual review, using the real decision
 }
 ```
 
-`meta.effectiveDate` is required for decisions/corrections; `meta.validTo` may bound validity. Preserve reviewer/outcome/scope so the controls engine can distinguish human precedent from routine engine decisions. Corrections use the same envelope with `collection: "corrections"`, the actual correction ID, and the human instruction or failed rule text. The trusted backend is responsible for authorization and review provenance; indexing a string does not grant posting authority. Use versioned source IDs for changed clauses/decisions so old citations retain their meaning.
+`meta.effectiveDate` is required for every indexed chunk; unknown dates return HTTP 422 instead of becoming false historical evidence. `meta.validTo` may bound validity. Preserve reviewer/outcome/scope so the controls engine can distinguish human precedent from routine engine decisions. Corrections use the same envelope with `collection: "corrections"`, the actual correction ID, and the human instruction or failed rule text. The trusted backend is responsible for authorization and review provenance; indexing a string does not grant posting authority. Use versioned source IDs for changed clauses/decisions so old citations retain their meaning.
 
 Storage is SQLite under `.data/`, separated by backend/index. Moss is the durable remote corpus in Moss mode; the canonical local mirror is restored from that owned index on startup. The native cache and all local data are gitignored. Local mode requires persistent disk if deployed and runtime memory must survive replacement of a container.
 
@@ -122,10 +122,16 @@ The tests use isolated local catalogs and mock the SDK boundary; no credentials 
 
 ## Railway package / team connection
 
-`Dockerfile` and `railway.toml` are included as deployment configuration. They were prepared here; no Railway service was created and the Docker image was not built in this environment.
+`Dockerfile` and `railway.env.example` are included as the deployment package. They were prepared here; no Railway service was created and the Docker image was not built in this environment.
 
-Create/select a Railway service from the team repository, keep its build root at the repository root, and set the config-file path to `retrieval/railway.toml`. Set `RETRIEVAL_BACKEND=moss`, `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME=auditor-memory-v2`, and a random `RETRIEVAL_API_KEY` as service variables. The image generates the synthetic seed during build and starts with Railway's `$PORT`. `/health` waits for model warm-up; the health-check timeout is 300 seconds. No credentials are copied into the image.
+Configuration references: [Railway config as code](https://docs.railway.com/config-as-code) and [Dockerfile deployments](https://docs.railway.com/builds/dockerfiles).
+
+Create/select a Railway service from the team repository and keep its build root at the repository root. Set `RAILWAY_DOCKERFILE_PATH=/retrieval/Dockerfile` and the service variables listed in `railway.env.example`, filling the project credentials and a random shared API token. Set the healthcheck path to `/health`; allow 300 seconds for initial model warm-up. The image generates the synthetic seed during build and starts with Railway's `$PORT`. No credentials are copied into the image.
+
+The current Railway docs deprecate `railway.toml`/`railway.json` for new services. This package uses the documented Dockerfile-path variable and service settings; a future code-managed project can use Railway's current [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code) workflow.
 
 Give Group C the public service URL and shared API token. Set `RETRIEVAL_URL` and `RETRIEVAL_API_KEY` on the intended Convex deployment; callers use `Authorization: Bearer <token>`. Hosted Convex actions need a reachable service URL, so this machine's `127.0.0.1:8000` is for local testing. `/health` remains public; data endpoints require the token when configured. The adapter forwards the token and consumes the agreed array response.
 
-Remaining C4 wiring: publish actual decisions/corrections through `/index` after the backend records them, and carry reviewer/outcome/scope/date. Remaining C3/B3 event integration: consume non-cash source documents from `contracts.documents`; a bank-only scan cannot find the catering bank change or the missing August accrual. These are separate from Group A's data/retrieval checks. Full agent/human close and planted-error scoring results are not claimed by the rehearsal.
+C4 publishing is now merged and aligned: it sends actual decisions/corrections with reviewer/outcome/scope/effective date, batches the 21 source clauses, forwards the service token, and selects the stats fields its return validator supports. Source clauses without known dates are skipped until re-seeded with the current loader. The sidecar logs and echoes valid `X-Trace-Id` values for cross-service correlation without logging query text or tokens.
+
+Remaining C3/B3 event integration: consume non-cash source documents from `contracts.documents`; a bank-only scan cannot find the catering bank change or the missing August accrual. Full agent/human close and planted-error scoring results are not claimed by the rehearsal.

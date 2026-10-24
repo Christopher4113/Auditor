@@ -6,9 +6,11 @@ Spec: uv run python export_openapi.py
 from contextlib import asynccontextmanager
 from datetime import date
 import hmac
+import json
 import logging
 import math
 import re
+import time
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -19,7 +21,7 @@ from service import RetrievalService, Settings
 from store import Document
 
 Collection = Literal["policy", "contracts", "decisions", "corrections"]
-logger = logging.getLogger("auditor.retrieval")
+logger = logging.getLogger("uvicorn.error.auditor")
 
 
 class Chunk(BaseModel):
@@ -70,9 +72,7 @@ def normalize(chunk: Chunk, settings: Settings) -> Document:
     if not isinstance(meta["entity"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", meta["entity"]):
         raise HTTPException(422, "meta.entity must be an entity ID")
     if "effectiveDate" not in meta:
-        if chunk.collection in {"decisions", "corrections"}:
-            raise HTTPException(422, "Runtime memory requires meta.effectiveDate")
-        meta["effectiveDate"] = "2026-07-01"
+        raise HTTPException(422, "Indexing requires meta.effectiveDate; unknown dates cannot be treated as historical evidence")
     try:
         start = date.fromisoformat(meta["effectiveDate"])
         end = date.fromisoformat(meta.get("validTo", "9999-12-31"))
@@ -80,6 +80,13 @@ def normalize(chunk: Chunk, settings: Settings) -> Document:
         raise HTTPException(422, "Metadata dates must be ISO YYYY-MM-DD")
     if start > end:
         raise HTTPException(422, "validTo precedes effectiveDate")
+    if isinstance(meta.get("scope"), str):
+        try:
+            parsed = json.loads(meta["scope"])
+            if isinstance(parsed, dict):
+                meta["scope"] = parsed
+        except ValueError:
+            pass
     return Document(chunk.collection, chunk.id, chunk.text, meta)
 
 
@@ -102,6 +109,18 @@ def create_app(settings: Settings | None = None, backend=None) -> FastAPI:
         "Backend is reported by /stats and /health. CRS remains unavailable until A6.")
     app.state.service = None
     bearer = HTTPBearer(auto_error=False)
+
+    @app.middleware("http")
+    async def trace_request(request: Request, call_next):
+        candidate = request.headers.get("X-Trace-Id", "")
+        trace_id = candidate if re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", candidate) else None
+        start = time.perf_counter()
+        response = await call_next(request)
+        if trace_id:
+            response.headers["X-Trace-Id"] = trace_id
+            logger.info("sidecar trace=%s method=%s path=%s status=%s ms=%.2f", trace_id,
+                request.method, request.url.path, response.status_code, (time.perf_counter()-start)*1000)
+        return response
 
     def authorize(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
         if settings.api_key and (credentials is None or not hmac.compare_digest(credentials.credentials, settings.api_key)):

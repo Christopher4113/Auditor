@@ -67,6 +67,8 @@ class RetrievalService:
     async def index(self, documents: list[Document]) -> int:
         async with self.lock:
             current = {doc.key: doc for doc in self.catalog.all()}
+            documents = [Document(doc.collection, doc.id, doc.text,
+                {**(current[doc.key].meta if doc.key in current else {}), **doc.meta}) for doc in documents]
             changed = [doc for doc in documents if current.get(doc.key) != doc]
             if changed:
                 await self.backend.upsert(changed)

@@ -236,12 +236,13 @@ async function queryRetrieval(
   collection: string,
   query: string,
   k: number,
-  scope: { entity: string; asOf: string },
+  scope: { entity: string; asOf: string; traceId?: string },
 ): Promise<Array<{ sourceId: string; text: string; score: number }>> {
   const url = process.env.RETRIEVAL_URL;
   if (!url) return [];
   try {
-    const hits = await searchRetrieval(url, { collection, text: query, k, ...scope }, process.env.RETRIEVAL_API_KEY);
+    const { traceId, ...filter } = scope;
+    const hits = await searchRetrieval(url, { collection, text: query, k, ...filter }, process.env.RETRIEVAL_API_KEY, traceId);
     return hits.map((h) => ({ sourceId: h.id, text: h.text, score: h.score }));
   } catch {
     return [];
@@ -256,14 +257,14 @@ export const propose = internalAction({
   returns: v.id("proposals"),
   handler: async (ctx, { breakId }) => {
     const breakCtx = await (ctx.runQuery(internal.agent.loadBreakCtx, { breakId }) as Promise<{
-      brk: { _id: Id<"breaks">; entity: string; period: string; breakId: string; kind: string; description: string };
+      brk: { _id: Id<"breaks">; entity: string; period: string; breakId: string; kind: string; description: string; traceId?: string };
       txn: { _id: Id<"bankTransactions">; txnId: string; date: string; amount: number; counterparty: string; memo: string };
     } | null>);
     if (!breakCtx) throw new Error(`break ${breakId} not found`);
     const { brk, txn } = breakCtx;
     const [year, month] = brk.period.split("-").map(Number);
     const asOf = `${brk.period}-${new Date(Date.UTC(year, month, 0)).getUTCDate()}`;
-    const retrievalScope = { entity: brk.entity, asOf };
+    const retrievalScope = { entity: brk.entity, asOf, traceId: brk.traceId };
     const retrievedScores = new Map<string, number>();
     const retrieve = async (collection: string, text: string, k: number) => {
       const hits = await queryRetrieval(collection, text, k, retrievalScope);
