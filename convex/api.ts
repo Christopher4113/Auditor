@@ -6,6 +6,7 @@
 // decisions.citations[]: { sourceType, sourceId, text, score } -- text is verbatim, never paraphrased.
 import { getStatus } from "@convex-dev/workflow";
 import { v } from "convex/values";
+import { loadReport } from "./scoring";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
@@ -48,7 +49,7 @@ export const listProposals = query({
     return Promise.all(
       proposals.map(async (p) => {
         const brk = await ctx.db.get(p.breakId);
-        const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+        const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
         const d = await ctx.db.query("decisions").withIndex("by_proposal", (q) => q.eq("proposalId", p._id)).order("desc").first();
         return {
           ...p,
@@ -79,9 +80,10 @@ export const getBreak = query({
   handler: async (ctx, { id }) => {
     const brk = await ctx.db.get(id);
     if (!brk) return null;
-    const bank = await ctx.db.get(brk.bankTransactionId);
-    const vendors = bank ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", brk.entity)).take(100) : [];
-    const vendor = vendors.find((vd) => (bank?.vendorId ? vd.vendorId === bank.vendorId : vd.name === bank?.counterparty)) ?? null;
+    const bank = brk.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
+    const vendorId = brk.vendorId ?? bank?.vendorId;
+    const vendors = (bank || vendorId) ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", brk.entity)).take(100) : [];
+    const vendor = vendors.find((vd) => (vendorId ? vd.vendorId === vendorId : vd.name === bank?.counterparty)) ?? null;
     const contractId = vendor?.contractId;
     const contract = contractId
       ? await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", brk.entity).eq("contractId", contractId)).unique()
@@ -132,23 +134,29 @@ export const scoreboard = query({
     plantedBreaks: v.number(),
     caught: v.number(),
     correct: v.number(),
+    precision: orNull(v.number()),
+    recall: orNull(v.number()),
+    accuracy: orNull(v.number()),
   }),
   handler: async (ctx, { entity, period }) => {
     // ponytail: bounded scans, tables are a few hundred rows; aggregate component if that changes
     const proposals = await ctx.db.query("proposals").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
     const txns = await ctx.db.query("bankTransactions").withIndex("by_entity_period_status", (q) => q.eq("entity", entity).eq("period", period)).take(1000);
-    const key = await ctx.db.query("answerKey").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(20);
+    const score = await loadReport(ctx, entity, period);
     const by = (s: string) => proposals.filter((p) => p.status === s).length;
     return {
       transactions: txns.length,
-      closedByCode: txns.filter((t) => t.status === "matched" && !t.matchedEntryId).length,
+      closedByCode: score.impact.closedByCode,
       proposals: proposals.length,
       posted: by("posted"),
       escalated: by("escalated"),
       underReview: by("under_review"),
-      plantedBreaks: key.length,
-      caught: key.filter((k) => k.result?.caught).length,
-      correct: key.filter((k) => k.result?.correct).length,
+      plantedBreaks: score.overall.planted,
+      caught: score.overall.caught,
+      correct: score.overall.correct,
+      precision: score.overall.precision,
+      recall: score.overall.recall,
+      accuracy: score.overall.accuracy,
     };
   },
 });

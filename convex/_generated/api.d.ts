@@ -25,6 +25,8 @@ import type * as ledger from "../ledger.js";
 import type * as retrieval from "../retrieval.js";
 import type * as retrievalClient from "../retrievalClient.js";
 import type * as seed from "../seed.js";
+import type * as scoring from "../scoring.js";
+import type * as scoring_metrics from "../scoring/metrics.js";
 import type * as tools from "../tools.js";
 
 import type {
@@ -51,6 +53,8 @@ declare const fullApi: ApiFromModules<{
   retrieval: typeof retrieval;
   retrievalClient: typeof retrievalClient;
   seed: typeof seed;
+  scoring: typeof scoring;
+  "scoring/metrics": typeof scoring_metrics;
   tools: typeof tools;
 }>;
 

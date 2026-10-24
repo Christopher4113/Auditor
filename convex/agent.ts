@@ -114,7 +114,7 @@ export const loadBreakCtx = internalQuery({
   handler: async (ctx, { breakId }) => {
     const brk = await ctx.db.get(breakId);
     if (!brk) return null;
-    const txn = await ctx.db.get(brk.bankTransactionId);
+    const txn = brk.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
     if (!txn) return null;
     return {
       brk: {

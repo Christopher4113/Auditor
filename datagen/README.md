@@ -2,6 +2,8 @@
 
 The CLI now defaults to Phase 2, based on the final v2 brief and Design (3). Entity: `eo-festival-nyc`, July–September 2026. Every financial number, vendor, invoice, contract, and policy is synthetic. [Phase 1 commands and the ten-row sample](PHASE1.md) remain supported.
 
+Phase 3 retains schema 2.0.0 and these financial scenarios. It adds [scoring, Impact, reset and CRS integration](../retrieval/PHASE3.md). Vendors carry sponsor persona IDs P01–P15; Field & Flame uses `P12`, the published identity-mismatch scenario. Request bodies stay in the sidecar's P01–P20 sandbox catalog. The historical Phase 1 generator remains unconfigured. No personal identity fields or verification results are added to the financial seed.
+
 ## Run on this Mac
 
 ```bash

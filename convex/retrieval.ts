@@ -170,3 +170,20 @@ export const indexEntity = internalAction({
     return null;
   },
 });
+
+/** A6: call after seed.load has cleared runtime decisions/corrections. Replaces
+ *  the entity's sidecar snapshot, so a reset cannot retain old approvals in Moss.
+ *  Ordinary indexEntity remains an upsert and preserves reviewed runtime memory.
+ */
+export const resetEntity = internalAction({
+  args: { entity: v.string() },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, { entity }): Promise<{ ok: boolean }> => {
+    const chunks = await ctx.runQuery(internal.retrieval.loadClauses, { entity });
+    const result = await post<{ ok: boolean }>("/reindex-all", { entity, chunks });
+    const ok = result?.ok === true;
+    await ctx.runMutation(internal.audit.write, { entity, actor: "seed", action: ok ? "retrieval.reset_entity" : "retrieval.reset_entity.failed",
+      detail: `${ok ? chunks.length : 0}/${chunks.length} source chunks; runtime memory reset ${ok ? "confirmed" : "not confirmed"}` });
+    return { ok };
+  },
+});

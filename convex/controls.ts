@@ -28,8 +28,9 @@ export const review = internalMutation({
 
     // Vendor hold check (4.3): find the counterparty vendor for this transaction.
     const brk = await ctx.db.get(p.breakId);
-    const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
-    const vendor = txn
+    const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
+    const vendorId = brk?.vendorId ?? txn?.vendorId;
+    const vendor = vendorId ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", q => q.eq("entity", p.entity).eq("vendorId", vendorId)).unique() : txn
       ? await ctx.db
           .query("vendors")
           .withIndex("by_entity_vendorId", (q) => q.eq("entity", p.entity))

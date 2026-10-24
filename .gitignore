@@ -9,3 +9,4 @@ __pycache__/
 .DS_Store
 datagen/seed.json
 retrieval/.data/
+.artifacts/

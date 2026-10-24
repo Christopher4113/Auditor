@@ -1,7 +1,7 @@
 [project]
 name = "retrieval"
-version = "0.2.0"
-description = "Persistent scoped Moss retrieval with an explicit local provider; CRS fails closed until Phase 3"
+version = "0.3.0"
+description = "Scoped Moss retrieval, recoverable snapshot reset and fail-closed CRS sandbox verification"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.162.0",

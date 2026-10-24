@@ -38,7 +38,7 @@ export const postEntry = internalMutation({
     if (periodDoc?.status === "signed") return deny(`3.0: period ${period} is signed and locked`);
 
     const brk = await ctx.db.get(proposal.breakId);
-    const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+    const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
     const traceId = await traceFor(ctx, { proposalId });
     const entryId = await ctx.db.insert("journalEntries", {
       traceId,

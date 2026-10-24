@@ -40,3 +40,44 @@ class MossAdapterTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "requires MOSS_PROJECT_ID"):
                 RetrievalService(Settings(backend="moss",data_dir=Path(directory),project_id="",project_key=""))
+
+    async def test_snapshot_removes_only_target_cloud_ids_including_orphans(self):
+        client=Mock()
+        client.get_docs=AsyncMock(return_value=[
+            SimpleNamespace(id="stale",metadata={"entity":"target"}),
+            SimpleNamespace(id="orphan-from-failed-write",metadata={"entity":"target"}),
+            SimpleNamespace(id="peer",metadata={"entity":"other"})])
+        client.delete_docs=AsyncMock()
+        client.load_index=AsyncMock()
+        with tempfile.TemporaryDirectory() as directory, patch("moss.MossClient",return_value=client):
+            backend=MossBackend("test-project","test-key","isolated",Path(directory))
+            backend.loaded=True
+            await backend.replace_entity("target",[],[])
+        client.delete_docs.assert_awaited_once_with("isolated",["stale","orphan-from-failed-write"])
+        client.load_index.assert_awaited_once()
+
+    async def test_snapshot_retries_a_transient_cloud_error_without_deleting_other_entities(self):
+        from moss import MossError
+        client=Mock()
+        client.get_docs=AsyncMock(side_effect=[MossError("transient"),[SimpleNamespace(id="peer",metadata={"entity":"other"})]])
+        client.delete_docs=AsyncMock()
+        with tempfile.TemporaryDirectory() as directory, patch("moss.MossClient",return_value=client), patch("backends.asyncio.sleep",new_callable=AsyncMock):
+            backend=MossBackend("test-project","test-key","isolated",Path(directory))
+            backend.loaded=True
+            await backend.replace_entity("target",[],[])
+        self.assertEqual(client.get_docs.await_count,2)
+        client.delete_docs.assert_not_awaited()
+
+    async def test_upsert_retries_with_upsert_semantics_after_a_transient_cloud_failure(self):
+        from moss import MossError
+        client=Mock()
+        client.add_docs=AsyncMock(side_effect=[MossError('transient'),None])
+        client.load_index=AsyncMock()
+        doc=Document('policy','test','Test clause',{'entity':'target','effectiveDate':'2026-07-01'})
+        with tempfile.TemporaryDirectory() as directory, patch('moss.MossClient',return_value=client), patch('backends.asyncio.sleep',new_callable=AsyncMock):
+            backend=MossBackend('test-project','test-key','isolated',Path(directory))
+            backend.loaded=True
+            await backend.upsert([doc])
+        self.assertEqual(client.add_docs.await_count,2)
+        self.assertTrue(all(call.args[2].upsert for call in client.add_docs.await_args_list))
+        client.load_index.assert_awaited_once()

@@ -1,6 +1,7 @@
 """Real Moss provider and an explicitly labelled local lexical provider."""
 
 from collections import Counter
+import asyncio
 import json
 import math
 from pathlib import Path
@@ -21,6 +22,9 @@ class LocalBackend:
 
     async def upsert(self, documents: list[Document]) -> None:
         pass  # Catalog is the durable store for local mode.
+
+    async def replace_entity(self, entity: str, documents: list[Document], removed: list[Document]) -> None:
+        pass  # Catalog commits the full replacement in one SQLite transaction.
 
     async def query(self, text: str, documents: list[Document], k: int) -> list[tuple[Document, float]]:
         terms = set(words(text))
@@ -68,6 +72,17 @@ class MossBackend:
         return documents
 
     async def upsert(self, documents: list[Document]) -> None:
+        from moss import MossError
+        for attempt in range(3):
+            try:
+                await self._upsert(documents)
+                return
+            except MossError:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(0.5 * (attempt + 1))
+
+    async def _upsert(self, documents: list[Document]) -> None:
         from moss import DocumentInfo, MutationOptions
         raw = [DocumentInfo(id=d.key, text=d.text, metadata={
             "collection": d.collection, "sourceId": d.id, "entity": d.meta["entity"],
@@ -76,6 +91,9 @@ class MossBackend:
         }) for d in documents]
         if not self.loaded:
             await self.client.create_index(self.index_name, raw)
+            # The index exists even if the subsequent model warm-up fails;
+            # a retry must upsert it rather than create the same index again.
+            self.loaded = True
         else:
             await self.client.add_docs(self.index_name, raw, MutationOptions(upsert=True))
         # Initial warm once; re-check the index version only after a write, never
@@ -96,6 +114,27 @@ class MossBackend:
                             {"field": "collection", "condition": {"$eq": documents[0].collection}}, filter]}
         result = await self.client.query(self.index_name, text, QueryOptions(top_k=k, alpha=0.7, filter=filter))
         return [(allowed[doc.id], float(doc.score)) for doc in result.docs if doc.id in allowed]
+
+    async def replace_entity(self, entity: str, documents: list[Document], removed: list[Document]) -> None:
+        from moss import MossError
+        # Cloud index publication can briefly reject a management read/write.
+        # Snapshot writes are idempotent, so bounded retries are safe. Exhausted
+        # retries still leave the journal pending and the service unavailable.
+        for attempt in range(3):
+            try:
+                keep = {doc.key for doc in documents}
+                cloud = await self.client.get_docs(self.index_name) if self.loaded else []
+                stale = [doc.id for doc in cloud if (doc.metadata or {}).get("entity") == entity and doc.id not in keep]
+                if documents:
+                    await self.upsert(documents)
+                if stale:
+                    await self.client.delete_docs(self.index_name, stale)
+                    await self.client.load_index(self.index_name, auto_refresh=True, polling_interval_in_seconds=60)
+                return
+            except MossError:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(0.5 * (attempt + 1))
 
     async def close(self) -> None:
         await self.client.close()
