@@ -1,0 +1,270 @@
+{
+  "about": "Public facts about Coachella for the display-name rebrand and the pitch. Every financial figure in Auditor's books stays synthetic; nothing here is loaded into the ledger. Gathered 2026-10-24 via context.dev (Answers + Scrape) from the sources listed per item. Verify any figure you put on a slide against its source.",
+  "festival": {
+    "official_name": "Coachella Valley Music & Arts Festival",
+    "organizer": "Goldenvoice",
+    "parent_company": "AEG",
+    "founded": 1999,
+    "venue": "Empire Polo Club",
+    "city": "Indio",
+    "state": "California",
+    "format": "Two identical weekends each April",
+    "stages": 7,
+    "dates_2026": "April 10-12 and April 17-19, 2026",
+    "daily_attendance_cap": 125000,
+    "cap_note": "Indio City Council raised the cap from 99,000 to 125,000 in March 2016",
+    "sources": [
+      "https://aegworldwide.com/divisions/music/coachella-valley-music-arts-festival",
+      "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+    ]
+  },
+  "scale_history": [
+    {
+      "year": 2012,
+      "gross_usd": 47313403,
+      "paid_attendance": 158387,
+      "note": "first two-weekend year; 80,726 + 77,661 tickets",
+      "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+    },
+    {
+      "year": 2015,
+      "gross_usd": 84264264,
+      "tickets_sold": 198000,
+      "note": "records for tickets sold and gross",
+      "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+    },
+    {
+      "year": 2016,
+      "gross_usd": 94000000,
+      "tickets_sold": 198000,
+      "note": "approximate, Wikipedia cites Billboard",
+      "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+    },
+    {
+      "year": 2017,
+      "gross_usd": 114000000,
+      "attendance": 250000,
+      "note": "first recurring festival to gross over $100M (Billboard)",
+      "source": "https://www.billboard.com/articles/business/8005736/coachella-festival-2017-114-million-gross"
+    }
+  ],
+  "economic_impact": {
+    "year": 2012,
+    "region_total_usd": 254400000,
+    "indio_consumer_spending_usd": 89200000,
+    "indio_tax_revenue_usd": 1400000,
+    "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+  },
+  "city_revenue_share": {
+    "per_ticket_usd_before_2013": 2.33,
+    "per_ticket_usd_from_2013": 5.01,
+    "agreement": "Goldenvoice keeps Coachella and Stagecoach in Indio through 2030",
+    "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+  },
+  "ticket_prices_2025": [
+    {
+      "tier": "Day Pass",
+      "price_usd": 489
+    },
+    {
+      "tier": "Weekend Pass",
+      "price_usd": 541
+    }
+  ],
+  "ticket_prices_source": "https://aegworldwide.com/divisions/music/coachella-valley-music-arts-festival",
+  "sponsorship": {
+    "history": [
+      {
+        "fact": "Heineken has sponsored Coachella since 2002 as the 'official brew'; Heineken House venue since 2014",
+        "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+      },
+      {
+        "fact": "In 2003 Tollett estimated a title sponsor would add $300,000-$500,000 and declined; primary stages stay unsponsored",
+        "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+      },
+      {
+        "fact": "HP has sponsored the Antarctic dome since 2017",
+        "source": "https://en.wikipedia.org/wiki/Coachella_Valley_Music_and_Arts_Festival"
+      }
+    ],
+    "partners_2026": [
+      {
+        "brand": "American Express",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Absolut",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Alaska Airlines",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Coca-Cola",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "C\u00f3digo",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Google Gemini",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Heineken",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Marriott",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Neutrogena",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Pinterest",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Red Bull",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Rivian",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Wavytalk",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "YouTube",
+        "role": "Official festival partner",
+        "source": "https://www.coachella.com/partners"
+      },
+      {
+        "brand": "Starbucks",
+        "role": "Official coffee, tea and Refreshers sponsor",
+        "source": "https://about.starbucks.com/press/2026/"
+      },
+      {
+        "brand": "Heineken",
+        "role": "Official beer sponsor",
+        "source": "https://www.sponsorunited.com/insights/inside-coachella-2026"
+      },
+      {
+        "brand": "Method (SC Johnson)",
+        "role": "Official body wash, shampoo and conditioner sponsor",
+        "source": "https://www.sponsorunited.com/insights/inside-coachella-2026"
+      },
+      {
+        "brand": "Aperol",
+        "role": "Official spritz; Day Club activation",
+        "source": "https://www.sponsorunited.com/insights/inside-coachella-2026"
+      },
+      {
+        "brand": "Gap",
+        "role": "Exclusive apparel sponsor and official merchandise partner",
+        "source": "https://www.sponsorunited.com/insights/inside-coachella-2026"
+      },
+      {
+        "brand": "Always and Secret",
+        "role": "Co-activation, The Refresh Room",
+        "source": "https://www.sponsorunited.com/insights/inside-coachella-2026"
+      }
+    ],
+    "activations_2025": [
+      {
+        "brand": "Coca-Cola",
+        "role": "Title sponsor; curated a VIP lounge",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Absolut",
+        "role": "Official vodka partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Aperol",
+        "role": "Official spritz partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Method",
+        "role": "Official body and hair care sponsor",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Samyang Foods / Buldak",
+        "role": "Official sauce partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Heineken",
+        "role": "Festival partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Adidas",
+        "role": "Brand activation",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Marshalls",
+        "role": "Brand activation",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "CoverGirl",
+        "role": "Brand activation",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Sally Hansen",
+        "role": "Brand activation",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "True Religion",
+        "role": "Partner activation",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Skrewball",
+        "role": "Festival partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "Casa Azul",
+        "role": "Festival partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      },
+      {
+        "brand": "LaCroix",
+        "role": "Festival partner",
+        "source": "https://www.bizbash.com/experiential-marketing/coachella-2025"
+      }
+    ]
+  },
+  "how_auditor_uses_this": {
+    "rebrand": "Display names only: company name in the seed, header breadcrumb, README and pitch. Entity id stays eo-festival-nyc. Do it before the Sunday 8 am reset.",
+    "synthetic_books": "Vendor names, contracts, bank feed, Stripe payouts and every amount remain fictitious. Real sponsor brands may appear as counterparties in display copy only if their contract amounts are clearly labelled synthetic.",
+    "pitch": "Scale and economic-impact figures above, cited to Billboard and the 2012 impact study, ground the Impact panel's 'events are a small company with a hard deadline' story."
+  }
+}
