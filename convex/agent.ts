@@ -5,7 +5,8 @@ import { internalAction, internalMutation, internalQuery } from "./_generated/se
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { audit } from "./audit";
-import { vIdentity, vCitation, vLine } from "./schema";
+import { vIdentity, vCitation, vLine, vClause, vSourceDocument } from "./schema";
+import { searchRetrieval } from "./retrievalClient";
 import { matchBatch, type BankTxn, type LedgerEntry } from "./agent/matcher";
 import { SYSTEM_PROMPT } from "./agent/instructions";
 import { generateText, stepCountIs } from "ai";
@@ -189,24 +190,39 @@ export const escalateBreak = internalMutation({
 });
 
 export const findContract = internalQuery({
-  args: { entity: v.string(), counterparty: v.string() },
+  args: { entity: v.string(), counterparty: v.string(), asOf: v.optional(v.string()) },
   returns: v.union(
     v.array(
       v.object({
         contractId: v.string(),
-        clauses: v.array(v.object({ id: v.string(), text: v.string() })),
+        clauses: v.array(vClause),
+        documents: v.optional(v.array(vSourceDocument)),
       }),
     ),
     v.null(),
   ),
-  handler: async (ctx, { entity, counterparty }) => {
+  handler: async (ctx, { entity, counterparty, asOf }) => {
     const contracts = await ctx.db
       .query("contracts")
       .withIndex("by_entity_contractId", (q) => q.eq("entity", entity))
       .filter((q) => q.eq(q.field("counterparty"), counterparty))
       .take(3);
     if (!contracts.length) return null;
-    return contracts.map((c) => ({ contractId: c.contractId, clauses: c.clauses }));
+    return contracts.map((c) => ({ contractId: c.contractId,
+      clauses: c.clauses.filter((clause) => !asOf || !clause.effectiveDate || clause.effectiveDate <= asOf),
+      documents: c.documents?.filter((doc) => !asOf || doc.date <= asOf),
+    }));
+  },
+});
+
+/** Raw imported books for investigation; never reads answerKey or planted flags. */
+export const readLedger = internalQuery({
+  args: { entity: v.string(), period: v.string(), account: v.optional(v.string()), counterparty: v.optional(v.string()) },
+  handler: async (ctx, { entity, period, account, counterparty }) => {
+    const entries = await ctx.db.query("journalEntries")
+      .withIndex("by_entity_period", (q) => q.eq("entity", entity).lte("period", period)).take(1000);
+    return entries.filter((entry) => (!account || entry.lines.some((line) => line.account === account))
+      && (!counterparty || entry.counterparty === counterparty || entry.memo.toLowerCase().includes(counterparty.toLowerCase())));
   },
 });
 
@@ -216,18 +232,13 @@ async function queryRetrieval(
   collection: string,
   query: string,
   k: number,
+  scope: { entity: string; asOf: string },
 ): Promise<Array<{ sourceId: string; text: string; score: number }>> {
   const url = process.env.RETRIEVAL_URL;
   if (!url) return [];
   try {
-    const resp = await fetch(`${url}/query`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ collection, query, k }),
-    });
-    if (!resp.ok) return [];
-    const data = (await resp.json()) as { hits?: Array<{ id: string; text: string; score: number }> };
-    return (data.hits ?? []).map((h) => ({ sourceId: h.id, text: h.text, score: h.score }));
+    const hits = await searchRetrieval(url, { collection, text: query, k, ...scope }, process.env.RETRIEVAL_API_KEY);
+    return hits.map((h) => ({ sourceId: h.id, text: h.text, score: h.score }));
   } catch {
     return [];
   }
@@ -246,6 +257,15 @@ export const propose = internalAction({
     } | null>);
     if (!breakCtx) throw new Error(`break ${breakId} not found`);
     const { brk, txn } = breakCtx;
+    const [year, month] = brk.period.split("-").map(Number);
+    const asOf = `${brk.period}-${new Date(Date.UTC(year, month, 0)).getUTCDate()}`;
+    const retrievalScope = { entity: brk.entity, asOf };
+    const retrievedScores = new Map<string, number>();
+    const retrieve = async (collection: string, text: string, k: number) => {
+      const hits = await queryRetrieval(collection, text, k, retrievalScope);
+      for (const hit of hits) retrievedScores.set(hit.sourceId, hit.score);
+      return hits;
+    };
 
     let createdProposalId: Id<"proposals"> | null = null;
     let escalated = false;
@@ -273,7 +293,7 @@ export const propose = internalAction({
           description: "Retrieve past human-decided precedents matching the query via Moss",
           inputSchema: z.object({ query: z.string(), k: z.number().int().min(1).max(5).optional() }),
           execute: async ({ query, k }: { query: string; k?: number }) => {
-            const hits = await queryRetrieval("decisions", query, k ?? 3);
+            const hits = await retrieve("decisions", query, k ?? 3);
             return { hits };
           },
         },
@@ -281,7 +301,7 @@ export const propose = internalAction({
           description: "Retrieve policy clauses matching the query via Moss",
           inputSchema: z.object({ query: z.string(), k: z.number().int().min(1).max(5).optional() }),
           execute: async ({ query, k }: { query: string; k?: number }) => {
-            const hits = await queryRetrieval("policy", query, k ?? 3);
+            const hits = await retrieve("policy", query, k ?? 3);
             return { hits };
           },
         },
@@ -289,7 +309,7 @@ export const propose = internalAction({
           description: "Retrieve past corrections the agent applied, matching the query via Moss",
           inputSchema: z.object({ query: z.string(), k: z.number().int().min(1).max(5).optional() }),
           execute: async ({ query, k }: { query: string; k?: number }) => {
-            const hits = await queryRetrieval("corrections", query, k ?? 3);
+            const hits = await retrieve("corrections", query, k ?? 3);
             return { hits };
           },
         },
@@ -297,13 +317,13 @@ export const propose = internalAction({
           description: "Fetch the active contract for a counterparty",
           inputSchema: z.object({ entity: z.string(), counterparty: z.string() }),
           execute: async ({ counterparty, ...rest }: { entity: string; counterparty: string }) => {
-            const hits = await queryRetrieval("contracts", counterparty, 3);
-            if (hits.length) return { hits };
+            const hits = await retrieve("contracts", counterparty, 3);
             const contracts = await (ctx.runQuery(internal.agent.findContract, {
-              entity: rest.entity,
+              entity: brk.entity,
               counterparty,
+              asOf,
             }) as Promise<Array<{ contractId: string; clauses: Array<{ id: string; text: string }> }> | null>);
-            return { contract: contracts ?? null };
+            return { contract: contracts ?? null, hits };
           },
         },
         fetch_bank_transactions: {
@@ -316,8 +336,10 @@ export const propose = internalAction({
         fetch_ledger: {
           description: "Fetch journal entries from the ledger for the entity and period",
           inputSchema: z.object({ entity: z.string(), period: z.string(), account: z.string().optional() }),
-          execute: async (_args: { entity: string; period: string; account?: string }) => ({
-            message: "Rely on retrieved policy, contracts, and precedent for this break.",
+          execute: async (args: { entity: string; period: string; account?: string }) => ({
+            entries: await ctx.runQuery(internal.agent.readLedger, {
+              entity: brk.entity, period: brk.period, account: args.account, counterparty: txn.counterparty,
+            }),
           }),
         },
         match_transaction: {
@@ -386,7 +408,7 @@ export const propose = internalAction({
               sourceType: c.sourceType as "policy" | "contract" | "decision" | "correction",
               sourceId: c.sourceId,
               text: c.text,
-              score: 0,
+              score: retrievedScores.get(c.sourceId) ?? 0,
             }));
             const reason = `${args.reason} [governing: ${args.governingSource.source} — ${args.governingSource.why}]`;
             createdProposalId = await (ctx.runMutation(internal.agent.saveProposal, {

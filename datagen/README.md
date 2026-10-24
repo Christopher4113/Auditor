@@ -1,98 +1,80 @@
-# Phase 1 data handoff — Group A
+# Data handoff — Phase 2 (A3)
 
-A1 (generator core) and A2 (seed contract + sample), based on **Auditor — Cal Hacks 13.0 Brief v2 (final design)** and **Auditor — Design (3)**. The demo entity is Experts Only Festival NYC, July–September 2026. All financial data, vendors, account suffixes, and contract/policy text are fictitious.
+The CLI now defaults to Phase 2, based on the final v2 brief and Design (3). Entity: `eo-festival-nyc`, July–September 2026. Every financial number, vendor, invoice, contract, and policy is synthetic. [Phase 1 commands and the ten-row sample](PHASE1.md) remain supported.
 
-Phase 1 supplies clean source data and the canned fixture needed by the team's fake close. A3 (six planted breaks + answer key), A4 (Moss indexing/querying), A5 (scoring), and A6 (CRS + live statistics) are later phases. `breaks` and `answerKey` are present but empty. The overall Phase 1 gate still requires the other developers' Convex seed mutation, fake agent, Workflow, and live rail.
-
-The October 24 sync with `main` adopts its shared entity ID, `eo-festival-nyc`, and the empty `fxRates` section. Regenerate any earlier local `seed.json` before loading it. See [the verification record](AUDIT.md) for the checks performed and remaining integration work.
-
-## Run
-
-From the repository root:
+## Run on this Mac
 
 ```bash
-pnpm data:generate
-pnpm data:validate
-pnpm data:test
-```
-
-Or use uv directly, without Node/pnpm:
-
-```bash
-cd datagen
+cd "/Users/deepnayak/Desktop/Auditor /Auditor-Deep/datagen"
 uv sync --locked
 uv run generate.py
 uv run validate.py seed.json
-uv run validate.py sample.seed.json
 uv run python -m unittest discover -s tests -v
 ```
 
-The generator uses only the Python standard library. The local validation/test tools use the locked `jsonschema` dev dependency. No API keys, `.env`, deployment, or network service is needed to generate or validate data; uv needs a network connection only for initial dependency/Python installation.
+Expected generation output:
 
-```bash
-uv run generate.py --seed 42 --out /tmp/auditor-seed.json
-uv run generate.py --transactions-per-month 20 --out /tmp/small-seed.json
-uv run validate.py /tmp/auditor-seed.json
+```text
+wrote seed.json: 368 bank transactions, 12 payouts (Phase 2, synthetic)
+6 break families, 11 period-specific cases; 387 imported entries, 10 source documents
 ```
 
-Default seed: `1328`. Default output: `seed.json` in the current working directory. The default command from this directory writes the gitignored `datagen/seed.json`. At the same generator revision, the same seed and volume produce identical bytes, with no current timestamps or global random state. Generated files elsewhere are your responsibility to keep out of commits. The minimum volume is five transactions per month to accommodate weekly payouts.
+The full output is `datagen/seed.json` (gitignored). The 360 clean transactions remain, plus eight scenario cash movements. Counts by period: July 123, August 122, September 123. `uv run generate.py --phase 1` reproduces the clean 360-row version. Fixed seed `1328`; optional `--seed`, `--out`, and `--transactions-per-month` remain available. Same revision/seed/volume produces identical bytes.
 
-## Interface 5
+## Interface 5, schema version 2.0.0
 
-`seed.schema.json` is a strict Draft 2020-12 JSON Schema, version `1.0.0`. Both `sample.seed.json` and the full generated file conform to it. Every top-level key is required; unknown fields are rejected. `validate.py` also checks cross-record references and accounting invariants, which JSON Schema alone cannot express. Its file loader rejects duplicate JSON keys, `NaN`, and `Infinity` instead of silently accepting ambiguous data.
+Version 2 adds `ledgerEntries` and `sourceDocuments`. Version 1.0.0 and `sample.seed.json` remain valid. All money is **integer USD cents**, all dates are ISO `YYYY-MM-DD`, and every record is scoped to its entity. External IDs are strings, never Convex `_id` values. The validator checks the JSON schema, exact cents, balanced entries, references, periods, case coverage, and P&L arithmetic. It deliberately preserves the planted bank/book mismatches.
 
-| Section | Default output | Consumer guidance |
-| --- | --- | --- |
-| `schemaVersion`, `seed`, `dataset`, `entity`, `currency`, `company` | Version, reproducibility inputs, entity/event metadata; `synthetic: true` | Metadata, not table documents. `dataset` distinguishes `sample` from `generated`. |
-| `accounts` | 27 accounts from the final brief | `id` is an external key; `code` is a four-character string. |
-| `openingBalances` | Four July 1 lines, debit total = credit total = $500,000 | Combine into **one balanced opening journal entry**. These are lines, not four separate entries. |
-| `periods` | July, August, September 2026, all initially `open` | External period keys are `2026-07`, `2026-08`, `2026-09`. |
-| `bankTransactions` | Exactly 120 per month, 360 total, including payouts | All initially `unmatched` for the Workflow to consume. Positive is cash in; negative is cash out. |
-| `stripePayouts` | 12 weekly reports: 5 July, 4 August, 3 September | Positive `gross - fee = net`; `net` equals the linked bank receipt. |
-| `contracts` | Six signed agreements, including five scenario contracts and SoundWave | Clauses retain exact text, external citation IDs, and `effectiveDate`. |
-| `policyClauses` | Twelve clauses from one `policyPackId`, `policy-nyc-v1` | Group into a `policyPacks` record if that is the Convex table shape. Preserve each clause's ID/text. |
-| `vendors` | Fifteen fictitious counterparties, including freight, power, site services, staffing, communications, and print | Only account last four digits; `crsTestIdentity` is present and `null` until sponsor test IDs are supplied. |
-| `breaks`, `answerKey` | Empty arrays | A3 extends these in Phase 2. Never expose the answer key to the agent or retrieval. |
-| `fxRates` | Empty array, matching `main` | This version is USD only. A later second-entity contract must define FX records before populating this section. |
-
-Every section record has `entity: "eo-festival-nyc"`. Nested contract clauses inherit their parent's entity. All money is **integer USD cents**, including `amount`, `gross`, `fee`, `net`, `debit`, `credit`, and `pnlImpact`. For example, `$13,600` is `1360000`; `$2,400` is `240000`. There are no floating point monetary values. Values are bounded to JavaScript's safe integer range so TypeScript/Convex consumers can preserve the same exact cents. Currency is normalized to `USD`.
-
-Dates are ISO `YYYY-MM-DD` without times; periods are calendar months. All references are external string keys, **not Convex `_id` values**:
-
-| Reference | Target |
+| Section | Phase 2 content |
 | --- | --- |
-| `openingBalances[].accountCode`, future `expectedLines[].accountCode` | `accounts[].code` |
-| `bankTransactions[].period`, `stripePayouts[].period` | `periods[].id` |
-| `bankTransactions[].vendorId`, `contracts[].vendorId` | `vendors[].id` (`vendorId` may be null on Stripe receipts) |
-| `bankTransactions[].stripePayoutId` | `stripePayouts[].id` (null on other bank transactions) |
-| `stripePayouts[].bankTransactionId` | `bankTransactions[].id`, with a reciprocal `stripePayoutId` |
-| Future `answerKey[].breakId` | `breaks[].id` |
-| Future `answerKey[].citationIds` | Policy or contract clause IDs |
+| `accounts`, `openingBalances`, `periods` | 27 accounts, four opening lines forming one $500,000 balanced journal, three periods |
+| `bankTransactions`, `stripePayouts` | 368 real-in-the-simulation cash movements and 12 net settlement reports |
+| `ledgerEntries` | 387 imported balanced book entries, including routine books and the intentionally incorrect legacy entries |
+| `contracts`, `policyClauses`, `vendors` | 6 contracts, 12 clauses, 15 fictitious counterparties; only account last four digits |
+| `sourceDocuments` | 10 dated source documents: duplicate invoices, cancellation, signed amendment, attendance, catering invoice/email/payment request, security schedule/invoice |
+| `breaks`, `answerKey` | Scoring-only case annotations and expected corrective entries, with six stable `breakNumber` families across 11 period-specific cases |
+| `fxRates` | Empty; USD entity only |
 
-### Convex developer (Group C)
+`ledgerEntries[].lines` use `{accountCode, debit, credit}`. `bankTransactionId` is nullable because accruals/invoices need no cash movement. `sourceDocuments` carry `{id, entity, period, date, kind, vendorId, contractId, title, text, amount, reference}`; `amount`/`reference` may be null. Source text states facts, not the scoring answer.
 
-1. Validate the file before loading. Start with the committed `sample.seed.json`, then use the generated file with the same contract.
-2. Create accounts and periods, retaining external keys (for example, as `externalId`). Convert external references to Convex IDs only in the loader if your validators use `v.id(...)`. Do not pass source `id` strings as Convex `_id` values.
-3. Create the opening journal entry dated July 1 from the four opening lines. Cash is $380,000 debit; prepaid venue deposit $60,000 debit; common stock $500,000 credit; retained earnings $60,000 **debit**, as specified in the brief. The ledger is seeded only with this opening entry. Bank transactions are source rows for the fake close, not already-posted ledger entries.
-4. Load the bank feed, contracts, policies, and associated vendor/payout metadata. Group C owns the table layout: keep vendor and payout source records available in the backend even if embedded in existing table documents, since there are no separate vendor/payout tables in the current design. An idempotent seed mutation should upsert by `(entity, externalId)` or reject a second load before inserting anything.
-5. Do not seed proposals, decisions, corrections, or invented precedent. The fake Workflow creates those during the Phase 1 gate. There are no FX records because Phase 1 has one USD entity.
+Cases add `breakNumber`, `date`, `sourceDocumentIds`, and `ledgerEntryIds` to the Phase 1 break shape. Answer rows add `breakNumber` and `dependsOn` (earlier case IDs). Each answer is a **corrective entry applied to the imported books**, not a second copy of an already-recorded full transaction. Later corrections assume the listed prior-period corrections have been applied.
 
-Convex table definitions, agent tools, and frontend implementation remain Group C/B/D responsibilities; their upstream changes are preserved by the sync. The seed mutation and end-to-end gate remain team integration work. JSON shape is defined here for those consumers; coordinate interface changes before merging.
+## Cases and accounting assumptions
 
-### Sample fixture
+| Cases | Family | Correct treatment |
+| --- | --- | --- |
+| `B1-2026-07/08/09` | Stripe fee netting | Correct imported gross cash: Dr processing fees / Cr Cash. July is $1,420 on $48,600 gross / $47,180 received; August/September recur. July requires initial human approval in the answer key. |
+| `B2-2026-07` | Duplicate payable | Reverse the portal copy of SW1042: Dr AP / Cr prepaid $18,500. September production is prepaid in July, so this duplicate reversal has $0 P&L impact and is a control exception. |
+| `B3-2026-07` | Artist refund shortfall | Dr Cash $51,000; Dr cancellation fees $9,000; Cr AR $60,000. The July approval can become future precedent. |
+| `B3-2026-09` | Apex transfer case | Dr Cash $13,600; Dr inspection fees $2,400; Cr vendor deposits $16,000. Under threshold; retrieve July's actual decision if available. |
+| `B4-2026-08/09` | Sponsor amendment | Cumulative fixed-fee catch-up in August; remaining fixed and capped variable revenue in September. |
+| `B5-2026-09` | Bank change / payment hold | Hold on September 10, retain master account 4471, verify/callback and escalate. Reclass the unpaid invoiced advance Dr 1400 / Cr prepaid $42,000. No Cash line is invented. |
+| `B6-2026-08/09` | Missing accrual | Accrue $9,400 in August; reverse the accrual against September's already imported invoice expense, leaving the expense in August. |
 
-`sample.seed.json` contains ten explicit, hand-authored bank transactions across the three months, with the same master data as the generator. It includes:
+**Sponsor arithmetic:** the campaign has 82 days inclusive (July 1–September 20). Fixed revenue through August is `round($30,000 × 62/82) = $22,682.93`. Imported July/August revenue is $37,804.88, so the August cumulative correction is **$15,121.95**. September's correction is **$35,121.95**, including $40,000 variable (total $70,000 cap less $30,000 fixed). The brief's approximate ~$6,700 does not describe a cumulative catch-up using its stated dates. This implementation states and tests the daily-proration assumption; confirm it with the team's human controller before the demo.
 
-- `sample-bank-02`: July Stripe receipt $47,180; its report has $48,600 gross and $1,420 fees.
-- `sample-bank-06`: August Apex deposit paid, $16,000.
-- `sample-bank-10`: September 25 Apex refund received, $13,600, for the **canned fake** Apex proposal. Expected fake entry: Dr Cash $13,600; Dr `5160` inspection fees $2,400; Cr `1200` vendor deposits $16,000.
+Applying all answer-key corrections to imported books yields a balanced trial balance, cash equal to opening cash plus every bank movement, sponsorship revenue exactly $70,000, cleared artist/sponsor receivables, and the security setup expense in August once. The field-and-flame hold never creates a $42,000 bank outflow. These are oracle integrity checks, not measured agent accuracy.
 
-The canned refund is only in the sample; the generated Phase 1 baseline does not plant a refund discrepancy. The sample is for exercising data flow and fixtures, not for asserting that all services have already been delivered or all accounting entries posted. `D-0417` is a fixture in the existing retrieval stub, not a real decision seeded by this generator. The prior decision must be created by the later July run before a real September close can cite it.
+## Convex integration and team handoff
 
-### Retrieval developer / agent consumer (Phase 2 handoff)
+The loader accepts both schema versions. `ledgerEntries` become `journalEntries` with `source: "import"`, `postedBy: "seed"`, references and optional counterparties. Opening balances remain one separate entry. This imports source books; it does not claim the controls engine approved legacy entries. Invalid/unbalanced imports are rejected before writes.
 
-Policy and contract clause IDs/text are ready for A4. In particular, `policy-5.1` and `apex-9.4` use the exact strings in the existing retrieval stub. Index one clause per chunk, preserving its ID, entity, source contract/policy pack, and effective date in metadata. Respect the close's as-of date when retrieving: Brightwater Amendment 1 is effective **August 10**, and must not affect July. The final brief's sponsorship break table says “May” once; its contract and timeline consistently say August, which this data follows.
+Raw documents attach to `contracts[].documents`; clause effective dates are retained. Answer-key records keep case IDs, family numbers, expected action, escalation, citations and dependencies. No proposals, controller decisions, or corrections are fabricated by the loader.
 
-Stripe reports are normalized weekly settlement summaries inspired by [Stripe's balance transaction model](https://docs.stripe.com/api/balance_transactions/object), with integer gross, fees, and net amounts. They are not raw Stripe API objects or a live Stripe integration. Generated fees use a synthetic 2.9% plus $0.30 per charge with integer half-up rounding; the hand-authored sample preserves the brief's example values.
+From the root:
 
-The CRS credentials identify a sandbox account, not the approved test-person IDs. `crsTestIdentity: null` explicitly means verification unavailable. A6 must use sponsor-issued test identities and fail closed when unavailable. No Phase 1 step calls CRS, Moss, Anthropic, or Convex, and no credentials are included in the seed files.
+```bash
+corepack pnpm seed --dry-run
+```
+
+This validates and shows row counts without touching a deployment. The seed wrapper reads JSON in-process because the full ~400 KB Phase 2 file exceeds macOS shell argument limits. `SEED=datagen/sample.seed.json corepack pnpm seed --dry-run` checks the original sample.
+
+**Team integration:** after Group C has deployed the matching code to the intended dev deployment, `corepack pnpm seed` replaces the selected entity's current data. Coordinate the reset with the team; it is not run automatically by our tests.
+
+The tests load the actual full generated JSON into an isolated `convex-test` database. The code matcher leaves exactly five intended cash mismatches unmatched: three Stripe settlements plus Northern/Apex refunds. **A bank-only scan cannot discover every case.** Group C/B's period/event path must also consume the contract documents for duplicate invoices, missing accruals, and bank-detail changes. Do not manufacture bank rows to conceal this integration requirement. The pending catering payment remains unpaid until callback verification.
+
+## Retrieval / memory boundary
+
+See [the retrieval guide](../retrieval/README.md) for local and real Moss commands. Automatic bootstrap allowlists **only policy and contract clauses**, preserving IDs/text/effective dates. It excludes bank/book data, planted flags, `breaks`, and `answerKey`. Runtime decisions/corrections are indexed only after the backend produces them; no real `D-0417` is preloaded.
+
+The isolated rehearsal explicitly labels its synthetic human-decision fixture. It demonstrates indexing and retrieval, not a live agent close or real controller approval. [Phase 2 verification](../retrieval/PHASE2_AUDIT.md) records what was tested.

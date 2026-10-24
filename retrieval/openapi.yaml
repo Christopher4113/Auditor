@@ -1,10 +1,21 @@
 openapi: 3.1.0
 info:
   title: Auditor retrieval
-  description: Phase 1 fixture service. Queries return canned citations, indexing
-    does not persist, statistics are placeholders, and CRS verification is unavailable.
-  version: 0.1.0
+  description: Phase 2 persistent policy/contract and runtime decision/correction
+    retrieval. Backend is reported by /stats and /health. CRS remains unavailable
+    until A6.
+  version: 0.2.0
 paths:
+  /health:
+    get:
+      summary: Health
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
   /index:
     post:
       summary: Index
@@ -30,6 +41,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /index/batch:
+    post:
+      summary: Index Batch
+      operationId: index_batch_index_batch_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Batch'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Index Batch Index Batch Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /query:
     post:
       summary: Query
@@ -56,6 +96,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /resolve:
+    post:
+      summary: Resolve
+      operationId: resolve_resolve_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Resolve'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Resolve Resolve Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /stats:
     get:
       summary: Stats
@@ -69,6 +138,8 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response Stats Stats Get
+      security:
+      - HTTPBearer: []
   /verify:
     post:
       summary: Verify
@@ -92,22 +163,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
 components:
   schemas:
+    Batch:
+      properties:
+        chunks:
+          items:
+            $ref: '#/components/schemas/Chunk'
+          type: array
+          maxItems: 100
+          minItems: 1
+          title: Chunks
+      type: object
+      required:
+      - chunks
+      title: Batch
     Chunk:
       properties:
         collection:
           type: string
-          minLength: 1
-          pattern: \S
+          enum:
+          - policy
+          - contracts
+          - decisions
+          - corrections
           title: Collection
         id:
           type: string
+          maxLength: 200
           minLength: 1
           pattern: \S
           title: Id
         text:
           type: string
+          maxLength: 20000
           minLength: 1
           pattern: \S
           title: Text
@@ -151,11 +242,15 @@ components:
       properties:
         collection:
           type: string
-          minLength: 1
-          pattern: \S
+          enum:
+          - policy
+          - contracts
+          - decisions
+          - corrections
           title: Collection
         text:
           type: string
+          maxLength: 4000
           minLength: 1
           pattern: \S
           title: Text
@@ -165,11 +260,55 @@ components:
           minimum: 1.0
           title: K
           default: 3
+        entity:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9_-]{1,80}$
+          - type: 'null'
+          title: Entity
+        asOf:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Asof
       type: object
       required:
       - collection
       - text
       title: Query
+    Resolve:
+      properties:
+        collection:
+          type: string
+          enum:
+          - policy
+          - contracts
+          - decisions
+          - corrections
+          title: Collection
+        id:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Id
+        entity:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9_-]{1,80}$
+          - type: 'null'
+          title: Entity
+        asOf:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Asof
+      type: object
+      required:
+      - collection
+      - id
+      title: Resolve
     ValidationError:
       properties:
         loc:
@@ -226,3 +365,7 @@ components:
       - fraudFlags
       - available
       title: VerifyResult
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

@@ -1,7 +1,7 @@
-"""A1 / Interface 5: generate the clean Phase 1 dataset without network calls.
+"""Interface 5: deterministic Phase 1/2 financial sources, without network calls.
 
 Usage: uv run generate.py [--seed 1328] [--out seed.json]
-Six planted breaks and their answer key are A3 (Phase 2); their arrays stay empty.
+Phase 2 is the CLI default. Use --phase 1 to reproduce the original clean data.
 """
 import argparse
 import calendar
@@ -39,8 +39,8 @@ def bank_transaction(id: str, date: str, amount: int, counterparty: str,
     }
 
 
-def generate(seed: int = DEFAULT_SEED,
-             transactions_per_month: int = DEFAULT_TRANSACTIONS_PER_MONTH) -> dict:
+def generate_clean(seed: int = DEFAULT_SEED,
+                   transactions_per_month: int = DEFAULT_TRANSACTIONS_PER_MONTH) -> dict:
     """Same inputs produce byte-identical JSON after serialization.
 
     Fridays settle ticket proceeds through the last pre-event Friday. Fees are
@@ -89,20 +89,35 @@ def generate(seed: int = DEFAULT_SEED,
     return data
 
 
+def generate(seed: int = DEFAULT_SEED, transactions_per_month: int = DEFAULT_TRANSACTIONS_PER_MONTH,
+             phase: int = 2) -> dict:
+    data = generate_clean(seed, transactions_per_month)
+    if phase == 1:
+        return data
+    if phase != 2:
+        raise ValueError("phase must be 1 or 2")
+    from phase2 import plant_scenarios
+    return plant_scenarios(data)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--out", type=Path, default=Path("seed.json"))
     parser.add_argument("--transactions-per-month", type=int, default=DEFAULT_TRANSACTIONS_PER_MONTH)
+    parser.add_argument("--phase", type=int, choices=(1, 2), default=2)
     args = parser.parse_args()
     try:
-        data = generate(args.seed, args.transactions_per_month)
+        data = generate(args.seed, args.transactions_per_month, args.phase)
     except ValueError as exc:
         parser.error(str(exc))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {args.out}: {len(data['bankTransactions'])} bank transactions, "
-          f"{len(data['stripePayouts'])} payouts (Phase 1, synthetic)")
+          f"{len(data['stripePayouts'])} payouts (Phase {args.phase}, synthetic)")
+    if args.phase == 2:
+        print(f"6 break families, {len(data['answerKey'])} period-specific cases; "
+              f"{len(data['ledgerEntries'])} imported entries, {len(data['sourceDocuments'])} source documents")
 
 
 if __name__ == "__main__":

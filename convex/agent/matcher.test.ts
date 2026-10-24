@@ -28,6 +28,16 @@ function entry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
 }
 
 describe("matchTransaction", () => {
+  it("matches net bank cash when the Stripe entry also clears gross processor funds", () => {
+    const result = matchTransaction(txn({ counterparty: "Stripe", amount: 4_718_000 }), [entry({
+      memo: "Stripe payout settlement", lines: [
+        { account: "1000", debit: 4_718_000, credit: 0 },
+        { account: "5400", debit: 142_000, credit: 0 },
+        { account: "1010", debit: 0, credit: 4_860_000 },
+      ],
+    })]);
+    expect(result.matched).toBe(true);
+  });
   it("matches exact amount, counterparty in memo, same date", () => {
     const result = matchTransaction(txn(), [entry()]);
     expect(result.matched).toBe(true);

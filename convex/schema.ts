@@ -28,7 +28,15 @@ export const vCitation = v.object({
   score: v.number(),
 });
 
-export const vClause = v.object({ id: v.string(), number: v.optional(v.string()), text: v.string() });
+export const vClause = v.object({ id: v.string(), number: v.optional(v.string()), text: v.string(), effectiveDate: v.optional(v.string()) });
+
+// A3 evidence. Bank changes, invoices and service schedules remain source
+// documents; they are never disguised as settled bank transactions.
+export const vSourceDocument = v.object({
+  id: v.string(), entity: v.string(), period: v.string(), date: v.string(), kind: v.string(),
+  vendorId: v.string(), contractId: v.string(), title: v.string(), text: v.string(),
+  amount: v.union(v.number(), v.null()), reference: v.union(v.string(), v.null()),
+});
 
 export const vRuleResult = v.object({
   rule: v.string(), // "balance", "citation", "threshold", "bank_detail_change", "period_lock", "revision_cap", "precedent", "correction"
@@ -99,8 +107,12 @@ export default defineSchema({
     date: v.string(),
     lines: v.array(vLine),
     memo: v.string(),
-    source: v.union(v.literal("opening"), v.literal("post_entry")),
+    source: v.union(v.literal("opening"), v.literal("import"), v.literal("post_entry")),
     postedBy: vActor,
+    reference: v.optional(v.string()),
+    counterparty: v.optional(v.string()),
+    vendorId: v.optional(v.string()),
+    txnId: v.optional(v.string()),
     proposalId: v.optional(v.id("proposals")),
   }).index("by_entity_period", ["entity", "period"]),
 
@@ -111,6 +123,7 @@ export default defineSchema({
     counterparty: v.string(), // vendor name
     title: v.string(),
     clauses: v.array(vClause), // chunked into Moss; amendments append a clause
+    documents: v.optional(v.array(vSourceDocument)),
   }).index("by_entity_contractId", ["entity", "contractId"]),
 
   vendors: defineTable({
@@ -191,6 +204,13 @@ export default defineSchema({
     txnId: v.string(), // the planted bank transaction
     expectedKind: v.string(),
     expectedLines: v.array(vLine),
+    caseId: v.optional(v.string()),
+    expectedAction: v.optional(v.string()),
+    expectedEscalation: v.optional(v.boolean()),
+    pnlImpact: v.optional(v.number()),
+    citationIds: v.optional(v.array(v.string())),
+    sourceDocumentIds: v.optional(v.array(v.string())),
+    dependsOn: v.optional(v.array(v.string())),
     result: v.optional(v.object({ caught: v.boolean(), correct: v.boolean(), scoredAt: v.number() })),
   }).index("by_entity_period", ["entity", "period"]),
 

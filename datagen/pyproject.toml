@@ -1,7 +1,7 @@
 [project]
 name = "datagen"
-version = "0.1.0"
-description = "Phase 1 deterministic Experts Only Festival NYC data and seed contract"
+version = "0.2.0"
+description = "Deterministic Phase 1/2 sources, imported books, six planted break families and answer key"
 requires-python = ">=3.12"
 dependencies = []
 

@@ -1,0 +1,10 @@
+# Service root: repository root. Set the Railway config-file path to this file.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "retrieval/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

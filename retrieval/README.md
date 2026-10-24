@@ -1,32 +1,131 @@
-# Retrieval in Phase 1
+# Phase 2 retrieval — A4
 
-The final design puts real FastAPI + Moss retrieval in **A4 / Phase 2** and CRS verification + measured statistics in **A6 / Phase 3**. Phase 1 uses the existing Interface 1 stub so Group B/C can exercise their fake Workflow without API keys.
+FastAPI now performs persistent retrieval. **Moss mode uses the real Moss SDK and native semantic/hybrid search.** Local mode is a separate, labelled lexical provider for tests and offline rehearsals. No query returns canned hits. Moss failures return HTTP 503; the service does not silently switch to local search. `/verify` remains fail-closed until A6.
+
+## Try it on this Mac
+
+The supplied Moss credentials have been placed in the gitignored `retrieval/.env` with owner-only permissions. The generated seed must exist first.
 
 ```bash
-cd retrieval
+cd "/Users/deepnayak/Desktop/Auditor /Auditor-Deep/datagen"
+uv run generate.py
+uv run validate.py seed.json
+```
+
+Quick rehearsal, no API credentials or running server required:
+
+```bash
+cd "../retrieval"
 uv sync --locked
-uv run uvicorn main:app --reload --port 8000
+uv run demo.py --backend local
 ```
 
-Run `pnpm retrieval:test` from the repository root, or `uv run python -m unittest discover -s tests -v` from this directory, to verify the API without a running server or external services. The tests check HTTP responses, verbatim citations against the seed, and parity between `openapi.yaml` and the app's generated specification.
-
-Interactive contract: <http://localhost:8000/docs>; checked-in specification: `openapi.yaml`. `pnpm dev:retrieval` also works after copying `.env.example` to the gitignored `.env`; its script explicitly loads that file. Stub startup does not require populated credentials.
-
-| Endpoint | Current stub behavior |
-| --- | --- |
-| `POST /index` | Acknowledges `{collection, id, text, meta}`. Does not persist or index it. |
-| `POST /query` | Returns up to three fixed Apex fixture citations, regardless of collection or query. Does not search Moss. |
-| `GET /stats` | Returns zero placeholders. These are not measured performance figures. |
-| `POST /verify` | Returns `identityMatch: false`, `fraudFlags: []`, `available: false`. Verification is unavailable and must escalate. |
+Real Moss rehearsal:
 
 ```bash
-curl -s http://localhost:8000/query \
-  -H 'Content-Type: application/json' \
-  -d '{"collection":"contracts","text":"Apex deposit inspection fee","k":3}'
+uv run --env-file .env demo.py --backend moss
 ```
 
-The fixture IDs `apex-9.4` and `policy-5.1` resolve verbatim in [Group A's sample](../datagen/sample.seed.json). `D-0417` is canned precedent until the July close creates a real human decision. The source clauses, entity IDs, effective dates, and data-loading instructions for A4 are in the [data handoff](../datagen/README.md).
+Both exercises use the actual HTTP handlers. They index the 21 source clauses, retrieve Apex/policy citations, index a labelled synthetic human-decision fixture and retrieve it, then check historical scoping. Rehearsal memory uses a separate entity and the separate `auditor-rehearsal-v2` Moss index; it is never inserted as a real decision into `eo-festival-nyc`. `D-0417` is a rehearsal fixture until the team's real July approval produces actual memory. Output identifies the backend and measured latency.
 
-`k` must be a JSON integer from 1 through 50 (default 3). Negative/zero values, booleans, and numeric strings return HTTP 422. Text, IDs, and collection names must include a non-whitespace character. Valid request and response field names match Interface 1; the fixture service still returns at most three hits. The `/docs` page explicitly identifies this service as a Phase 1 stub.
+## Start the interactive service
 
-CRS/Moss credentials belong only in `retrieval/.env`; Anthropic credentials belong in the backend deployment environment. No secret is needed for the Phase 1 data handoff. Null `crsTestIdentity` values in the seed are not verified identities.
+From `retrieval/`, keep this process running:
+
+```bash
+uv run --env-file .env uvicorn main:app --reload --port 8000
+```
+
+Open <http://127.0.0.1:8000/docs> and <http://127.0.0.1:8000/health>. Startup bootstraps policy/contract clauses from `../datagen/seed.json`, then warms one Moss index. First startup can take tens of seconds. Readiness waits for warm-up. `/query` never loads the model/index; an index write refreshes the loaded copy. Disk caches avoid repeated downloads.
+
+For a new clone, create `.env` from `.env.example` if it does not already exist and fill the Moss project ID/key. For offline service operation, explicitly select local mode:
+
+```bash
+RETRIEVAL_BACKEND=local uv run uvicorn main:app --reload --port 8000
+```
+
+Without credentials or an explicit backend, the development default is local. `/health` and `/stats` always identify the actual backend. The production Docker configuration explicitly requires Moss mode.
+
+Try this body in `POST /query`:
+
+```json
+{
+  "collection": "contracts",
+  "text": "damage deposit less 15 percent inspection fee",
+  "entity": "eo-festival-nyc",
+  "asOf": "2026-09-30",
+  "k": 3
+}
+```
+
+Or use another terminal:
+
+```bash
+curl -s http://127.0.0.1:8000/query \
+  -H 'Content-Type: application/json' \
+  -d '{"collection":"contracts","text":"inspection fee","entity":"eo-festival-nyc","asOf":"2026-09-30","k":3}'
+```
+
+Responses remain the agreed **array** `[{id, text, score}]`. Source IDs and verbatim text are preserved; scores are relevance values, not probabilities that an accounting treatment is correct. Use `text` in new clients; legacy `query` is accepted as an input alias.
+
+Counterparty-only contract queries first select matching canonical contract titles, then rank those clauses. This lets `Apex Staging` find its signed contract even though the vendor name is absent from the clause body. Natural-language treatment questions search the eligible contract corpus.
+
+## API and runtime memory
+
+| Endpoint | Behavior |
+| --- | --- |
+| `POST /index` | Persist/upsert `{collection,id,text,meta}`; returns `{ok,id}`. Identical writes are idempotent. |
+| `POST /index/batch` | Batch upsert `{chunks:[...]}` (1–100 chunks); rejects duplicate IDs within the same entity/collection batch. |
+| `POST /query` | Real ranked search within collection, entity and as-of scope; no result means `[]`. |
+| `POST /resolve` | Exact citation resolution `{collection,id,entity,asOf}` → `{id,text,meta}` or HTTP 404. No fuzzy matching for a cited ID. |
+| `GET /stats` | Backend, document counts, measured retrieval count/median latency and labelled token estimates. Counters are process-local. |
+| `GET /health` | Readiness and active backend; no financial text or credentials. |
+| `POST /verify` | `{identityMatch:false,fraudFlags:[],available:false}`; unavailable verification cannot release a hold. |
+
+Collections: `policy`, `contracts`, `decisions`, `corrections`. `k` is a JSON integer from 1–50 (default 3; agent tools cap it at 5). Blank text, malformed dates and invalid `k` return HTTP 422.
+
+**Scope:** pass `entity` and `asOf` for every close. Compatible requests that omit them use `eo-festival-nyc` and the conservative **July 31, 2026** default. Thus an older client never silently sees August/September knowledge during July. The Convex adapter now supplies its actual entity and month-end date. Filters are applied before ranking and checked again before returning source text. The August 10 Brightwater amendment is unavailable in July.
+
+Runtime decision example (send only after actual review, using the real decision ID and text):
+
+```json
+{
+  "collection": "decisions",
+  "id": "YOUR-ACTUAL-DECISION-ID",
+  "text": "Verbatim recorded reviewer decision and its rationale",
+  "meta": {
+    "entity": "eo-festival-nyc",
+    "effectiveDate": "2026-07-31",
+    "reviewer": "human",
+    "outcome": "approved",
+    "scope": {"breakKind": "deposit_shortfall", "policyClause": "policy-5.1"}
+  }
+}
+```
+
+`meta.effectiveDate` is required for decisions/corrections; `meta.validTo` may bound validity. Preserve reviewer/outcome/scope so the controls engine can distinguish human precedent from routine engine decisions. Corrections use the same envelope with `collection: "corrections"`, the actual correction ID, and the human instruction or failed rule text. The trusted backend is responsible for authorization and review provenance; indexing a string does not grant posting authority. Use versioned source IDs for changed clauses/decisions so old citations retain their meaning.
+
+Storage is SQLite under `.data/`, separated by backend/index. Moss is the durable remote corpus in Moss mode; the canonical local mirror is restored from that owned index on startup. The native cache and all local data are gitignored. Local mode requires persistent disk if deployed and runtime memory must survive replacement of a container.
+
+`tokensUsed` / `tokensFullContext` use `ceil(characters/4)` for retrieved versus full eligible context. `tokenCounting: "estimate_chars_div_4"` labels this approximation. These are not actual Claude billing tokens or a measured cost-savings claim.
+
+## Bootstrap and check
+
+Startup bootstraps only an explicit allowlist of policy/contract clauses. It never indexes `answerKey`, `breaks`, planted flags, books, attendance, or simulated human approvals. Re-send source clauses to an existing service with:
+
+```bash
+uv run --env-file .env bootstrap.py --url http://127.0.0.1:8000
+uv run python -m unittest discover -s tests -v
+```
+
+The tests use isolated local catalogs and mock the SDK boundary; no credentials are needed. The real Moss runs are recorded separately in [PHASE2_AUDIT.md](PHASE2_AUDIT.md). Regenerate the agreed specification with `uv run python export_openapi.py`.
+
+## Railway package / team connection
+
+`Dockerfile` and `railway.toml` are included as deployment configuration. They were prepared here; no Railway service was created and the Docker image was not built in this environment.
+
+Create/select a Railway service from the team repository, keep its build root at the repository root, and set the config-file path to `retrieval/railway.toml`. Set `RETRIEVAL_BACKEND=moss`, `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME=auditor-memory-v2`, and a random `RETRIEVAL_API_KEY` as service variables. The image generates the synthetic seed during build and starts with Railway's `$PORT`. `/health` waits for model warm-up; the health-check timeout is 300 seconds. No credentials are copied into the image.
+
+Give Group C the public service URL and shared API token. Set `RETRIEVAL_URL` and `RETRIEVAL_API_KEY` on the intended Convex deployment; callers use `Authorization: Bearer <token>`. Hosted Convex actions need a reachable service URL, so this machine's `127.0.0.1:8000` is for local testing. `/health` remains public; data endpoints require the token when configured. The adapter forwards the token and consumes the agreed array response.
+
+Remaining C4 wiring: publish actual decisions/corrections through `/index` after the backend records them, and carry reviewer/outcome/scope/date. Remaining C3/B3 event integration: consume non-cash source documents from `contracts.documents`; a bank-only scan cannot find the catering bank change or the missing August accrual. These are separate from Group A's data/retrieval checks. Full agent/human close and planted-error scoring results are not claimed by the rehearsal.
