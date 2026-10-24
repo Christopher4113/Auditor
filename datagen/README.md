@@ -71,7 +71,7 @@ This validates and shows row counts without touching a deployment. The seed wrap
 
 **Team integration:** after Group C has deployed the matching code to the intended dev deployment, `corepack pnpm seed` replaces the selected entity's current data. Coordinate the reset with the team; it is not run automatically by our tests.
 
-The tests load the actual full generated JSON into an isolated `convex-test` database. The code matcher leaves exactly five intended cash mismatches unmatched: three Stripe settlements plus Northern/Apex refunds. **A bank-only scan cannot discover every case.** Group C/B's period/event path must also consume the contract documents for duplicate invoices, missing accruals, and bank-detail changes. Do not manufacture bank rows to conceal this integration requirement. The pending catering payment remains unpaid until callback verification.
+The tests load the actual full generated JSON into an isolated `convex-test` database. The code matcher leaves exactly five intended cash mismatches unmatched: three Stripe settlements plus Northern/Apex refunds. **A bank-only scan cannot discover every case.** Group C/B's period/event path must also consume the contract documents and imported books for duplicate invoices (family 2), sponsorship amendments/revenue schedules (family 4), bank-detail changes (family 5), and missing accruals (family 6). Those are six additional period-specific cases. Do not manufacture bank rows to conceal this integration requirement. The pending catering payment remains unpaid until callback verification.
 
 ## Retrieval / memory boundary
 

@@ -61,9 +61,23 @@ corepack pnpm retrieval:demo:moss
 
 ## Team integration still required before claiming the complete demo
 
-- Group C/B's event/period path must consume the **non-cash source documents**: duplicate payables, August service accrual and September bank change. No fictitious bank row is inserted to make a bank-only scan appear sufficient.
+- Group C/B's event/period path must consume **non-cash evidence and imported books**: duplicate payables, sponsorship amendments/revenue schedules, service accruals and bank changes (families 2, 4, 5, 6). Those six period-specific cases are not covered by the five bank mismatches. No fictitious bank row is inserted to make a bank-only scan appear sufficient.
 - C4 publishing actions are now present and tested at their HTTP boundary. The integrated close still needs to exercise them with **actual reviewed decisions and corrections**. `D-0417` is only a labelled fixture in the isolated rehearsal until a real July approval is indexed.
 - Railway configuration is included but was not built/deployed here, per the selected local-delivery scope. Hosted Convex needs a reachable `RETRIEVAL_URL`; the local machine's loopback address is for local tests. The shared service token must match the backend configuration when enabled.
 - The sponsorship answer key uses an explicit **82-day cumulative** proration. Its $15,121.95 August catch-up differs from the brief's approximate ~$6,700; see the documented arithmetic and have the team's controller review that assumption.
 - CRS remains unavailable and fail-closed, with null sponsor test identity IDs. A6 needs sponsor-issued sandbox identities and live verification; none is invented here.
 - No live Claude close, human approval, period sign-off, or measured planted-error precision/recall is claimed by these component tests. Those require the integrated team gate.
+
+## Read-only recheck after the user's successful local run
+
+Observed on October 24, 2026, before this documentation update:
+
+- Local `Deep` and remote `Deep` matched at `379b47c`; `Deep` included remote `phase-2` at `625529f`. No newer integration commit was missing locally.
+- All 192 automated tests passed again. Convex TypeScript and the frontend production build passed again.
+- The user's running `127.0.0.1:8000` service reported real Moss, ready, 21 documents (12 policy / 9 contract). Verbatim contract/policy lookups and July/August amendment visibility passed. Its production index had zero decision/correction documents; the isolated rehearsal's fixture is not production learning.
+- There was no open Phase 2 pull request from `Deep`; the only existing PR from this branch was the already merged Phase 1 PR #5. The Phase 2 implementation still needs the team's review/merge into the integration branch.
+- This checkout had no root Convex environment file or exported `CONVEX_URL`. `web/src/data/live.ts` therefore selects fixture mode here until its backend URL is configured.
+- Read-only queries to the provided hosted Convex deployment showed the expected entity's three open periods with 4 / 4 / 3 bank rows, respectively, and zero answer-key cases. July/August had completed workflow records; September had no recorded workflow run. This is not the generated Phase 2 dataset (123 / 122 / 123 rows and 11 cases).
+- Hosted Convex's availability does not establish that this local sidecar is connected to it. The local-only delivery choice still needs a deliberate backend/sidecar connection before the shared demo.
+
+The recheck did not reset or change the shared deployment. Required team gate: merge/review the source, deploy matching backend code, load the Phase 2 seed on the intended dev deployment, connect the frontend and sidecar, process all source-event families, and verify an actual approval/memory/September-close sequence. The sponsor proration assumption still needs controller review.

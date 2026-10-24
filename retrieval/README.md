@@ -134,4 +134,4 @@ Give Group C the public service URL and shared API token. Set `RETRIEVAL_URL` an
 
 C4 publishing is now merged and aligned: it sends actual decisions/corrections with reviewer/outcome/scope/effective date, batches the 21 source clauses, forwards the service token, and selects the stats fields its return validator supports. Source clauses without known dates are skipped until re-seeded with the current loader. The sidecar logs and echoes valid `X-Trace-Id` values for cross-service correlation without logging query text or tokens.
 
-Remaining C3/B3 event integration: consume non-cash source documents from `contracts.documents`; a bank-only scan cannot find the catering bank change or the missing August accrual. Full agent/human close and planted-error scoring results are not claimed by the rehearsal.
+Remaining C3/B3 event integration: consume non-cash source documents and imported books for duplicate payables, sponsorship amendments/revenue schedules, bank changes, and accruals (families 2, 4, 5, 6). A bank-only scan leaves these six period-specific cases undiscovered. Full agent/human close and planted-error scoring results are not claimed by the rehearsal.
