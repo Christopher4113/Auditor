@@ -109,6 +109,7 @@ export const load = internalMutation({
         stripe: payout ? { gross: payout.gross, fees: payout.fee, chargeCount: payout.chargeCount } : undefined,
         status: t.status,
         plantedBreak: plantedByTxn.get(t.id),
+        traceId: `T-${t.id}`, // one unit of work = one bank transaction's journey
       });
     }
 

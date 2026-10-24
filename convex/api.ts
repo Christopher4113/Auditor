@@ -9,6 +9,7 @@ import { v } from "convex/values";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { traceFor } from "./audit";
 import { ensureClose } from "./close";
 import { approve as approveProposal, reject as rejectProposal, signPeriod as signPeriodFn } from "./human";
 import { trialBalance } from "./ledger";
@@ -225,5 +226,42 @@ export const closeSummary = query({
       debits: tb.debits,
       credits: tb.credits,
     };
+  },
+});
+
+// ── Observability (Phase 2 add-on): one correlation id follows a unit of work through every component. ──
+
+/** Trace view: every audit row for one unit of work, oldest first, plus the chain it produced.
+ *  Pass the traceId, or a proposal's external code and it is resolved. */
+export const trace = query({
+  args: { entity: v.string(), traceId: v.optional(v.string()), proposalId: v.optional(v.string()) },
+  returns: orNull(
+    v.object({
+      traceId: v.string(),
+      bankTransaction: orNull(schema.doc("bankTransactions")),
+      proposals: v.array(schema.doc("proposals")),
+      decisions: v.array(schema.doc("decisions")),
+      entries: v.array(schema.doc("journalEntries")),
+      events: v.array(schema.doc("auditLog")),
+    }),
+  ),
+  handler: async (ctx, { entity, traceId: given, proposalId }) => {
+    let traceId = given;
+    if (!traceId && proposalId) {
+      const p = await ctx.db.query("proposals").withIndex("by_entity_proposalId", (q) => q.eq("entity", entity).eq("proposalId", proposalId)).unique();
+      traceId = p ? await traceFor(ctx, { proposalId: p._id }) : undefined;
+    }
+    if (!traceId) return null;
+    const events = await ctx.db.query("auditLog").withIndex("by_entity_traceId", (q) => q.eq("entity", entity).eq("traceId", traceId)).take(500);
+    const txnId = traceId.startsWith("T-") ? traceId.slice(2) : null;
+    const bankTransaction = txnId ? await ctx.db.query("bankTransactions").withIndex("by_entity_txnId", (q) => q.eq("entity", entity).eq("txnId", txnId)).unique() : null;
+    // ponytail: rows stamped by other lanes may not carry traceId yet; the chain is rebuilt from the audit rows' ids
+    const proposalIds = [...new Set(events.map((e) => e.proposalId).filter((x): x is NonNullable<typeof x> => !!x))];
+    const proposals = (await Promise.all(proposalIds.map((id) => ctx.db.get(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+    const decisionIds = [...new Set(events.map((e) => e.decisionId).filter((x): x is NonNullable<typeof x> => !!x))];
+    const decisions = (await Promise.all(decisionIds.map((id) => ctx.db.get(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+    const entryIds = [...new Set(events.map((e) => e.entryId).filter((x): x is NonNullable<typeof x> => !!x))];
+    const entries = (await Promise.all(entryIds.map((id) => ctx.db.get(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+    return { traceId, bankTransaction, proposals, decisions, entries, events };
   },
 });

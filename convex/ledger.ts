@@ -3,7 +3,7 @@
 // calls it, server-side, and logs the denial. It never throws on a denial so the audit row commits.
 import { v } from "convex/values";
 import { internalMutation, type QueryCtx } from "./_generated/server";
-import { audit } from "./audit";
+import { audit, traceFor } from "./audit";
 import { vIdentity } from "./schema";
 
 export const postEntry = internalMutation({
@@ -39,7 +39,9 @@ export const postEntry = internalMutation({
 
     const brk = await ctx.db.get(proposal.breakId);
     const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+    const traceId = await traceFor(ctx, { proposalId });
     const entryId = await ctx.db.insert("journalEntries", {
+      traceId,
       entity,
       period,
       entryId: `JE-${proposal.proposalId}`,

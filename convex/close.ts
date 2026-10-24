@@ -148,8 +148,9 @@ export const ingestBankTransaction = internalMutation({
   },
   returns: v.id("bankTransactions"),
   handler: async (ctx, { actor, ...txn }) => {
-    const id = await ctx.db.insert("bankTransactions", { ...txn, status: "unmatched" });
-    await audit(ctx, { entity: txn.entity, period: txn.period, actor, action: "bank.ingest", detail: `${txn.txnId} ${txn.amount}` });
+    const traceId = `T-${txn.txnId}`;
+    const id = await ctx.db.insert("bankTransactions", { ...txn, status: "unmatched", traceId });
+    await audit(ctx, { entity: txn.entity, period: txn.period, actor, action: "bank.ingest", bankTransactionId: id, traceId, detail: `${txn.txnId} ${txn.amount}` });
     await ensureClose(ctx, txn.entity, txn.period, actor);
     return id;
   },
