@@ -30,7 +30,7 @@ pnpm dev:retrieval       # http://localhost:8000/docs
 cd datagen && uv run generate.py
 ```
 
-Convex env: `npx convex env set ANTHROPIC_API_KEY ...`, `RETRIEVAL_URL`, `CRS_API_KEY`. See `.env.example`.
+Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
 
 ## Branch workflow
 
