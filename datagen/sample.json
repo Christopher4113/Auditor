@@ -1,0 +1,106 @@
+{
+  "seed": 0,
+  "entity": "eo-festival-nyc",
+  "accounts": [
+    { "code": "1000", "name": "Cash", "type": "asset" },
+    { "code": "1010", "name": "Stripe clearing", "type": "asset" },
+    { "code": "1100", "name": "Accounts receivable", "type": "asset" },
+    { "code": "1150", "name": "Sponsorship receivable", "type": "asset" },
+    { "code": "1200", "name": "Vendor deposits", "type": "asset" },
+    { "code": "1250", "name": "Artist deposits", "type": "asset" },
+    { "code": "1300", "name": "Prepaid expenses", "type": "asset" },
+    { "code": "1400", "name": "Payments under review", "type": "asset" },
+    { "code": "2000", "name": "Accounts payable", "type": "liability" },
+    { "code": "2100", "name": "Accrued liabilities", "type": "liability" },
+    { "code": "2200", "name": "Deferred ticket revenue", "type": "liability" },
+    { "code": "2250", "name": "Deferred sponsorship revenue", "type": "liability" },
+    { "code": "3000", "name": "Common stock", "type": "equity" },
+    { "code": "3100", "name": "Retained earnings", "type": "equity" },
+    { "code": "4000", "name": "Ticket revenue", "type": "revenue" },
+    { "code": "4100", "name": "Sponsorship revenue", "type": "revenue" },
+    { "code": "5000", "name": "Artist fees", "type": "expense" },
+    { "code": "5050", "name": "Artist cancellation fees", "type": "expense" },
+    { "code": "5100", "name": "Production", "type": "expense" },
+    { "code": "5150", "name": "Staging and equipment", "type": "expense" },
+    { "code": "5160", "name": "Equipment inspection and damage fees", "type": "expense" },
+    { "code": "5200", "name": "Security", "type": "expense" },
+    { "code": "5300", "name": "Catering", "type": "expense" },
+    { "code": "5400", "name": "Payment processing fees", "type": "expense" },
+    { "code": "5500", "name": "Venue and permits", "type": "expense" },
+    { "code": "5600", "name": "Marketing", "type": "expense" },
+    { "code": "5900", "name": "G&A", "type": "expense" }
+  ],
+  "openingBalances": [
+    { "account": "1000", "debit": 38000000, "credit": 0, "memo": "Cash" },
+    { "account": "1300", "debit": 6000000, "credit": 0, "memo": "Venue deposit" },
+    { "account": "3100", "debit": 6000000, "credit": 0, "memo": "Retained earnings" },
+    { "account": "3000", "debit": 0, "credit": 50000000, "memo": "Common stock" }
+  ],
+  "periods": [
+    { "period": "2026-07", "start": "2026-07-01", "end": "2026-07-31" },
+    { "period": "2026-08", "start": "2026-08-01", "end": "2026-08-31" },
+    { "period": "2026-09", "start": "2026-09-01", "end": "2026-09-30" }
+  ],
+  "bankTransactions": [
+    { "txnId": "BT-0901", "period": "2026-09", "date": "2026-09-12", "amount": -940000, "counterparty": "Ironclad Security", "memo": "Invoice IS-2201 site setup Aug 30-31" },
+    { "txnId": "BT-0902", "period": "2026-09", "date": "2026-09-05", "amount": -180000, "counterparty": "NYC Parks Permits", "memo": "Event permit fee" },
+    { "txnId": "BT-0903", "period": "2026-09", "date": "2026-09-08", "amount": -320000, "counterparty": "Metro Fuel", "memo": "Generator diesel" },
+    { "txnId": "BT-0904", "period": "2026-09", "date": "2026-09-13", "amount": -4200000, "counterparty": "Field & Flame Catering", "memo": "Final payment FF-0915" },
+    { "txnId": "BT-0905", "period": "2026-09", "date": "2026-09-16", "amount": -75000, "counterparty": "Bay Print Co", "memo": "Wristbands" },
+    { "txnId": "BT-0906", "period": "2026-09", "date": "2026-09-21", "amount": 2500000, "counterparty": "Brightwater Beverage", "memo": "Sponsorship installment" },
+    { "txnId": "BT-0907", "period": "2026-09", "date": "2026-09-25", "amount": 1360000, "counterparty": "Apex Staging", "memo": "APEX STAGING REFUND" },
+    { "txnId": "BT-0908", "period": "2026-09", "date": "2026-09-28", "amount": -610000, "counterparty": "SoundWave Audio", "memo": "Invoice SW-1042" }
+  ],
+  "stripePayouts": [
+    { "txnId": "SP-0936", "period": "2026-09", "date": "2026-09-04", "amount": 4718000, "gross": 4860000, "fees": 142000, "chargeCount": 1215 }
+  ],
+  "contracts": [
+    { "contractId": "apex-staging", "counterparty": "Apex Staging", "title": "Staging and equipment rental", "clauses": [
+      { "id": "apex-9.4", "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee." }
+    ] },
+    { "contractId": "field-flame", "counterparty": "Field & Flame Catering", "title": "Festival catering", "clauses": [
+      { "id": "field-flame-5.1", "text": "Final payment of $42,000 is due September 15 to the account on the vendor master (ending 4471)." }
+    ] },
+    { "contractId": "ironclad", "counterparty": "Ironclad Security", "title": "Event security", "clauses": [
+      { "id": "ironclad-2.1", "text": "Site setup August 30-31 ($9,400) and event coverage September 19-20 ($28,000), each invoiced net 30 after service." }
+    ] },
+    { "contractId": "brightwater", "counterparty": "Brightwater Beverage", "title": "Title sponsorship", "clauses": [
+      { "id": "brightwater-3.1", "text": "$50,000 payable August 15 for the campaign July 1 to September 20." },
+      { "id": "brightwater-amendment-1", "text": "Amended August 10: $30,000 fixed on August 15 plus $2.00 per paid attendee, capped at $70,000, settled within 15 days after the festival." }
+    ] }
+  ],
+  "policyPack": {
+    "jurisdiction": "US",
+    "currency": "USD",
+    "thresholdCents": 500000,
+    "clauses": [
+      { "id": "policy-1.0", "text": "The controller owns the books and signs each period close." },
+      { "id": "policy-2.0", "text": "Systems of record: bank feed for cash, ledger for balances, signed contracts for amounts owed. When sources disagree, the proposal states which governs and why." },
+      { "id": "policy-3.0", "text": "Periods close on human sign-off and are then locked; late items are booked in the current period with a reference." },
+      { "id": "policy-4.3", "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged; the change is escalated the day it arrives." },
+      { "id": "policy-5.1", "text": "Contractual fees and penalties the contract makes non-recoverable are expensed when certain, not carried as receivables." },
+      { "id": "policy-6.1", "text": "Ticket sales are deferred until the event; gross charges to Stripe clearing; processing fees expensed when the payout settles." },
+      { "id": "policy-6.2", "text": "Fixed sponsorship recognized ratably over the campaign; variable components when measurable; a mid-term amendment triggers a catch-up in the period signed." },
+      { "id": "policy-7.1", "text": "Costs for services rendered are accrued in the period of service from the schedule, reversed when the invoice arrives." },
+      { "id": "policy-8.0", "text": "Materiality is P&L impact (sum of revenue and expense lines). Under $5,000, the controls engine may post when every rule passes and a clause is cited. $5,000 or more, and any control exception, needs the controller." },
+      { "id": "policy-8.1", "text": "No person or system approves an entry it proposed." },
+      { "id": "policy-8.2", "text": "A human-decided precedent with matching scope, under threshold, is pre-approved and does not re-escalate." },
+      { "id": "policy-9.0", "text": "Every decision records proposal, reviewer, rules run, citations verbatim, and outcome." }
+    ]
+  },
+  "vendors": [
+    { "vendorId": "apex-staging", "name": "Apex Staging", "bankAccountLast4": "2210", "crsTestIdentity": "crs-test-apex", "contractId": "apex-staging" },
+    { "vendorId": "field-flame", "name": "Field & Flame Catering", "bankAccountLast4": "4471", "crsTestIdentity": "crs-test-field-flame", "contractId": "field-flame" },
+    { "vendorId": "ironclad", "name": "Ironclad Security", "bankAccountLast4": "7730", "crsTestIdentity": "crs-test-ironclad", "contractId": "ironclad" },
+    { "vendorId": "soundwave", "name": "SoundWave Audio", "bankAccountLast4": "1042", "crsTestIdentity": "crs-test-soundwave" }
+  ],
+  "answerKey": [
+    { "breakNumber": 5, "period": "2026-09", "title": "Field & Flame bank-detail change", "txnId": "BT-0904", "expectedKind": "bank_detail_change", "expectedLines": [
+      { "account": "1400", "debit": 4200000, "credit": 0 }, { "account": "1000", "debit": 0, "credit": 4200000 }
+    ] },
+    { "breakNumber": 6, "period": "2026-09", "title": "Ironclad accrual reversal", "txnId": "BT-0901", "expectedKind": "accrual_reversal", "expectedLines": [
+      { "account": "2000", "debit": 940000, "credit": 0 }, { "account": "1000", "debit": 0, "credit": 940000 }
+    ] }
+  ],
+  "fxRates": []
+}

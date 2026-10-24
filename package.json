@@ -7,6 +7,7 @@
     "dev:retrieval": "cd retrieval && uv run --env-file .env uvicorn main:app --reload --port 8000",
     "codegen": "convex codegen",
     "typecheck": "tsc -p convex && pnpm --filter web exec tsc -b",
+    "seed": "convex run seed:load \"$(cat ${SEED:-datagen/seed.json})\"",
     "test": "vitest run"
   },
   "dependencies": {
