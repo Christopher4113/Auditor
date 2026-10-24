@@ -36,7 +36,7 @@ function validUrl(value: string | undefined) {
   try {
     const parsed = new URL(value);
     return ["https:", "http:"].includes(parsed.protocol)
-      ? parsed.href
+      ? parsed.origin
       : undefined;
   } catch {
     return undefined;
