@@ -1,6 +1,8 @@
 openapi: 3.1.0
 info:
   title: Auditor retrieval
+  description: Phase 1 fixture service. Queries return canned citations, indexing
+    does not persist, statistics are placeholders, and CRS verification is unavailable.
   version: 0.1.0
 paths:
   /index:
@@ -96,18 +98,23 @@ components:
       properties:
         collection:
           type: string
+          minLength: 1
+          pattern: \S
           title: Collection
         id:
           type: string
+          minLength: 1
+          pattern: \S
           title: Id
         text:
           type: string
+          minLength: 1
+          pattern: \S
           title: Text
         meta:
           additionalProperties: true
           type: object
           title: Meta
-          default: {}
       type: object
       required:
       - collection
@@ -144,12 +151,18 @@ components:
       properties:
         collection:
           type: string
+          minLength: 1
+          pattern: \S
           title: Collection
         text:
           type: string
+          minLength: 1
+          pattern: \S
           title: Text
         k:
           type: integer
+          maximum: 50.0
+          minimum: 1.0
           title: K
           default: 3
       type: object
@@ -187,6 +200,8 @@ components:
       properties:
         testIdentityId:
           type: string
+          minLength: 1
+          pattern: \S
           title: Testidentityid
       type: object
       required:
@@ -211,4 +226,3 @@ components:
       - fraudFlags
       - available
       title: VerifyResult
-

@@ -44,11 +44,13 @@ pnpm dev:retrieval       # http://localhost:8000/docs
 cd datagen && uv run generate.py
 ```
 
+Group A's Phase 1 is ready to consume: [data contract and Convex handoff](datagen/README.md), [10-transaction sample](datagen/sample.seed.json), [retrieval stub guide](retrieval/README.md), and [verification record](datagen/AUDIT.md). Run `pnpm data:generate`, `pnpm data:validate`, `pnpm data:test`, and `pnpm retrieval:test` from the root. Generation and validation require Python/uv; no API credentials or running services.
+
 Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`; `ANTHROPIC_MODEL` swaps Sonnet for Opus. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
 
 ## The six planted breaks
 
-~120 clean transactions a month plus these six, so precision and recall are measured. Amounts and clauses are in the brief; the answer key is in `seed.json`.
+Phase 2 adds these six planted breaks to ~120 clean transactions a month so precision and recall can be measured. Amounts and clauses are in the brief; A3 supplies the answer key in `seed.json`. Phase 1 has empty `breaks` and `answerKey` arrays and does not claim detection or scoring results yet.
 
 | # | Month | Break | Right answer | Who decides |
 |---|---|---|---|---|
@@ -66,6 +68,66 @@ The moment (opens the video): Apex's $16,000 deposit comes back as $13,600 on Se
 July and August are pre-run so their decisions sit in Moss; September runs live in under three minutes. The only touch is "prepare September close" in the Scoreboard drawer. Scenes: 1 the moment · 2 the no (Field & Flame hold, CRS check, human keeps the hold) · 3 the forbidden call (Permissions drawer, `post_entry` under the agent's identity refused, denial logged) · 4 Ask Auditor out loud (Moss) · 5 asked once (Stripe fees, escalations 5 → 2 → 1) · 6 learned from a mistake (SoundWave duplicate, repeat mistakes 0). Scenes 1–4 required. Judges can inject a bank transaction, a contract amendment or a vendor bank change from the Inject drawer.
 
 Cut order if behind, from the bottom: core (generator, Workflow, agent, controls engine, dashboard, approvals, scoreboard, Moss citations) → injector and forbidden call → corrections store and repeat-mistakes counter → breaks 2, 4, 6 → Ask Auditor voice → second entity (UK, GBP).
+
+## Phase 1 gate: run it end to end
+
+Gate: `seed.json` loads; a fake close runs through the Workflow; the rail updates live. Four terminals from the repo root.
+
+```bash
+pnpm install && (cd datagen && uv sync --locked) && (cd retrieval && uv sync --locked)
+```
+
+**1. Lane checks, no services needed.** Group A's generator and validator, Group B's tool and fake tests, the retrieval contract, both typechecks.
+
+```bash
+pnpm data:generate && pnpm data:validate && pnpm data:test && pnpm retrieval:test && pnpm test && pnpm typecheck
+```
+
+**2. Backend up.** Pushes `convex/` to the dev deployment and keeps it synced; writes `.env.local`.
+
+```bash
+pnpm dev:convex
+```
+
+**3. Seed.** Wipes the entity and loads a file in one transaction. The sample has 10 transactions across July–September; the generated file has 360.
+
+```bash
+SEED=datagen/sample.seed.json pnpm seed
+```
+
+**4. Frontend up.** With `CONVEX_URL` in `.env.local` the rail is live; without it the app runs on fixtures.
+
+```bash
+pnpm dev:web
+```
+
+Open http://localhost:5173 on this machine and on a second device on the same network (`pnpm dev:web -- --host`). Pick September 2026.
+
+**5. Run the close.** From the UI: Close summary drawer → "Prepare September close". Or from a terminal:
+
+```bash
+npx convex run api:startClose '{"entity":"eo-festival-nyc","period":"2026-09"}'
+```
+
+Within seconds the rail shows three September proposals on both screens with no refresh: Apex Staging $13,600 posted with Group B's canned entry (Dr 1000 / Dr 5160 / Cr 1200), three verbatim citations and the discarded first read; the Stripe payout and the office-supply payment posted under threshold.
+
+**6. Prove the data trigger.** Inject a bank transaction; the Workflow picks it up and a new row appears at the top of the rail.
+
+```bash
+npx convex run close:ingestBankTransaction '{"entity":"eo-festival-nyc","period":"2026-09","txnId":"gate-01","date":"2026-09-29","amount":-45000,"counterparty":"Ridgeway Freight","memo":"Gate test","source":"bank","actor":"inject"}'
+```
+
+**7. Prove the 8.1 gate.** Take a proposal and decision id from the rail (or the dashboard) and post as the agent; it is refused and the denial is in the audit log.
+
+```bash
+npx convex run --inline-query 'const p = await ctx.db.query("proposals").withIndex("by_entity_proposalId", q => q.eq("entity","eo-festival-nyc").eq("proposalId","P-sample-bank-10-r1")).unique(); const d = await ctx.db.query("decisions").withIndex("by_proposal", q => q.eq("proposalId", p._id)).first(); return {proposalId: p._id, decisionId: d._id};'
+npx convex run ledger:postEntry '{"caller":"agent","proposalId":"<proposalId>","decisionId":"<decisionId>"}'
+npx convex run api:auditTrail '{"entity":"eo-festival-nyc","period":"2026-09","limit":5}'
+```
+
+**Reading the backend directly.** `api:listProposals`, `api:scoreboard`, `api:closeStatus --watch`, `api:auditTrail`; the dashboard (https://dashboard.convex.dev/d/wary-labrador-928) shows every table and the Workflow component's step log.
+
+**How the lanes connect.** A's `seed.json` → `convex/seed.ts` (interface 5). The Workflow in `convex/close.ts` runs fetch → reconcile → propose → review → post; `convex/agent.ts` and `convex/controls.ts` are B's entry points and use B2's `agent/fake.ts` canned Apex proposal (interface 2). `convex/api.ts` is what the UI subscribes to; `web/src/data/live.ts` maps rows into D's `Proposal` view model (interface 3). `ledger.postEntry` is the only writer of `journalEntries` and refuses the proposer's identity. Every step writes `auditLog` under its seat.
 
 ## Branch workflow
 

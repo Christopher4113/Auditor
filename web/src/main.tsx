@@ -1,15 +1,19 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { ConvexProvider, ConvexReactClient } from 'convex/react'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import { ConvexProvider } from "convex/react";
+import App from "./App.tsx";
+import { convex } from "./data/live";
 
-const convex = new ConvexReactClient(import.meta.env.CONVEX_URL as string)
-
-createRoot(document.getElementById('root')!).render(
+// With CONVEX_URL (root .env.local, written by `pnpm dev:convex`) the rail is live; without it, fixtures.
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ConvexProvider client={convex}>
+    {convex ? (
+      <ConvexProvider client={convex}>
+        <App />
+      </ConvexProvider>
+    ) : (
       <App />
-    </ConvexProvider>
+    )}
   </StrictMode>,
-)
+);
