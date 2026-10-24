@@ -10,17 +10,20 @@
     "data:test": "cd datagen && uv run python -m unittest discover -s tests -v",
     "retrieval:test": "cd retrieval && uv run python -m unittest discover -s tests -v",
     "codegen": "convex codegen",
-    "typecheck": "tsc -p convex && pnpm --filter web exec tsc -b"
+    "typecheck": "tsc -p convex && pnpm --filter web exec tsc -b",
+    "seed": "convex run seed:load \"$(cat ${SEED:-datagen/seed.json})\"",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2",
+    "@ai-sdk/anthropic": "^4",
     "@convex-dev/agent": "latest",
     "@convex-dev/workflow": "latest",
-    "ai": "^5",
+    "ai": "^7",
     "convex": "^1",
     "zod": "^4"
   },
   "devDependencies": {
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^2"
   }
 }

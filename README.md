@@ -69,6 +69,17 @@ July and August are pre-run so their decisions sit in Moss; September runs live 
 
 Cut order if behind, from the bottom: core (generator, Workflow, agent, controls engine, dashboard, approvals, scoreboard, Moss citations) → injector and forbidden call → corrections store and repeat-mistakes counter → breaks 2, 4, 6 → Ask Auditor voice → second entity (UK, GBP).
 
+## Running the close (Group C, Phase 1)
+
+```bash
+pnpm dev:convex                                   # push convex/ and watch
+SEED=datagen/sample.seed.json pnpm seed           # wipe + load an entity (default SEED=datagen/seed.json from pnpm data:generate)
+npx convex run api:startClose '{"entity":"eo-festival-nyc","period":"2026-09"}'
+npx convex run api:listProposals '{"entity":"eo-festival-nyc","period":"2026-09"}'
+```
+
+The Workflow (`convex/close.ts`) runs fetch → reconcile → propose → review → post; every step writes `auditLog` under its seat's identity. A bank transaction arriving through `close.ingestBankTransaction` starts a close for its period within seconds (the data trigger). `ledger.postEntry` is the only writer of `journalEntries` and refuses the proposer's identity (8.1) with the denial logged. `convex/agent.ts` and `convex/controls.ts` are Group B's files with Phase 1 stub bodies: keep the signatures, replace the bodies (B2 canned Apex, then B3/B4).
+
 ## Branch workflow
 
 1. Branch from `main`: `a/p1-generator`, `b/p1-tools`, `c/p1-schema`, `d/p1-shell`, one branch per component pair.
