@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { audit } from "./audit";
 import { vIdentity, vCitation, vLine, vClause, vSourceDocument } from "./schema";
+import { BREAK_KINDS, type BreakKind } from "./tools";
 import { searchRetrieval } from "./retrievalClient";
 import { matchBatch, type BankTxn, type LedgerEntry } from "./agent/matcher";
 import { SYSTEM_PROMPT } from "./agent/instructions";
@@ -62,15 +63,30 @@ export const reconcile = internalMutation({
     for (const docId of unmatchedIds) {
       const txn = txnDocs.find((t) => t!._id === docId);
       if (!txn) continue;
+
+      // Classify by what we can determine from transaction metadata alone.
+      // The agent refines further via flag_break if it has more context.
+      let kind: BreakKind = "other";
+      if (txn.source === "stripe") {
+        kind = "stripe_fee_netting";
+      } else if (txn.vendorId) {
+        const vendor = await ctx.db
+          .query("vendors")
+          .withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", txn.vendorId!))
+          .unique();
+        if (vendor?.paymentsHeld) kind = "bank_detail_change";
+      }
+
       const breakId = await ctx.db.insert("breaks", {
         entity,
         period,
         breakId: `B-${txn.txnId}`,
         bankTransactionId: txn._id,
-        kind: "unmatched",
+        kind,
         description: `${txn.counterparty}: ${txn.memo}`,
         status: "open",
         planted: txn.plantedBreak,
+        traceId: txn.traceId,
       });
       await ctx.db.patch(txn._id, { status: "flagged" });
       await audit(ctx, {
@@ -78,7 +94,9 @@ export const reconcile = internalMutation({
         period,
         actor: caller,
         action: "flag_break",
-        detail: `B-${txn.txnId} ${txn.amount}`,
+        bankTransactionId: txn._id,
+        breakId,
+        detail: `B-${txn.txnId} ${txn.amount} (${kind})`,
       });
       breakIds.push(breakId);
     }
@@ -181,13 +199,42 @@ export const escalateBreak = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { entity, period, breakId, question }) => {
+    const brk = await ctx.db.get(breakId);
     await ctx.db.patch("breaks", breakId, { status: "escalated" });
     await audit(ctx, {
       entity,
       period,
       actor: "agent",
       action: "request_approval",
+      breakId,
+      bankTransactionId: brk?.bankTransactionId,
       detail: question,
+    });
+    return null;
+  },
+});
+
+/** Agent refines a break's kind after investigation (called by the flag_break tool). */
+export const updateBreakKind = internalMutation({
+  args: {
+    breakId: v.id("breaks"),
+    bankTransactionId: v.id("bankTransactions"),
+    kind: v.string(),
+    note: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { breakId, bankTransactionId, kind, note }) => {
+    const brk = await ctx.db.get(breakId);
+    if (!brk) return null;
+    await ctx.db.patch("breaks", breakId, { kind });
+    await audit(ctx, {
+      entity: brk.entity,
+      period: brk.period,
+      actor: "agent",
+      action: "flag_break.classify",
+      breakId,
+      bankTransactionId,
+      detail: `${kind}: ${note}`,
     });
     return null;
   },
@@ -276,14 +323,39 @@ export const propose = internalAction({
     let escalated = false;
 
     const amtDollars = (Math.abs(txn.amount) / 100).toFixed(2);
+
+    // Pre-retrieve relevant policy for this break kind so the agent has citations available from step 1.
+    const KIND_QUERIES: Record<string, string> = {
+      stripe_fee_netting: "ticket revenue deferred fee expensed payout",
+      deposit_shortfall: "deposit non-recoverable fee contract",
+      duplicate_payable: "duplicate invoice control",
+      bank_detail_change: "bank detail change verification hold",
+      missing_accrual: "accrue period of service reverse invoice",
+      contract_amendment: "amendment catch-up ratable recognition",
+      other: "governing source which system bank ledger contract",
+    };
+    const kindQuery = KIND_QUERIES[brk.kind] ?? KIND_QUERIES.other;
+    const preloadedPolicy = await retrieve("policy", kindQuery, 3);
+    const preloadedPrecedents = await retrieve("decisions", kindQuery, 2);
+    const preloadHints =
+      preloadedPolicy.length > 0 || preloadedPrecedents.length > 0
+        ? [
+            "",
+            "Pre-loaded context (cite verbatim if you use these):",
+            ...preloadedPolicy.map((h) => `  [policy] ${h.sourceId}: "${h.text}"`),
+            ...preloadedPrecedents.map((h) => `  [decision] ${h.sourceId}: "${h.text}"`),
+          ].join("\n")
+        : "";
+
     const userMsg = [
       `Break: ${brk.breakId} (${brk.kind})`,
       `Transaction: counterparty="${txn.counterparty}" | date=${txn.date} | amount=${txn.amount >= 0 ? "+" : "-"}$${amtDollars} | memo="${txn.memo}"`,
       `Entity: ${brk.entity} | Period: ${brk.period}`,
+      preloadHints,
       "",
       "Follow the workflow in your instructions:",
       "1. Call search_precedent, search_policy, and search_corrections before proposing.",
-      "2. Then call propose_entry with balanced lines and verbatim citations.",
+      "2. Then call propose_entry with balanced lines and verbatim citations (required by policy 9.0).",
       "   OR call request_approval if you are genuinely uncertain about the treatment.",
     ].join("\n");
 
@@ -355,18 +427,26 @@ export const propose = internalAction({
           }),
         },
         flag_break: {
-          description: "Flag an unreconciled transaction as a named break",
+          description: "Classify an already-flagged break by kind (deposit_shortfall, duplicate_payable, etc.). Call this before propose_entry when you have identified the break kind from context.",
           inputSchema: z.object({
             entity: z.string(),
             period: z.string(),
-            kind: z.string(),
+            kind: z.enum(BREAK_KINDS),
             note: z.string(),
             bankTransactionId: z.string().optional(),
             counterparty: z.string().optional(),
           }),
-          execute: async (_args: { entity: string; period: string; kind: string; note: string }) => ({
-            message: "Break is already flagged; proceed to propose_entry or request_approval.",
-          }),
+          execute: async (args: { entity: string; period: string; kind: string; note: string }) => {
+            if (BREAK_KINDS.includes(args.kind as BreakKind)) {
+              await ctx.runMutation(internal.agent.updateBreakKind, {
+                breakId: brk._id,
+                bankTransactionId: txn._id,
+                kind: args.kind as BreakKind,
+                note: args.note,
+              });
+            }
+            return { message: `Break classified as ${args.kind}; proceed to propose_entry or request_approval.` };
+          },
         },
         propose_entry: {
           description:
