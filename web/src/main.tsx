@@ -1,15 +1,12 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { ConvexProvider, ConvexReactClient } from 'convex/react'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
 
-const convex = new ConvexReactClient(import.meta.env.CONVEX_URL as string)
-
-createRoot(document.getElementById('root')!).render(
+// Connect the provider when the agreed public Convex API is implemented.
+// Local fixtures keep this frontend usable without a deployment or credentials.
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ConvexProvider client={convex}>
-      <App />
-    </ConvexProvider>
+    <App />
   </StrictMode>,
-)
+);
