@@ -11,12 +11,17 @@ const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.str
 type Hit = { id: string; text: string; score: number };
 
 const endpoint = (path: string) => (env.RETRIEVAL_URL ? `${env.RETRIEVAL_URL.replace(/\/$/, "")}${path}` : null);
+const authHeaders = (): Record<string, string> => env.RETRIEVAL_API_KEY ? { Authorization: `Bearer ${env.RETRIEVAL_API_KEY}` } : {};
+const periodEnd = (period: string): string => {
+  const [year, month] = period.split("-").map(Number);
+  return `${period}-${new Date(Date.UTC(year, month, 0)).getUTCDate()}`;
+};
 
 async function post<T>(path: string, body: unknown, traceId?: string): Promise<T | null> {
   const url = endpoint(path);
   if (!url) return null;
   try {
-    const headers: Record<string, string> = { "content-type": "application/json" };
+    const headers: Record<string, string> = { "content-type": "application/json", ...authHeaders() };
     if (traceId) headers["X-Trace-Id"] = traceId; // Group A logs it on /query and /verify
     const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
     if (!res.ok) {
@@ -32,9 +37,9 @@ async function post<T>(path: string, body: unknown, traceId?: string): Promise<T
 
 /** search_precedent / search_policy / search_corrections all route here; k=5 per collection (brief, Cost). */
 export const query = internalAction({
-  args: { collection: v.string(), text: v.string(), k: v.optional(v.number()), traceId: v.optional(v.string()) },
+  args: { collection: v.string(), text: v.string(), k: v.optional(v.number()), entity: v.optional(v.string()), asOf: v.optional(v.string()), traceId: v.optional(v.string()) },
   returns: v.array(vHit),
-  handler: async (_ctx, { collection, text, k, traceId }): Promise<Hit[]> => (await post<Hit[]>("/query", { collection, text, k: k ?? 5 }, traceId)) ?? [],
+  handler: async (_ctx, { collection, text, k, entity, asOf, traceId }): Promise<Hit[]> => (await post<Hit[]>("/query", { collection, text, k: k ?? 5, entity, asOf }, traceId)) ?? [],
 });
 
 export const index = internalAction({
@@ -61,8 +66,15 @@ export const stats = internalAction({
     const url = endpoint("/stats");
     if (!url) return null;
     try {
-      const res = await fetch(url);
-      return res.ok ? await res.json() : null;
+      const res = await fetch(url, { headers: authHeaders() });
+      if (!res.ok) return null;
+      const raw = await res.json();
+      const values = [raw.retrievals, raw.medianLatencyMs, raw.tokensUsed, raw.tokensFullContext];
+      if (!values.every((value) => typeof value === "number" && Number.isFinite(value))) return null;
+      // Select the existing return contract; sidecar readiness/estimate fields
+      // are additive and would otherwise fail Convex's strict return validator.
+      return { retrievals: raw.retrievals, medianLatencyMs: raw.medianLatencyMs,
+        tokensUsed: raw.tokensUsed, tokensFullContext: raw.tokensFullContext };
     } catch {
       return null;
     }
@@ -81,13 +93,15 @@ export const loadDecision = internalQuery({
     const p = await ctx.db.get(d.proposalId);
     const brk = p ? await ctx.db.get(p.breakId) : null;
     const lines = (p?.lines ?? []).map((l) => `${l.debit ? "Dr" : "Cr"} ${l.account} ${l.debit || l.credit}`).join("; ");
-    const scope = d.precedentScope ? ` Scope: ${d.precedentScope.breakKind}${d.precedentScope.counterparty ? " / " + d.precedentScope.counterparty : ""}.` : "";
+    const scope = d.precedentScope ? ` Scope: ${JSON.stringify(d.precedentScope)}.` : "";
     return {
       entity: d.entity,
       period: d.period,
       id: d.decisionId,
       text: `${d.decisionId} (${d.period}, ${brk?.kind ?? "break"}): ${d.outcome} by ${d.reviewer}. ${d.reason} Entry: ${lines}.${scope}`,
-      meta: { entity: d.entity, period: d.period, reviewer: d.reviewer, outcome: d.outcome, breakKind: brk?.kind ?? "" },
+      meta: { entity: d.entity, period: d.period, effectiveDate: periodEnd(d.period),
+        sourceType: "decision", reviewer: d.reviewer, outcome: d.outcome,
+        breakKind: d.precedentScope?.breakKind ?? brk?.kind ?? "", scope: JSON.stringify(d.precedentScope ?? {}) },
       traceId,
     };
   },
@@ -120,7 +134,8 @@ export const indexCorrection = internalAction({
   handler: async (ctx, { correctionId }): Promise<null> => {
     const c = await ctx.runQuery(internal.retrieval.loadCorrection, { correctionId });
     if (!c) return null;
-    const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "corrections", id: c.id, text: c.text, meta: { entity: c.entity, period: c.period } });
+    const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "corrections", id: c.id, text: c.text,
+      meta: { entity: c.entity, period: c.period, effectiveDate: periodEnd(c.period), sourceType: "correction" } });
     await ctx.runMutation(internal.audit.write, { entity: c.entity, period: c.period, actor: "human", action: ok ? "index_correction" : "index_correction.skipped", detail: c.id });
     return null;
   },
@@ -135,8 +150,11 @@ export const loadClauses = internalQuery({
     const pack = await ctx.db.query("policyPacks").withIndex("by_entity", (q) => q.eq("entity", entity)).unique();
     const contracts = await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity)).take(100);
     return [
-      ...(pack?.clauses ?? []).map((c) => ({ collection: "policy", id: c.id, text: c.text, meta: { entity, number: c.number ?? "" } })),
-      ...contracts.flatMap((k) => k.clauses.map((c) => ({ collection: "contracts", id: c.id, text: c.text, meta: { entity, contractId: k.contractId, counterparty: k.counterparty } }))),
+      ...(pack?.clauses ?? []).filter((c) => !!c.effectiveDate).map((c) => ({ collection: "policy", id: c.id, text: c.text,
+        meta: { entity, effectiveDate: c.effectiveDate!, sourceType: "policy", title: `Policy ${c.number ?? ""}`, number: c.number ?? "" } })),
+      ...contracts.flatMap((k) => k.clauses.filter((c) => !!c.effectiveDate).map((c) => ({ collection: "contracts", id: c.id, text: c.text,
+        meta: { entity, effectiveDate: c.effectiveDate!, sourceType: "contract", contractId: k.contractId,
+          vendorId: k.vendorId ?? "", title: k.title, counterparty: k.counterparty } }))),
     ];
   },
 });
@@ -146,8 +164,8 @@ export const indexEntity = internalAction({
   returns: v.null(),
   handler: async (ctx, { entity }): Promise<null> => {
     const chunks = await ctx.runQuery(internal.retrieval.loadClauses, { entity });
-    let ok = 0;
-    for (const c of chunks) if ((await ctx.runAction(internal.retrieval.index, c)).ok) ok++;
+    const result = chunks.length ? await post<{ ok: boolean }>("/index/batch", { chunks }) : null;
+    const ok = result?.ok ? chunks.length : 0;
     await ctx.runMutation(internal.audit.write, { entity, actor: "seed", action: env.RETRIEVAL_URL ? "retrieval.index_entity" : "retrieval.skipped", detail: `${ok}/${chunks.length} chunks` });
     return null;
   },

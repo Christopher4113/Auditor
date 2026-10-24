@@ -1,5 +1,7 @@
 # Phase 1 verification — October 24, 2026
 
+> Historical Phase 1 record. Current Phase 2 evidence and commands are in [PHASE2_AUDIT.md](../retrieval/PHASE2_AUDIT.md). Select `--phase 1` to reproduce the clean generator output below.
+
 Scope: Group A's A1 generator, A2 seed contract/sample, and the existing Interface 1 fixture service. Reviewed against **Auditor — Cal Hacks 13.0 Brief v2 (final design)**, **Auditor — Design (3)**, and the supplied Hyphenate track rubric. This is a reproducible foundation for team integration; it is not a claim that the complete demo has passed.
 
 ## Upstream reconciliation
@@ -38,7 +40,7 @@ The malformed-data cases include missing/extra fields, invalid dates, two-sided/
 ```bash
 cd datagen
 uv sync --locked
-uv run generate.py
+uv run generate.py --phase 1
 uv run validate.py seed.json
 uv run validate.py sample.seed.json
 uv run python -m unittest discover -s tests -v

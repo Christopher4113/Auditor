@@ -44,13 +44,15 @@ pnpm dev:retrieval       # http://localhost:8000/docs
 cd datagen && uv run generate.py
 ```
 
-Group A's Phase 1 is ready to consume: [data contract and Convex handoff](datagen/README.md), [10-transaction sample](datagen/sample.seed.json), [retrieval stub guide](retrieval/README.md), and [verification record](datagen/AUDIT.md). Run `pnpm data:generate`, `pnpm data:validate`, `pnpm data:test`, and `pnpm retrieval:test` from the root. Generation and validation require Python/uv; no API credentials or running services.
+Group A's data/retrieval commands: [current data contract and Convex handoff](datagen/README.md), [10-transaction Phase 1 sample](datagen/sample.seed.json), [retrieval runbook](retrieval/README.md), and [historical Phase 1 verification](datagen/AUDIT.md). Run `pnpm data:generate`, `pnpm data:validate`, `pnpm data:test`, and `pnpm retrieval:test` from the root. Generation and offline validation require Python/uv; no API credentials or running services.
 
 Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`; `ANTHROPIC_MODEL` swaps Sonnet for Opus. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
 
 ## The six planted breaks
 
-Phase 2 adds these six planted breaks to ~120 clean transactions a month so precision and recall can be measured. Amounts and clauses are in the brief; A3 supplies the answer key in `seed.json`. Phase 1 has empty `breaks` and `answerKey` arrays and does not claim detection or scoring results yet.
+**Group A Phase 2 is implemented:** [data contract and accounting assumptions](datagen/README.md), [real Moss/local retrieval and run commands](retrieval/README.md), and [verification record](retrieval/PHASE2_AUDIT.md). `pnpm data:generate` now defaults to schema 2.0.0: six break families, 11 period-specific cases, 368 bank rows, imported books and dated source documents. `pnpm data:phase1` retains the clean generator. `pnpm retrieval:demo` runs an isolated local-search rehearsal; `pnpm retrieval:demo:moss` uses the real supplied Moss project. Rehearsal human decisions are explicitly labelled fixtures; the full team gate still requires the real close and controller flow.
+
+Phase 2 adds these six planted breaks to ~120 clean transactions a month so precision and recall can be measured. Amounts and clauses are in the brief; A3 supplies the answer key in `seed.json`. The Phase 1 sample has empty `breaks` and `answerKey` arrays. Detection/scoring results require the integrated agent and scoring run.
 
 | # | Month | Break | Right answer | Who decides |
 |---|---|---|---|---|
@@ -70,6 +72,8 @@ July and August are pre-run so their decisions sit in Moss; September runs live 
 Cut order if behind, from the bottom: core (generator, Workflow, agent, controls engine, dashboard, approvals, scoreboard, Moss citations) → injector and forbidden call → corrections store and repeat-mistakes counter → breaks 2, 4, 6 → Ask Auditor voice → second entity (UK, GBP).
 
 ## Phase 1 gate: run it end to end
+
+Historical procedure for the `phase-1` tag. The current branch has the real B3 agent; use the Phase 2 runbooks above for current data/retrieval checks.
 
 Gate: `seed.json` loads; a fake close runs through the Workflow; the rail updates live. Four terminals from the repo root.
 

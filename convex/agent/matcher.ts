@@ -39,12 +39,13 @@ function daysDiff(a: string, b: string): number {
 }
 
 /**
- * Cash-account net for an entry: sum(debit − credit) for 1000 and 1010 lines.
+ * Bank cash net: sum(debit − credit) for 1000. Processor clearing (1010)
+ * is not the bank: including it would cancel a valid Stripe settlement.
  * Positive = money in, negative = money out — mirrors bank transaction sign convention.
  */
 function cashNet(entry: LedgerEntry): number {
   return entry.lines
-    .filter((l) => l.account === "1000" || l.account === "1010")
+    .filter((l) => l.account === "1000")
     .reduce((s, l) => s + l.debit - l.credit, 0);
 }
 
