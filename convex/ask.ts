@@ -2,28 +2,34 @@
 // Public action for D's voice UI. Temperature 0. Never paraphrases citations.
 // If retrieved sources do not cover the question, says so explicitly.
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalQuery, env } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
+import { searchRetrieval } from "./retrievalClient";
 
-const RETRIEVAL_URL = process.env.RETRIEVAL_URL;
+export const proposalContext = internalQuery({
+  args: {entity:v.string(),proposalId:v.id("proposals")},
+  returns:v.union(v.null(),v.object({asOf:v.string()})),
+  handler:async(ctx,{entity,proposalId})=>{
+    const p=await ctx.db.get(proposalId);
+    if(!p || p.entity!==entity)return null;
+    const [year,month]=p.period.split('-').map(Number);
+    return {asOf:`${p.period}-${new Date(Date.UTC(year,month,0)).getUTCDate()}`};
+  },
+});
 
 async function queryRetrieval(
   collection: string,
   query: string,
   k: number,
+  entity: string,
+  asOf: string,
 ): Promise<Array<{ sourceId: string; text: string; score: number }>> {
-  if (!RETRIEVAL_URL) return [];
+  if (!env.RETRIEVAL_URL) return [];
   try {
-    const res = await fetch(`${RETRIEVAL_URL}/query`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ collection, query, k }),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { hits?: Array<{ id: string; text: string; score: number }> };
-    return (data.hits ?? []).map((h) => ({ sourceId: h.id, text: h.text, score: h.score }));
+    const data=await searchRetrieval(env.RETRIEVAL_URL,{collection,text:query,k,entity,asOf},env.RETRIEVAL_API_KEY);
+    return data.map((h) => ({ sourceId: h.id, text: h.text, score: h.score }));
   } catch {
     return [];
   }
@@ -34,26 +40,30 @@ export const askAuditor = action({
     entity: v.string(),
     question: v.string(),
     proposalId: v.optional(v.id("proposals")),
+    asOf: v.optional(v.string()),
   },
   returns: v.object({
     answer: v.string(),
     citations: v.array(v.object({ sourceId: v.string(), text: v.string() })),
     sourcesAvailable: v.boolean(),
   }),
-  handler: async (ctx, { question, proposalId }) => {
-    // 1. Retrieve from all four collections, k ≤ 5 each.
-    const collections = ["policy", "contracts", "decisions", "corrections"];
+  handler: async (ctx, { entity, question, proposalId, asOf }) => {
+    const context:{asOf:string}|null=proposalId ? await ctx.runQuery(internal.ask.proposalContext,{entity,proposalId}) : null;
+    const cutoff=asOf ?? context?.asOf ?? "2026-07-31";
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(cutoff))throw new Error("asOf must be YYYY-MM-DD");
+    // 1. Retrieve scoped sources and audit summaries, k ≤ 5 each.
+    const collections = ["policy", "contracts", "decisions", "corrections", "events"];
     const retrieved: Array<{ sourceId: string; text: string; score: number }> = [];
     await Promise.all(
       collections.map(async (col) => {
-        const hits = await queryRetrieval(col, question, 5);
+        const hits = await queryRetrieval(col, question, 5, entity, cutoff);
         retrieved.push(...hits);
       }),
     );
 
     // 2. Include the decision's stored citations when proposalId is provided.
     if (proposalId) {
-      const extra = (await ctx.runQuery(internal.controls.decisionCitations, { proposalId })) as Array<{
+      const extra = (await ctx.runQuery(internal.controls.decisionCitations, { proposalId, entity, asOf:cutoff })) as Array<{
         sourceId: string;
         text: string;
       }>;
@@ -91,7 +101,7 @@ Sources:
 ${sourcesBlock}`;
 
     const { text } = await generateText({
-      model: anthropic(process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5"),
+      model: anthropic(env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5"),
       temperature: 0,
       system: systemPrompt,
       prompt: question,

@@ -48,6 +48,10 @@ Group A's data/retrieval commands: [current data contract and Convex handoff](da
 
 Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`; `ANTHROPIC_MODEL` swaps Sonnet for Opus. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
 
+## Group A Phase 3
+
+A5 scoring and Impact, A6 counters, scoped reset/re-index and CRS sandbox verification are implemented on `Deep`: [Phase 3 runbook and API handoff](retrieval/PHASE3.md). Start with `pnpm scoring:demo` and `pnpm retrieval:phase3:moss`. The scorer self-check is explicitly synthetic; live results come from `pnpm scoring:report` after the team deploys the current Convex functions and loads the dataset. CRS uses the hackathon's `/transunion/identity-manager-verification/basic` default-config route and P01–P20 personas. Live P01 verification and P12 mismatch/enrichment have been checked; no Postman config is needed. Errors still fail closed.
+
 ## The six planted breaks
 
 **Group A Phase 2 is implemented:** [data contract and accounting assumptions](datagen/README.md), [real Moss/local retrieval and run commands](retrieval/README.md), and [verification record](retrieval/PHASE2_AUDIT.md). `pnpm data:generate` now defaults to schema 2.0.0: six break families, 11 period-specific cases, 368 bank rows, imported books and dated source documents. `pnpm data:phase1` retains the clean generator. `pnpm retrieval:demo` runs an isolated local-search rehearsal; `pnpm retrieval:demo:moss` uses the real supplied Moss project. Rehearsal human decisions are explicitly labelled fixtures; the full team gate still requires the real close and controller flow.
@@ -137,7 +141,7 @@ npx convex run api:trace '{"entity":"eo-festival-nyc","proposalId":"P-sample-ban
 
 The Convex dashboard adds function logs, table data, schedules and the Workflow component's step status; the audit log is the durable, product-facing record.
 
-**Judges' scenarios and the forbidden call (Phase 3, C5/C6).** The Inject drawer calls `inject.injectBankTransaction`, `inject.amendContract` (indexed into Moss, the period's close re-runs) and `inject.changeVendorBank` (rule 4.3: hold, verify_payee via CRS, escalate; the controller answers with `inject.decideVendorHold`). `inject.resetAll` wipes and reseeds from the last loaded seed. The Permissions drawer reads `api.listRules` (every rule with kind, fired and failed counts, the three tool lists, denials) and its "make the agent post" button calls `api.attemptAgentPost`, which is refused server-side with the 8.1 reason and logged. `api.traceSummary` tells one unit of work in plain English from the audit rows; `api.indexTraces` pushes those summaries to Moss so Ask Auditor can search the log (needs an `events` collection on the sidecar).
+**Judges' scenarios and the forbidden call (Phase 3, C5/C6).** The Inject drawer calls `inject.injectBankTransaction`, `inject.amendContract` (indexed into Moss, the period's close re-runs) and `inject.changeVendorBank` (rule 4.3: hold, verify_payee via CRS, escalate; the controller answers with `inject.decideVendorHold`). `inject.resetAll` wipes and reseeds from the last loaded seed. The Permissions drawer reads `api.listRules` (every rule with kind, fired and failed counts, the three tool lists, denials) and its "make the agent post" button calls `api.attemptAgentPost`, which is refused server-side with the 8.1 reason and logged. `api.traceSummary` tells one unit of work in plain English from the audit rows; `api.indexTraces` pushes those summaries to Moss so Ask Auditor can search the log (supported by the sidecar's separate `events` collection).
 
 ```bash
 npx convex run inject:changeVendorBank '{"entity":"eo-festival-nyc","vendorId":"field-flame","newLast4":"8832","source":"email"}'

@@ -155,7 +155,9 @@ export default defineSchema({
   breaks: defineTable({
     ...scoped,
     breakId: v.string(), // "B-BT-0231"
-    bankTransactionId: v.id("bankTransactions"),
+    bankTransactionId: v.optional(v.id("bankTransactions")), // evidence-only cases have no settled cash movement
+    sourceDocumentIds: v.optional(v.array(v.string())), // authoritative raw evidence IDs, never scoring case IDs
+    vendorId: v.optional(v.string()),
     kind: v.string(), // "unmatched", "duplicate_invoice", "deposit_shortfall", ...
     description: v.string(),
     status: v.union(v.literal("open"), v.literal("proposed"), v.literal("resolved"), v.literal("escalated")),
@@ -233,6 +235,7 @@ export default defineSchema({
     pnlImpact: v.optional(v.number()),
     citationIds: v.optional(v.array(v.string())),
     sourceDocumentIds: v.optional(v.array(v.string())),
+    vendorId: v.optional(v.string()),
     dependsOn: v.optional(v.array(v.string())),
     result: v.optional(v.object({ caught: v.boolean(), correct: v.boolean(), scoredAt: v.number() })),
   }).index("by_entity_period", ["entity", "period"]),

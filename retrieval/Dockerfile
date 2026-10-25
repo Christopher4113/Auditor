@@ -16,6 +16,7 @@ RUN cd retrieval && uv sync --frozen --no-dev
 # Copy only source files: local credentials, native caches and SQLite files are
 # never copied into this image, even when building from the local checkout.
 COPY retrieval/*.py /app/retrieval/
+COPY retrieval/crs_personas.json /app/retrieval/
 COPY datagen/*.py /app/datagen/
 RUN python /app/datagen/generate.py --out /app/datagen/seed.json
 

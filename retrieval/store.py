@@ -30,6 +30,7 @@ class Catalog:
         self.lock = RLock()
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute("CREATE TABLE IF NOT EXISTS chunks (key TEXT PRIMARY KEY, collection TEXT NOT NULL, source_id TEXT NOT NULL, text TEXT NOT NULL, meta TEXT NOT NULL)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS pending_resets (entity TEXT PRIMARY KEY, snapshot TEXT NOT NULL)")
         self.db.commit()
 
     def all(self) -> list[Document]:
@@ -46,6 +47,24 @@ class Catalog:
         with self.lock, self.db:
             self.db.execute("DELETE FROM chunks")
             self.put(documents)
+
+    def replace_entity(self, entity: str, documents: list[Document]) -> None:
+        with self.lock, self.db:
+            keys = [(doc.key,) for doc in self.all() if doc.meta["entity"] == entity]
+            self.db.executemany("DELETE FROM chunks WHERE key = ?", keys)
+            self.db.executemany("INSERT INTO chunks VALUES (?, ?, ?, ?, ?)",
+                [(d.key, d.collection, d.id, d.text, json.dumps(d.meta, sort_keys=True)) for d in documents])
+            self.db.execute("DELETE FROM pending_resets WHERE entity = ?", (entity,))
+
+    def begin_reset(self, entity: str, documents: list[Document]) -> None:
+        with self.lock, self.db:
+            self.db.execute("INSERT INTO pending_resets VALUES (?, ?) ON CONFLICT(entity) DO UPDATE SET snapshot=excluded.snapshot",
+                (entity, json.dumps([{"collection": d.collection, "id": d.id, "text": d.text, "meta": d.meta} for d in documents])))
+
+    def pending_resets(self):
+        with self.lock:
+            return [(entity, [Document(**row) for row in json.loads(snapshot)])
+                    for entity, snapshot in self.db.execute("SELECT entity, snapshot FROM pending_resets")]
 
     def close(self) -> None:
         with self.lock:

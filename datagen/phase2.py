@@ -23,6 +23,11 @@ def plant_scenarios(data: dict) -> dict:
     data["schemaVersion"] = "2.0.0"
     data["ledgerEntries"] = []
     data["sourceDocuments"] = []
+    # Sponsor-issued sandbox persona IDs only. Field & Flame uses the published
+    # mismatch case for the hold scene. Bodies remain in the sidecar, not books.
+    persona_ids = iter([f"P{i:02d}" for i in range(1,16) if i != 12])
+    for vendor in data["vendors"]:
+        vendor["crsTestIdentity"] = "P12" if vendor["id"] == "field-flame" else next(persona_ids)
     banks = data["bankTransactions"]
     books = data["ledgerEntries"]
     docs = data["sourceDocuments"]

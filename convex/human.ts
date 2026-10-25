@@ -34,7 +34,7 @@ export async function approve(
   if (p.status !== "escalated" && p.status !== "failed_rule") throw new Error(`${proposalId} is ${p.status}, not awaiting the controller`);
   await assertOpen(ctx, entity, p.period);
   const brk = await ctx.db.get(p.breakId);
-  const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+  const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
   const precedentScope = scope ?? { breakKind: brk?.kind ?? "unmatched", counterparty: txn?.counterparty };
   const traceId = await traceFor(ctx, { proposalId: p._id });
   const decisionId = await ctx.db.insert("decisions", {
@@ -64,7 +64,7 @@ export async function reject(ctx: MutationCtx, entity: string, proposalId: strin
   if (p.status !== "escalated" && p.status !== "failed_rule") throw new Error(`${proposalId} is ${p.status}, not awaiting the controller`);
   await assertOpen(ctx, entity, p.period);
   const brk = await ctx.db.get(p.breakId);
-  const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+  const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
   const traceId = await traceFor(ctx, { proposalId: p._id });
   const decisionId = await ctx.db.insert("decisions", {
     traceId,

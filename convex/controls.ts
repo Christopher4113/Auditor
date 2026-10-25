@@ -28,8 +28,9 @@ export const review = internalMutation({
 
     // Vendor hold check (4.3): find the counterparty vendor for this transaction.
     const brk = await ctx.db.get(p.breakId);
-    const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
-    const vendor = txn
+    const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
+    const vendorId = brk?.vendorId ?? txn?.vendorId;
+    const vendor = vendorId ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", q => q.eq("entity", p.entity).eq("vendorId", vendorId)).unique() : txn
       ? await ctx.db
           .query("vendors")
           .withIndex("by_entity_vendorId", (q) => q.eq("entity", p.entity))
@@ -240,9 +241,11 @@ export const onVendorBankChange = internalMutation({
 
 /** B6 helper: load citations from the most recent decision on a proposal, for askAuditor. */
 export const decisionCitations = internalQuery({
-  args: { proposalId: v.id("proposals") },
+  args: { proposalId: v.id("proposals"), entity:v.optional(v.string()), asOf:v.optional(v.string()) },
   returns: v.array(v.object({ sourceId: v.string(), text: v.string() })),
-  handler: async (ctx, { proposalId }) => {
+  handler: async (ctx, { proposalId, entity, asOf }) => {
+    const proposal=await ctx.db.get(proposalId);
+    if(!proposal || (entity && proposal.entity!==entity) || (asOf && proposal.period>asOf.slice(0,7)))return [];
     const decision = await ctx.db
       .query("decisions")
       .withIndex("by_proposal", (q) => q.eq("proposalId", proposalId))

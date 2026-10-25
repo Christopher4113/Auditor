@@ -188,6 +188,7 @@ export const load = internalMutation({
         pnlImpact: k.pnlImpact,
         citationIds: k.citationIds,
         sourceDocumentIds: brk?.sourceDocumentIds,
+        vendorId: s.contracts.find(c => brk?.contractIds.includes(c.id))?.vendorId,
         dependsOn: k.dependsOn,
       });
     }
@@ -221,7 +222,7 @@ export const load = internalMutation({
     }
     await ctx.db.insert("seedFiles", { entity, dataset: s.dataset, json: JSON.stringify(s), savedAt: Date.now() });
     await audit(ctx, { entity, actor: "seed", action: "seed.load", detail: `${s.dataset} seed ${s.seed} schema ${s.schemaVersion}` });
-    await ctx.scheduler.runAfter(0, internal.retrieval.indexEntity, { entity }); // policy + contract clauses into Moss (C4)
+    await ctx.scheduler.runAfter(0, internal.retrieval.resetEntity, { entity }); // A6: remove stale runtime memory after entity reseed
     return { entity, bankTransactions: s.bankTransactions.length, journalEntries };
   },
 });
