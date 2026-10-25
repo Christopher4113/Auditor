@@ -99,7 +99,11 @@ export async function ensureClose(ctx: MutationCtx, entity: string, period: stri
   if (p.status === "signed") return null;
   if (p.closeWorkflowId) {
     const s = await getStatus(ctx, components.workflow, p.closeWorkflowId as never);
-    if (s.type === "inProgress") return p.closeWorkflowId;
+    if (s.type === "inProgress") {
+      // The running close already chose its lines. Remember to run again when it finishes (judges inject mid-close).
+      if (!p.rerunRequested) await ctx.db.patch("periods", p._id, { rerunRequested: true });
+      return p.closeWorkflowId;
+    }
   }
   const workflowId: WorkflowId = await start(ctx, internal.close.closePeriod, { entity, period }, { onComplete: internal.close.onComplete, context: { entity, period } });
   await ctx.db.patch("periods", p._id, { status: "closing", closeWorkflowId: workflowId });
@@ -117,6 +121,10 @@ export const onComplete = internalMutation({
       .unique();
     if (p && p.status === "closing") await ctx.db.patch("periods", p._id, { status: "open" });
     await ctx.scheduler.runAfter(0, internal.trace.indexPeriod, { entity, period }); // audit trail into Moss "events" (Ask Auditor)
+    if (p?.rerunRequested) {
+      await ctx.db.patch("periods", p._id, { rerunRequested: false });
+      await ctx.scheduler.runAfter(0, internal.close.rerun, { entity, period });
+    }
     await audit(ctx, {
       entity,
       period,
@@ -150,5 +158,15 @@ export const ingestBankTransaction = internalMutation({
     await audit(ctx, { entity: txn.entity, period: txn.period, actor, action: "bank.ingest", bankTransactionId: id, traceId, detail: `${txn.txnId} ${txn.amount}` });
     await ensureClose(ctx, txn.entity, txn.period, actor);
     return id;
+  },
+});
+
+/** A close finished while new work was waiting: start the next one (scheduled from onComplete). */
+export const rerun = internalMutation({
+  args: { entity: v.string(), period: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { entity, period }) => {
+    await ensureClose(ctx, entity, period, "workflow");
+    return null;
   },
 });

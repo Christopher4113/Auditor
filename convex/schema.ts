@@ -82,6 +82,7 @@ export default defineSchema({
     end: v.string(),
     status: vPeriodStatus,
     closeWorkflowId: v.optional(v.string()),
+    rerunRequested: v.optional(v.boolean()), // work arrived while a close was running; onComplete starts another
     prepared: v.optional(v.object({ at: v.number(), unmatched: v.number(), openBreaks: v.number() })), // scheduled advance (C4)
     signedAt: v.optional(v.number()),
     closeSummary: v.optional(v.object({ entriesPosted: v.number(), openItemsCarried: v.number(), debits: v.number(), credits: v.number() })),

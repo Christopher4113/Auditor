@@ -3,7 +3,7 @@
 // into Moss, the period's close re-runs), a vendor bank-detail change (rule 4.3: payments held, verify_payee
 // against CRS, escalated the same day; the controller keeps or releases the hold). resetAll wipes and
 // reseeds from the last loaded seed file.
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import { audit } from "./audit";
@@ -38,8 +38,8 @@ export const injectBankTransaction = mutation({
   },
   returns: v.object({ txnId: v.string(), traceId: v.string() }),
   handler: async (ctx, { entity, date, amount, counterparty, memo, reference, vendorId }) => {
-    if (!Number.isFinite(amount) || amount === 0 || !Number.isInteger(amount)) throw new Error("amount must be a non-zero integer in cents");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("date must be YYYY-MM-DD");
+    if (!Number.isFinite(amount) || amount === 0 || !Number.isInteger(amount)) throw new ConvexError("amount must be a non-zero integer in cents");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ConvexError("date must be YYYY-MM-DD");
     const txnId = `INJ-${stamp()}`;
     await ctx.runMutation(internal.close.ingestBankTransaction, {
       entity,
@@ -63,13 +63,16 @@ export const amendContract = mutation({
   args: { entity: v.string(), contractId: v.optional(v.string()), counterparty: v.optional(v.string()), text: v.string(), effectiveDate: v.string(), number: v.optional(v.string()) },
   returns: v.object({ clauseId: v.string(), traceId: v.string() }),
   handler: async (ctx, { entity, contractId: givenId, counterparty, text, effectiveDate, number }) => {
-    if (!text.trim()) throw new Error("an amendment needs text");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) throw new Error("effectiveDate must be YYYY-MM-DD");
+    if (!text.trim()) throw new ConvexError("an amendment needs text");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) throw new ConvexError("effectiveDate must be YYYY-MM-DD");
     // The Inject drawer sends the vendor's name; the CLI sends the contract id.
     const contract = givenId
       ? await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity).eq("contractId", givenId)).unique()
       : (await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity)).take(100)).find((c) => nameMatches(c.counterparty, counterparty)) ?? null;
-    if (!contract) throw new Error(`no contract for ${givenId ?? counterparty}`);
+    if (!contract) {
+      const names = (await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity)).take(100)).map((c) => c.counterparty).sort();
+      throw new ConvexError(`No contract for "${givenId ?? counterparty}". Contracts: ${names.join(", ")}`);
+    }
     const contractId = contract.contractId;
     const n = contract.clauses.filter((c) => c.id.includes("amendment")).length + 1;
     const clauseId = `${contractId}-amendment-${n}`;
@@ -99,11 +102,14 @@ export const changeVendorBank = mutation({
   },
   returns: v.object({ traceId: v.string() }),
   handler: async (ctx, { entity, vendorId: givenId, vendorName, newLast4, source, paymentAmount, date }) => {
-    if (!/^\d{4}$/.test(newLast4)) throw new Error("newLast4 must be four digits");
+    if (!/^\d{4}$/.test(newLast4)) throw new ConvexError("newLast4 must be four digits");
     const vendor = givenId
       ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", givenId)).unique()
       : (await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity)).take(100)).find((vd) => nameMatches(vd.name, vendorName)) ?? null;
-    if (!vendor) throw new Error(`vendor ${givenId ?? vendorName} not found`);
+    if (!vendor) {
+      const names = (await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity)).take(100)).map((vd) => vd.name).sort();
+      throw new ConvexError(`No vendor called "${givenId ?? vendorName}". Vendors: ${names.join(", ")}`);
+    }
     const vendorId = vendor.vendorId;
     const traceId = `T-vendor-${vendorId}-${stamp()}`;
     const bankChange = { at: Date.now(), previousLast4: vendor.bankAccountLast4, newLast4, source: source ?? "email", traceId };
@@ -115,7 +121,7 @@ export const changeVendorBank = mutation({
     // "payment affected" becomes one: the agent sees the held vendor, parks it in 1400, rule 4.3 escalates it.
     if (paymentAmount && Math.round(Math.abs(paymentAmount)) > 0) {
       const d = date ?? new Date().toISOString().slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("date must be YYYY-MM-DD");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new ConvexError("date must be YYYY-MM-DD");
       await ctx.runMutation(internal.close.ingestBankTransaction, {
         entity, period: d.slice(0, 7), txnId: `INJ-${stamp()}`, date: d, amount: -Math.round(Math.abs(paymentAmount)),
         counterparty: vendor.name, memo: `Payment due; bank details changed to ...${newLast4} via ${bankChange.source}`, vendorId, source: "bank", actor: "inject",
@@ -183,10 +189,10 @@ export const decideVendorHold = mutation({
   args: { entity: v.string(), vendorId: v.string(), release: v.boolean(), note: v.string() },
   returns: v.null(),
   handler: async (ctx, { entity, vendorId, release, note }) => {
-    if (!note.trim()) throw new Error("record why");
+    if (!note.trim()) throw new ConvexError("record why");
     const vendor = await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", vendorId)).unique();
     if (!vendor) throw new Error(`vendor ${vendorId} not found`);
-    if (!vendor.paymentsHeld) throw new Error(`${vendor.name} has no hold`);
+    if (!vendor.paymentsHeld) throw new ConvexError(`${vendor.name} has no hold`);
     const traceId = vendor.bankChange?.traceId;
     if (release) await ctx.db.patch("vendors", vendor._id, { paymentsHeld: false });
     await audit(ctx, { entity, actor: "human", action: release ? "vendor.hold.released" : "vendor.hold.kept", traceId, detail: note.trim() });
@@ -217,7 +223,7 @@ export const addPublicSource = mutation({
   handler: async (ctx, a) => {
     if (!/^pub-[a-z0-9-]+$/.test(a.sourceId)) throw new Error("sourceId must look like pub-<slug>");
     if (!/^https?:\/\//.test(a.url)) throw new Error("url must be http(s)");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(a.effectiveDate)) throw new Error("effectiveDate must be YYYY-MM-DD");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(a.effectiveDate)) throw new ConvexError("effectiveDate must be YYYY-MM-DD");
     const text = a.text.replace(/\s+\n/g, "\n").trim().slice(0, 20000);
     if (text.length < 200) throw new Error("text too short to be a source");
     const existing = await ctx.db.query("publicSources").withIndex("by_entity_sourceId", (q) => q.eq("entity", a.entity).eq("sourceId", a.sourceId)).unique();
