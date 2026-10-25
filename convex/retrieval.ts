@@ -3,7 +3,7 @@
 // nothing, index is skipped, verify fails closed. Nothing here ever throws into the Workflow.
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { env, internalAction, internalQuery } from "./_generated/server";
+import { env, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { traceFor } from "./audit";
 
 const vHit = v.object({ id: v.string(), text: v.string(), score: v.number() });
@@ -115,8 +115,18 @@ export const indexDecision = internalAction({
   handler: async (ctx, { decisionId }): Promise<null> => {
     const chunk = await ctx.runQuery(internal.retrieval.loadDecision, { decisionId });
     if (!chunk) return null;
+    await ctx.runMutation(internal.retrieval.rememberIndexedText, { decisionId, text: chunk.text });
     const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "decisions", id: chunk.id, text: chunk.text, meta: chunk.meta, traceId: chunk.traceId });
     await ctx.runMutation(internal.audit.write, { entity: chunk.entity, period: chunk.period, actor: "controls", action: ok ? "index_decision" : "index_decision.skipped", decisionId, traceId: chunk.traceId, detail: chunk.id });
+    return null;
+  },
+});
+
+export const rememberIndexedText = internalMutation({
+  args: { decisionId: v.id("decisions"), text: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { decisionId, text }) => {
+    await ctx.db.patch("decisions", decisionId, { indexedText: text });
     return null;
   },
 });

@@ -215,6 +215,7 @@ export default defineSchema({
     latencyMs: v.optional(v.number()),
     entryId: v.optional(v.id("journalEntries")),
     traceId: v.optional(v.string()),
+    indexedText: v.optional(v.string()), // the exact chunk sent to Moss; precedent citations are verified against it
   })
     .index("by_proposal", ["proposalId"])
     .index("by_entity_period", ["entity", "period"]),

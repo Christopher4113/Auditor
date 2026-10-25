@@ -95,7 +95,8 @@ export const review = internalMutation({
     }
     // Decision texts: keyed by decisionId (e.g. "D-0417")
     for (const d of allDecisionsAllPeriods) {
-      sources.set(d.decisionId, d.reason);
+      // Both the raw reason and the exact text Moss serves, so a verbatim quote of either verifies.
+      sources.set(d.decisionId, [d.indexedText, d.reason].filter(Boolean).join("\n"));
       // Also make each of the decision's citations searchable by their sourceId
       for (const c of d.citations) {
         if (!sources.has(c.sourceId)) sources.set(c.sourceId, c.text);
@@ -103,7 +104,8 @@ export const review = internalMutation({
     }
     // Correction instructions: keyed by correctionId
     for (const c of allCorrections) {
-      sources.set(c.correctionId, c.instruction);
+      // The raw instruction and the exact chunk Moss serves (see retrieval.loadCorrection), so either quote verifies.
+      sources.set(c.correctionId, `${c.correctionId} (${c.kind}, scope: ${c.scope}): ${c.instruction}\n${c.instruction}`);
     }
     // Real public documents (fee schedules, terms), keyed by their pub- id
     for (const ps of await ctx.db.query("publicSources").withIndex("by_entity_sourceId", (q) => q.eq("entity", p.entity)).take(50)) {
