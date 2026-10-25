@@ -18,8 +18,10 @@ async function currentPeriodEnd(ctx: { db: MutationCtx["db"] }, entity: string):
 }
 /** Judges type names loosely: "Field & Flame" should find "Field & Flame Catering" and vice versa. */
 const nameMatches = (stored: string, typed?: string) => {
-  const a = stored.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const b = (typed ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  // "Field & Flame", "Field and Flame" and "field flame" are the same vendor.
+  const norm = (s: string) => s.toLowerCase().replace(/&|\band\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+  const a = norm(stored);
+  const b = norm(typed ?? "");
   return b.length > 0 && (a === b || a.startsWith(b) || b.startsWith(a));
 };
 
