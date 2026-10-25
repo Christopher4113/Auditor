@@ -560,10 +560,10 @@ export const propose = internalAction({
       breakId: brk._id,
       txnId: txn.txnId,
       revision: 1,
-      lines: [
-        { account: "1000", debit: Math.abs(txn.amount), credit: 0 },
-        { account: "1400", debit: 0, credit: Math.abs(txn.amount) },
-      ],
+      // Park the cash movement in 1400 the way it actually moved: a payment credits cash, a receipt debits it.
+      lines: txn.amount < 0
+        ? [{ account: "1400", debit: Math.abs(txn.amount), credit: 0 }, { account: "1000", debit: 0, credit: Math.abs(txn.amount) }]
+        : [{ account: "1000", debit: txn.amount, credit: 0 }, { account: "1400", debit: 0, credit: txn.amount }],
       reason: approvalQuestion
         ? `Controller decision requested: ${approvalQuestion}`
         : "Fallback stub: agent did not call propose_entry; parked in 1400 for human review.",
