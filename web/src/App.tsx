@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
   AudioLines,
   BookOpen,
-  CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
@@ -26,6 +25,7 @@ import WorkspaceDrawer from "./components/WorkspaceDrawer";
 import SponsorRibbon from "./components/SponsorRibbon";
 import ThemeToggle from "./components/ThemeToggle";
 import LiquidSegmentedControl from "./components/LiquidSegmentedControl";
+import PeriodPicker from "./components/PeriodPicker";
 import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
 import {
@@ -164,7 +164,8 @@ function Dialog({
     return () => {
       document.body.style.overflow = overflow;
       document.removeEventListener("keydown", handleKey);
-      previous?.focus();
+      if (previous?.isConnected) previous.focus();
+      else document.querySelector<HTMLButtonElement>(".more-button")?.focus();
     };
   }, []);
   return (
@@ -226,6 +227,10 @@ export default function App() {
   const [signedPeriods, setSignedPeriods] = useState<string[]>([]);
   const [denialCount, setDenialCount] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [toolsMenuSpace, setToolsMenuSpace] = useState({
+    height: 360,
+    above: false,
+  });
   const [activeNav, setActiveNav] = useState("overview");
   const searchRef = useRef<HTMLInputElement>(null);
   const activityRef = useRef<HTMLElement>(null);
@@ -344,9 +349,13 @@ export default function App() {
         event.preventDefault();
         setDrawer(null);
         setSelectedId(null);
+        setMoreOpen(false);
         window.requestAnimationFrame(() => {
           activityRef.current?.scrollIntoView({
-            behavior: "smooth",
+            behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+              .matches
+              ? "auto"
+              : "smooth",
             block: "center",
           });
           searchRef.current?.focus();
@@ -356,13 +365,48 @@ export default function App() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+  useLayoutEffect(() => {
+    if (!moreOpen) return;
+    const viewport = window.visualViewport;
+    const measureSpace = () => {
+      const bounds = moreRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const top = viewport?.offsetTop ?? 0;
+      const bottom = top + (viewport?.height ?? window.innerHeight);
+      const below = bottom - bounds.bottom - 20;
+      const above = bounds.top - top - 20;
+      const useAbove = below < 220 && above > below;
+      const height = Math.max(88, Math.floor(useAbove ? above : below));
+      setToolsMenuSpace((current) =>
+        current.height === height && current.above === useAbove
+          ? current
+          : { height, above: useAbove },
+      );
+    };
+    measureSpace();
+    window.addEventListener("resize", measureSpace);
+    window.addEventListener("scroll", measureSpace, true);
+    viewport?.addEventListener("resize", measureSpace);
+    viewport?.addEventListener("scroll", measureSpace);
+    return () => {
+      window.removeEventListener("resize", measureSpace);
+      window.removeEventListener("scroll", measureSpace, true);
+      viewport?.removeEventListener("resize", measureSpace);
+      viewport?.removeEventListener("scroll", measureSpace);
+    };
+  }, [moreOpen]);
   useEffect(() => {
     if (!moreOpen) return;
     const onOutside = (event: MouseEvent) => {
       if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false);
     };
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMoreOpen(false);
+      if (event.key === "Escape") {
+        setMoreOpen(false);
+        moreRef.current
+          ?.querySelector<HTMLButtonElement>(".more-button")
+          ?.focus();
+      }
     };
     document.addEventListener("mousedown", onOutside);
     document.addEventListener("keydown", onEscape);
@@ -371,7 +415,14 @@ export default function App() {
       document.removeEventListener("keydown", onEscape);
     };
   }, [moreOpen]);
+  const closeTools = () => {
+    moreRef.current
+      ?.querySelector<HTMLButtonElement>(".more-button")
+      ?.focus({ preventScroll: true });
+    setMoreOpen(false);
+  };
   const openDrawer = (value: DrawerType) => {
+    if (moreOpen) closeTools();
     setSelectedId(null);
     setDrawer(value);
     setMoreOpen(false);
@@ -745,34 +796,40 @@ export default function App() {
             <span className="currency-tag">USD</span>
           </div>
           <div className="period-tools">
-            <div className="period-select-wrap">
-              <CalendarDays size={15} />
-              <label className="sr-only" htmlFor="period-select">
-                Fiscal period
-              </label>
-              <select
-                id="period-select"
-                value={period}
-                disabled={controllerBusy}
-                onChange={(event) => changePeriod(event.target.value as Period)}
-              >
-                {[...periods].reverse().map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
-              <ChevronDown size={13} />
-            </div>
-            <div className="more-wrap" ref={moreRef}>
+            <PeriodPicker
+              value={period}
+              options={[...periods].reverse()}
+              disabled={controllerBusy}
+              onValueChange={(value) => changePeriod(value as Period)}
+            />
+            <div
+              className="more-wrap"
+              ref={moreRef}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget))
+                  setMoreOpen(false);
+              }}
+            >
               <button
                 className="icon-button more-button"
                 aria-label="More workspace tools"
                 aria-expanded={moreOpen}
+                aria-controls="workspace-tools-menu"
                 onClick={() => setMoreOpen(!moreOpen)}
               >
                 <MoreHorizontal size={20} />
               </button>
               {moreOpen && (
-                <div className="tools-menu">
+                <div
+                  className="tools-menu"
+                  id="workspace-tools-menu"
+                  data-side={toolsMenuSpace.above ? "top" : "bottom"}
+                  style={
+                    {
+                      "--tools-menu-max-height": `${toolsMenuSpace.height}px`,
+                    } as CSSProperties
+                  }
+                >
                   <span>WORKSPACE TOOLS</span>
                   <button
                     disabled={!convex || controllerBusy}
@@ -784,7 +841,7 @@ export default function App() {
                       setLiveSnapshot(null);
                       setLiveFailure(false);
                       setDetailFailure(false);
-                      setMoreOpen(false);
+                      closeTools();
                     }}
                   >
                     <Layers3 size={16} />
@@ -809,7 +866,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       exportClose();
-                      setMoreOpen(false);
+                      closeTools();
                     }}
                   >
                     <Download size={16} />
@@ -817,18 +874,13 @@ export default function App() {
                   </button>
                   <div />
                   <button
+                    disabled={live || controllerBusy}
                     onClick={() => {
-                      if (live) {
-                        notify(
-                          "Switch to the demo workspace to reset sample records.",
-                        );
-                        return;
-                      }
                       setProposals(initialProposals);
                       setSignedPeriods([]);
                       setDenialCount(0);
                       changePeriod("September 2026");
-                      setMoreOpen(false);
+                      closeTools();
                       notify("Demo workspace reset.");
                     }}
                   >

@@ -151,6 +151,60 @@ afterEach(() => {
 });
 
 describe("live controller rehearsal from the workspace", () => {
+  it("returns keyboard focus after closing workspace tools, drawers, and local actions", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const tools = screen.getByRole("button", { name: "More workspace tools" });
+    await user.click(tools);
+    screen.getByRole("button", { name: "Close summary" }).focus();
+    await user.keyboard("{Escape}");
+    expect(tools.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(tools);
+
+    await user.click(tools);
+    expect(
+      (screen.getByRole("button", { name: "Reset demo" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Close summary" }));
+    expect(screen.getByRole("dialog", { name: "Close summary" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
+    expect(document.activeElement).toBe(tools);
+
+    await user.click(tools);
+    screen.getByRole("button", { name: "Open demo workspace" }).focus();
+    await user.keyboard("{Enter}");
+    expect(document.activeElement).toBe(tools);
+    await user.click(tools);
+    screen.getByRole("button", { name: "Reset demo" }).focus();
+    await user.keyboard("{Enter}");
+    expect(tools.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(tools);
+    expect(screen.getByText("Demo workspace reset.")).toBeTruthy();
+  });
+
+  it("finds demo past decisions by vendor names in source excerpts", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(
+      screen.getByRole("button", { name: "More workspace tools" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Open demo workspace" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Past decisions" }));
+    const dialog = screen.getByRole("dialog", { name: "Past decisions" });
+    await user.type(
+      within(dialog).getByRole("searchbox", { name: "Search past decisions" }),
+      "  nOrThErN LiNeS  ",
+    );
+    expect(within(dialog).getByText("The headliner cancellation")).toBeTruthy();
+    expect(within(dialog).queryByText("No matches found")).toBeNull();
+    expect(
+      within(dialog).queryByText("A bank change is a hard stop"),
+    ).toBeNull();
+  });
+
   it("connects glass navigation to activity, filters, and the past-decisions drawer", async () => {
     const user = userEvent.setup();
     const scrollIntoView = vi.fn();
@@ -364,7 +418,7 @@ describe("live controller rehearsal from the workspace", () => {
       (
         screen.getByRole("combobox", {
           name: "Fiscal period",
-        }) as HTMLSelectElement
+        }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
     expect(

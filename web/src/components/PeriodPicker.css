@@ -1,0 +1,250 @@
+/* One focusable surface; the floating menu never invokes a native OS picker. */
+:root button.period-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 14px;
+  appearance: none;
+  border: 1px solid var(--glass-border, #ccc9d6);
+  border-radius: 999px;
+  outline: none;
+  background:
+    radial-gradient(
+      ellipse at 22% 0%,
+      var(--glass-sheen, #ffffffb8),
+      transparent 65%
+    ),
+    var(--glass-bg, #f8f8fc);
+  box-shadow: var(--glass-shadow, inset 0 1px 0 #fff);
+  color: var(--liquid-foreground, #40384f);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 240ms cubic-bezier(0.22, 1.15, 0.4, 1);
+}
+
+:root button.period-picker-trigger:focus {
+  outline: none;
+}
+
+:root button.period-picker-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring, #8157d7);
+  outline-offset: 3px;
+}
+
+:root button.period-picker-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:root button.period-picker-trigger[data-popup-open] {
+  border-color: var(--glass-border, #ccc9d6);
+}
+
+.period-picker-calendar,
+.period-picker-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--text-muted, #766e83);
+}
+
+.period-picker-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.period-picker-chevron {
+  margin-left: 4px;
+  transition: transform 240ms cubic-bezier(0.22, 1.15, 0.4, 1);
+}
+
+.period-picker-trigger[data-popup-open] .period-picker-chevron {
+  transform: rotate(180deg);
+}
+
+.period-picker-positioner {
+  z-index: 90;
+  outline: none;
+}
+
+:root .period-picker-popup {
+  box-sizing: border-box;
+  width: max(220px, var(--anchor-width));
+  max-width: min(var(--available-width), calc(100vw - 24px));
+  max-height: min(360px, var(--available-height));
+  overflow: hidden;
+  padding: 5px;
+  border: 1px solid var(--glass-border, #ccc9d6);
+  border-radius: 20px;
+  outline: none;
+  background: #fcfbfff5;
+  box-shadow:
+    inset 0 1px 0 var(--liquid-rim, #ffffffed),
+    0 5px 12px #2112330b,
+    0 20px 60px #21123321;
+  color: var(--liquid-foreground, #40384f);
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity 160ms ease,
+    transform 260ms cubic-bezier(0.22, 1.12, 0.4, 1);
+}
+
+.period-picker-popup[data-starting-style],
+.period-picker-popup[data-ending-style] {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+
+.period-picker-popup[data-side="top"][data-starting-style],
+.period-picker-popup[data-side="top"][data-ending-style] {
+  transform: translateY(4px) scale(0.97);
+}
+
+.period-picker-list {
+  max-height: min(340px, calc(var(--available-height) - 12px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+:root .period-picker-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 44px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  outline: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+:root .period-picker-option[data-selected] {
+  color: var(--accent-text, #6744c7);
+  font-weight: 550;
+}
+
+:root .period-picker-option[data-highlighted] {
+  background: #eeeaf6;
+  color: #403451;
+}
+
+.period-picker-check {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--accent-text, #6744c7);
+}
+
+.period-picker-check:not([data-selected]) {
+  visibility: hidden;
+}
+
+:root[data-theme="dark"] .period-picker-popup {
+  background: #28232ff5;
+  box-shadow:
+    inset 0 1px 0 var(--liquid-rim, #ffffff30),
+    0 5px 12px #00000026,
+    0 20px 60px #0000004d;
+}
+
+:root[data-theme="dark"] .period-picker-option[data-highlighted] {
+  background: #44394f;
+  color: #fff;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  :root button.period-picker-trigger,
+  :root .period-picker-popup {
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :root button.period-picker-trigger:hover:not(:disabled) {
+    background:
+      radial-gradient(
+        ellipse at 22% 0%,
+        var(--glass-sheen, #ffffffb8),
+        transparent 65%
+      ),
+      var(--glass-bg-hover, #fff);
+    box-shadow: var(--glass-shadow-hover);
+    transform: translateY(-1px);
+  }
+}
+
+:root button.period-picker-trigger:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+@media (max-width: 700px) {
+  :root button.period-picker-trigger {
+    flex: 1;
+    max-width: 300px;
+    justify-content: flex-start;
+  }
+  .period-picker-chevron {
+    margin-left: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root button.period-picker-trigger,
+  :root .period-picker-popup,
+  :root .period-picker-option,
+  .period-picker-chevron {
+    transition: none;
+  }
+  :root button.period-picker-trigger:hover:not(:disabled),
+  :root button.period-picker-trigger:active:not(:disabled),
+  .period-picker-popup[data-starting-style],
+  .period-picker-popup[data-ending-style] {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] button.period-picker-trigger,
+  :root[data-theme] .period-picker-popup {
+    background: var(--liquid-menu, #fcfbff);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :root[data-theme] button.period-picker-trigger,
+  :root[data-theme] .period-picker-popup {
+    border-color: ButtonText;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: none;
+  }
+  :root .period-picker-option[data-highlighted] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

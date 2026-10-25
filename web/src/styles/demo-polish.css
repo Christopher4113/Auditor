@@ -1,0 +1,40 @@
+/* One focus treatment for editable fields; avoid stacked rings from base layers. */
+.input:focus,
+.textarea:focus,
+.ask-composer textarea:focus,
+.td-version-select select:focus {
+  border-color: var(--focus-ring);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Error toasts inherit amber ink instead of leaving a pale purple close icon. */
+.toast > button {
+  color: inherit;
+}
+
+/* A disabled workspace action must not light up like an available menu item. */
+.tools-menu > button:disabled,
+.tools-menu > button:disabled:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  transform: none;
+}
+
+/* App measures the space below the tools trigger in the current viewport. */
+.tools-menu {
+  max-height: var(--tools-menu-max-height, calc(100dvh - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 9px;
+  scrollbar-width: thin;
+}
+
+.tools-menu[data-side="top"] {
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform-origin: bottom right;
+}
