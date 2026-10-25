@@ -95,7 +95,8 @@ export const review = internalMutation({
     }
     // Decision texts: keyed by decisionId (e.g. "D-0417")
     for (const d of allDecisionsAllPeriods) {
-      sources.set(d.decisionId, d.reason);
+      // Both the raw reason and the exact text Moss serves, so a verbatim quote of either verifies.
+      sources.set(d.decisionId, [d.indexedText, d.reason].filter(Boolean).join("\n"));
       // Also make each of the decision's citations searchable by their sourceId
       for (const c of d.citations) {
         if (!sources.has(c.sourceId)) sources.set(c.sourceId, c.text);
