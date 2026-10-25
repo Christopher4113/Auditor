@@ -802,7 +802,7 @@ export const controlPolicyRules = [
     clause: "8.1",
     title: "Separate proposal from posting",
     description:
-      "The staff accountant can propose. Only controls can post. The server rejects the agent identity.",
+      "The staff accountant can propose. Controls or a human reviewer can post. The server rejects the proposing agent.",
   },
   {
     clause: "8.2",

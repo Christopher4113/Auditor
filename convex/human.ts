@@ -34,7 +34,7 @@ export async function approve(
   if (p.status !== "escalated" && p.status !== "failed_rule") throw new Error(`${proposalId} is ${p.status}, not awaiting the controller`);
   await assertOpen(ctx, entity, p.period);
   const brk = await ctx.db.get(p.breakId);
-  const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+  const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
   const precedentScope = scope ?? { breakKind: brk?.kind ?? "unmatched", counterparty: txn?.counterparty };
   const traceId = await traceFor(ctx, { proposalId: p._id });
   const decisionId = await ctx.db.insert("decisions", {
@@ -55,6 +55,7 @@ export async function approve(
   const r: { ok: true; entryId: Id<"journalEntries"> } | { ok: false; reason: string } = await ctx.runMutation(internal.ledger.postEntry, { caller: "human", proposalId: p._id, decisionId });
   if (!r.ok) throw new Error(r.reason);
   await ctx.scheduler.runAfter(0, internal.retrieval.indexDecision, { decisionId });
+  if (traceId) await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: `${p.period}-28` });
   return { decisionId, entryId: r.entryId };
 }
 
@@ -64,7 +65,7 @@ export async function reject(ctx: MutationCtx, entity: string, proposalId: strin
   if (p.status !== "escalated" && p.status !== "failed_rule") throw new Error(`${proposalId} is ${p.status}, not awaiting the controller`);
   await assertOpen(ctx, entity, p.period);
   const brk = await ctx.db.get(p.breakId);
-  const txn = brk ? await ctx.db.get(brk.bankTransactionId) : null;
+  const txn = brk?.bankTransactionId ? await ctx.db.get(brk.bankTransactionId) : null;
   const traceId = await traceFor(ctx, { proposalId: p._id });
   const decisionId = await ctx.db.insert("decisions", {
     traceId,
@@ -95,6 +96,7 @@ export async function reject(ctx: MutationCtx, entity: string, proposalId: strin
   if (brk) await ctx.db.patch("breaks", brk._id, { status: "open" }); // the Workflow proposes a revision
   await audit(ctx, { entity, period: p.period, actor: "human", action: "reject", proposalId: p._id, decisionId, detail: instruction });
   await ctx.scheduler.runAfter(0, internal.retrieval.indexCorrection, { correctionId });
+  if (traceId) await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: `${p.period}-28` });
   await ensureClose(ctx, entity, p.period, "human");
   return { decisionId, correctionId };
 }
@@ -106,7 +108,8 @@ export async function signPeriod(ctx: MutationCtx, entity: string, period: strin
   if (p.status === "closing") throw new Error(`${period} close is still running`);
   const proposals = await ctx.db.query("proposals").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
   const entries = await ctx.db.query("journalEntries").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
-  const openItemsCarried = proposals.filter((x) => x.status === "escalated" || x.status === "under_review" || x.status === "failed_rule").length;
+  const breaks = await ctx.db.query("breaks").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
+  const openItemsCarried = breaks.filter((b) => b.status !== "resolved").length; // one per break, not per revision
   const tb = await trialBalance(ctx, entity, period);
   const closeSummary = { entriesPosted: entries.length, openItemsCarried, debits: tb.debits, credits: tb.credits };
   await ctx.db.patch("periods", p._id, { status: "signed", signedAt: Date.now(), closeSummary });

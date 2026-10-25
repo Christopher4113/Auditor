@@ -130,14 +130,14 @@ describe("TransactionDetail evidence and decision states", () => {
     expect(demo).toContain('class="td-amount">$0.00');
   });
 
-  it("offers evidence inspection without promising unavailable live approval actions", () => {
+  it("connects live review states to the controller inbox", () => {
     for (const status of ["review", "held", "rejected"] as const) {
       const markup = render(makeProposal({ status }));
 
-      expect(markup).toContain("Review evidence");
-      expect(markup).toContain("Live approval actions are unavailable");
-      expect(markup).not.toContain("then approve or return");
-      expect(markup).not.toContain("Review &amp; decide");
+      expect(markup).not.toContain("Live approval actions are unavailable");
+      expect(markup).toMatch(
+        /Review &amp; decide|Review this payment|View review inbox/,
+      );
     }
 
     const demo = render(makeProposal({ status: "review" }), { mode: "demo" });
@@ -242,7 +242,7 @@ describe("TransactionDetail evidence and decision states", () => {
     );
 
     expect(markup).toContain("This payment stays on hold.");
-    expect(markup).toContain("Confirm the vendor");
+    expect(markup).toContain("confirm the vendor");
     expect(markup).toContain("Recorded entry");
     expect(markup).toContain("Payments on hold");
     expect(markup).not.toContain("No further action is needed");

@@ -140,12 +140,24 @@ export default defineSchema({
     crsTestIdentity: v.optional(v.string()), // absent = not configured; verify_payee fails closed
     paymentsHeld: v.boolean(), // rule 4.3
     contractId: v.optional(v.string()),
+    bankChange: v.optional(v.object({ at: v.number(), previousLast4: v.string(), newLast4: v.string(), source: v.string(), traceId: v.string() })),
+    verification: v.optional(v.object({ at: v.number(), identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) })), // verify_payee result; report = CRS identity/criminal/fraud/public-records summary (A6)
   }).index("by_entity_vendorId", ["entity", "vendorId"]),
+
+  // The last loaded seed, so resetAll can wipe and reseed from inside Convex (C5).
+  seedFiles: defineTable({
+    ...entity,
+    dataset: v.string(),
+    json: v.string(),
+    savedAt: v.number(),
+  }).index("by_entity", ["entity"]),
 
   breaks: defineTable({
     ...scoped,
     breakId: v.string(), // "B-BT-0231"
-    bankTransactionId: v.id("bankTransactions"),
+    bankTransactionId: v.optional(v.id("bankTransactions")), // evidence-only cases have no settled cash movement
+    sourceDocumentIds: v.optional(v.array(v.string())), // authoritative raw evidence IDs, never scoring case IDs
+    vendorId: v.optional(v.string()),
     kind: v.string(), // "unmatched", "duplicate_invoice", "deposit_shortfall", ...
     description: v.string(),
     status: v.union(v.literal("open"), v.literal("proposed"), v.literal("resolved"), v.literal("escalated")),
@@ -223,6 +235,7 @@ export default defineSchema({
     pnlImpact: v.optional(v.number()),
     citationIds: v.optional(v.array(v.string())),
     sourceDocumentIds: v.optional(v.array(v.string())),
+    vendorId: v.optional(v.string()),
     dependsOn: v.optional(v.array(v.string())),
     result: v.optional(v.object({ caught: v.boolean(), correct: v.boolean(), scoredAt: v.number() })),
   }).index("by_entity_period", ["entity", "period"]),

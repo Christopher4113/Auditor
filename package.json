@@ -13,6 +13,12 @@
     "retrieval:demo": "cd retrieval && uv run demo.py --backend local",
     "retrieval:demo:moss": "cd retrieval && uv run --env-file .env demo.py --backend moss",
     "retrieval:bootstrap": "cd retrieval && uv run --env-file .env bootstrap.py",
+    "retrieval:phase3": "cd retrieval && uv run demo.py --backend local --phase3",
+    "retrieval:phase3:moss": "cd retrieval && uv run --env-file .env demo.py --backend moss --phase3",
+    "retrieval:reset": "cd retrieval && uv run --env-file .env reset_index.py",
+    "retrieval:verify": "cd retrieval && uv run --env-file .env verify_sandbox.py",
+    "scoring:demo": "node --experimental-strip-types scripts/scoring-demo.ts",
+    "scoring:report": "node scripts/score.mjs",
     "codegen": "convex codegen",
     "typecheck": "tsc -p convex && pnpm --filter web exec tsc -b",
     "seed": "node scripts/seed.mjs",
@@ -28,7 +34,10 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "convex-test": "^0.0.64",
+    "jsdom": "^30.1.3",
     "typescript": "~6.0.3",
     "vite": "^8.3.5",
     "vitest": "^2"

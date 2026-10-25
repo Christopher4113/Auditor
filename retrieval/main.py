@@ -19,8 +19,9 @@ from pydantic import AliasChoices, BaseModel, Field
 
 from service import RetrievalService, Settings
 from store import Document
+from crs import CRSVerifier
 
-Collection = Literal["policy", "contracts", "decisions", "corrections"]
+Collection = Literal["policy", "contracts", "decisions", "corrections", "events"]
 logger = logging.getLogger("uvicorn.error.auditor")
 
 
@@ -58,12 +59,20 @@ class Hit(BaseModel):
 
 class VerifyRequest(BaseModel):
     testIdentityId: str = Field(min_length=1, pattern=r"\S")
+    includeReport: bool = False
 
 
 class VerifyResult(BaseModel):
     identityMatch: bool
     fraudFlags: list[str]
     available: bool
+    report: dict | None = None
+
+
+class Reindex(BaseModel):
+    entity: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    chunks: list[Chunk] = Field(max_length=1000)
+    resetCounters: bool = False
 
 
 def normalize(chunk: Chunk, settings: Settings) -> Document:
@@ -90,23 +99,27 @@ def normalize(chunk: Chunk, settings: Settings) -> Document:
     return Document(chunk.collection, chunk.id, chunk.text, meta)
 
 
-def create_app(settings: Settings | None = None, backend=None) -> FastAPI:
+def create_app(settings: Settings | None = None, backend=None, verifier=None) -> FastAPI:
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
     async def lifespan(app):
         service = RetrievalService(settings, backend)
+        app.state.verifier = verifier or CRSVerifier()
         try:
             logger.info("Starting %s retrieval; warming index before readiness", service.backend.name)
             await service.start()
             app.state.service = service
             yield
         finally:
-            await service.close()
+            try:
+                await service.close()
+            finally:
+                await app.state.verifier.close()
 
-    app = FastAPI(title="Auditor retrieval", version="0.2.0", lifespan=lifespan,
+    app = FastAPI(title="Auditor retrieval", version="0.3.0", lifespan=lifespan,
         description="Phase 2 persistent policy/contract and runtime decision/correction retrieval. "
-        "Backend is reported by /stats and /health. CRS remains unavailable until A6.")
+        "Entity-scoped snapshot reset and CRS sandbox verification fail closed. Backend and measured counters are in /stats.")
     app.state.service = None
     bearer = HTTPBearer(auto_error=False)
 
@@ -131,6 +144,12 @@ def create_app(settings: Settings | None = None, backend=None) -> FastAPI:
             raise HTTPException(503, "Retrieval is not ready")
         return app.state.service
 
+    def ready_service() -> RetrievalService:
+        svc = service()
+        if not svc.ready:
+            raise HTTPException(503, "Index replacement incomplete; retry /reindex-all")
+        return svc
+
     async def unavailable(operation):
         try:
             return await operation
@@ -143,7 +162,7 @@ def create_app(settings: Settings | None = None, backend=None) -> FastAPI:
 
     @app.get("/health")
     def health():
-        svc = service()
+        svc = ready_service()
         return {"ready": True, "backend": svc.backend.name, "documents": len(svc.catalog.all())}
 
     @app.post("/index", dependencies=[Depends(authorize)])
@@ -167,22 +186,34 @@ def create_app(settings: Settings | None = None, backend=None) -> FastAPI:
             raise HTTPException(503, "Retrieval returned invalid relevance scores")
         return [Hit(id=doc.id, text=doc.text, score=score) for doc, score in results]
 
-    @app.post("/resolve", dependencies=[Depends(authorize)])
-    def resolve(q: Resolve) -> dict:
-        documents = service().visible(q.collection, q.entity or settings.entity,
-            q.asOf.isoformat() if q.asOf else settings.default_as_of)
-        found = next((doc for doc in documents if doc.id == q.id), None)
-        if found is None:
-            raise HTTPException(404, "Source not found in this entity and as-of scope")
-        return {"id": found.id, "text": found.text, "meta": found.meta}
+    @app.post("/reindex-all", dependencies=[Depends(authorize)],
+        description="Replace one entity's complete snapshot, including runtime memory. Other entities are preserved. Empty chunks clears this entity. Send only authoritative policy, contracts and reviewed memory; never the answer key.")
+    async def reindex_all(snapshot: Reindex) -> dict:
+        documents = [normalize(chunk, settings) for chunk in snapshot.chunks]
+        if any(doc.meta["entity"] != snapshot.entity for doc in documents):
+            raise HTTPException(422, "Every chunk must belong to the requested entity")
+        if len({doc.key for doc in documents}) != len(documents):
+            raise HTTPException(422, "Duplicate source IDs within snapshot")
+        return await unavailable(service().reindex(snapshot.entity, documents, snapshot.resetCounters))
+
+    @app.post("/resolve", dependencies=[Depends(authorize)], responses={404: {"description": "Source unavailable in the requested entity/date scope"}})
+    async def resolve(q: Resolve) -> dict:
+        svc = service()
+        async with svc.lock:
+            documents = ready_service().visible(q.collection, q.entity or settings.entity,
+                q.asOf.isoformat() if q.asOf else settings.default_as_of)
+            found = next((doc for doc in documents if doc.id == q.id), None)
+            if found is None:
+                raise HTTPException(404, "Source not found in this entity and as-of scope")
+            return {"id": found.id, "text": found.text, "meta": found.meta}
 
     @app.get("/stats", dependencies=[Depends(authorize)])
     def stats() -> dict:
-        return service().stats()
+        return {**service().stats(), "verification": app.state.verifier.stats()}
 
-    @app.post("/verify", dependencies=[Depends(authorize)])
-    def verify(_: VerifyRequest) -> VerifyResult:
-        return VerifyResult(identityMatch=False, fraudFlags=[], available=False)
+    @app.post("/verify", dependencies=[Depends(authorize)], response_model_exclude_none=True)
+    async def verify(request: VerifyRequest) -> VerifyResult:
+        return VerifyResult(**await app.state.verifier.verify(request.testIdentityId, request.includeReport))
 
     return app
 

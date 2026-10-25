@@ -1,6 +1,6 @@
 # Auditor
 
-The cash accounting function for one entity of an event-management group, Experts Only Festival NYC (fiscal periods July–September 2026; every number is fictitious). Three seats: one Claude Sonnet **staff accountant** agent that reconciles bank to books, retrieves precedent, policy and its own corrections through Moss, and proposes entries with verbatim citations; a **controls engine written in TypeScript** (balance, citation, P&L threshold, 4.3 bank-detail hold with CRS payee check, period lock, revision cap, precedent exception, correction check) that posts routine entries and escalates the rest; and a **human controller** who approves or rejects with an instruction and signs the period. The agent cannot post, enforced server-side in `post_entry`, not in a prompt. Source of truth: `Auditor — Cal Hacks 13.0 Brief v2 (final design).pdf` and `Auditor — Design.pdf` in the shared drive.
+The cash accounting function for one entity of an event-management group. The demo entity is modelled on Coachella (Goldenvoice / AEG; public shape in `datagen/public/coachella.json`), with fiscal periods July–September 2026 and every financial number fictitious; the entity id stays `eo-festival-nyc`. Three seats: one Claude Sonnet **staff accountant** agent that reconciles bank to books, retrieves precedent, policy and its own corrections through Moss, and proposes entries with verbatim citations; a **controls engine written in TypeScript** (balance, citation, P&L threshold, 4.3 bank-detail hold with CRS payee check, period lock, revision cap, precedent exception, correction check) that posts routine entries and escalates the rest; and a **human controller** who approves or rejects with an instruction and signs the period. The agent cannot post, enforced server-side in `post_entry`, not in a prompt. Source of truth: `Auditor — Cal Hacks 13.0 Brief v2 (final design).pdf` and `Auditor — Design.pdf` in the shared drive.
 
 ## Seats
 
@@ -47,6 +47,10 @@ cd datagen && uv run generate.py
 Group A's data/retrieval commands: [current data contract and Convex handoff](datagen/README.md), [10-transaction Phase 1 sample](datagen/sample.seed.json), [retrieval runbook](retrieval/README.md), and [historical Phase 1 verification](datagen/AUDIT.md). Run `pnpm data:generate`, `pnpm data:validate`, `pnpm data:test`, and `pnpm retrieval:test` from the root. Generation and offline validation require Python/uv; no API credentials or running services.
 
 Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`; `ANTHROPIC_MODEL` swaps Sonnet for Opus. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
+
+## Group A Phase 3
+
+A5 scoring and Impact, A6 counters, scoped reset/re-index and CRS sandbox verification are implemented on `Deep`: [Phase 3 runbook and API handoff](retrieval/PHASE3.md). Start with `pnpm scoring:demo` and `pnpm retrieval:phase3:moss`. The scorer self-check is explicitly synthetic; live results come from `pnpm scoring:report` after the team deploys the current Convex functions and loads the dataset. CRS uses the hackathon's `/transunion/identity-manager-verification/basic` default-config route and P01–P20 personas. Live P01 verification and P12 mismatch/enrichment have been checked; no Postman config is needed. Errors still fail closed.
 
 ## The six planted breaks
 
@@ -136,6 +140,15 @@ npx convex run api:trace '{"entity":"eo-festival-nyc","proposalId":"P-sample-ban
 ```
 
 The Convex dashboard adds function logs, table data, schedules and the Workflow component's step status; the audit log is the durable, product-facing record.
+
+**Judges' scenarios and the forbidden call (Phase 3, C5/C6).** The Inject drawer calls `inject.injectBankTransaction`, `inject.amendContract` (indexed into Moss, the period's close re-runs) and `inject.changeVendorBank` (rule 4.3: hold, verify_payee via CRS, escalate; the controller answers with `inject.decideVendorHold`). `inject.resetAll` wipes and reseeds from the last loaded seed. The Permissions drawer reads `api.listRules` (every rule with kind, fired and failed counts, the three tool lists, denials) and its "make the agent post" button calls `api.attemptAgentPost`, which is refused server-side with the 8.1 reason and logged. `api.traceSummary` tells one unit of work in plain English from the audit rows; `api.indexTraces` pushes those summaries to Moss so Ask Auditor can search the log (supported by the sidecar's separate `events` collection).
+
+```bash
+npx convex run inject:changeVendorBank '{"entity":"eo-festival-nyc","vendorId":"field-flame","newLast4":"8832","source":"email"}'
+npx convex run api:attemptAgentPost '{"entity":"eo-festival-nyc","proposalId":"P-sample-bank-10-r1"}'
+```
+
+**Add-ons (after Phase 3).** *CRS report*: `verify_payee` asks the sidecar for the full report (identity, Fraud Finder score, criminal records, bankruptcies/liens/judgments) and stores it on the vendor; it is evidence in the trace and the controller's inbox, never an automatic verdict. *Audit trail you can ask*: every unit of work is summarised in plain English (`api.traceSummary`) and indexed into Moss's `events` collection after each close and each controller decision, so Ask Auditor can answer "why is this payment on hold" from the log, citing the trace id. *Real-world data trigger*: a context.dev Monitor on a public page calls `POST <CONVEX_SITE_URL>/hooks/context` (signed with `CONTEXT_WEBHOOK_SECRET`, or `?token=<CONTEXT_WEBHOOK_TOKEN>`); name the monitor `contract:<counterparty>` and the change is filed as an amendment, indexed, and the period's close re-runs. `CONTEXT_WEBHOOK_EFFECTIVE_DATE` dates it into the books' clock. *Display rebrand*: the demo entity is presented as Coachella (public shape in `datagen/public/coachella.json`); the entity id and every amount are unchanged and fictitious.
 
 **Reading the backend directly.** `api:listProposals`, `api:scoreboard`, `api:closeStatus --watch`, `api:auditTrail`; the dashboard (https://dashboard.convex.dev/d/wary-labrador-928) shows every table and the Workflow component's step log.
 

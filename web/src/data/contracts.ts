@@ -54,6 +54,7 @@ export type WireProposal = WireDoc &
     discardedFirstRead?: string;
     correctionsApplied: string[];
     proposedBy: WireActor;
+    traceId?: string;
   };
 export type WireBreak = WireDoc &
   EntityPeriodArgs & {
@@ -63,6 +64,7 @@ export type WireBreak = WireDoc &
     description: string;
     status: "open" | "proposed" | "resolved" | "escalated";
     planted?: number;
+    traceId?: string;
   };
 export type WireBankTransaction = WireDoc &
   EntityPeriodArgs & {
@@ -78,6 +80,7 @@ export type WireBankTransaction = WireDoc &
     status: "unmatched" | "matched" | "flagged";
     matchedEntryId?: string;
     plantedBreak?: number;
+    traceId?: string;
   };
 export type WireVendor = WireDoc &
   EntityArgs & {
@@ -94,7 +97,13 @@ export type WireContract = WireDoc &
     vendorId?: string;
     counterparty: string;
     title: string;
-    clauses: { id: string; number?: string; text: string }[];
+    clauses: {
+      id: string;
+      number?: string;
+      text: string;
+      effectiveDate?: string;
+    }[];
+    documents?: WireSourceDocument[];
   };
 export type WirePrecedentScope = {
   breakKind: string;
@@ -114,6 +123,7 @@ export type WireDecision = WireDoc &
     instruction?: string;
     latencyMs?: number;
     entryId?: string;
+    traceId?: string;
   };
 export type WireEntry = WireDoc &
   EntityPeriodArgs & {
@@ -121,9 +131,14 @@ export type WireEntry = WireDoc &
     date: string;
     lines: WireLine[];
     memo: string;
-    source: "opening" | "post_entry";
+    source: "opening" | "import" | "post_entry";
     postedBy: WireActor;
+    reference?: string;
+    counterparty?: string;
+    vendorId?: string;
+    txnId?: string;
     proposalId?: string;
+    traceId?: string;
   };
 export type WireAuditEvent = WireDoc &
   EntityArgs & {
@@ -133,9 +148,23 @@ export type WireAuditEvent = WireDoc &
     proposalId?: string;
     decisionId?: string;
     entryId?: string;
+    breakId?: string;
+    bankTransactionId?: string;
+    traceId?: string;
     detail?: string;
     at: number;
   };
+export type WireSourceDocument = EntityPeriodArgs & {
+  id: string;
+  date: string;
+  kind: string;
+  vendorId: string;
+  contractId: string;
+  title: string;
+  text: string;
+  amount: number | null;
+  reference: string | null;
+};
 export type WireDecisionSummary = Pick<
   WireDecision,
   "decisionId" | "outcome" | "reason" | "rulesRun"
@@ -245,7 +274,7 @@ export type ApiQueryContracts = {
     WireAuditEvent[]
   >;
 };
-/** C3 mutations are specified on origin/Christopher; do not assume a deployment has them yet. */
+/** Integrated C3 controller mutations; calls still require an explicit user action. */
 export type ApiMutationContracts = {
   "api:startClose": QueryContract<EntityPeriodArgs, string | null>;
   "api:approve": QueryContract<ApproveArgs, ApproveResult>;

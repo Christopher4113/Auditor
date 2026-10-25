@@ -122,6 +122,7 @@ export const onComplete = internalMutation({
       .withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period))
       .unique();
     if (p && p.status === "closing") await ctx.db.patch("periods", p._id, { status: "open" });
+    await ctx.scheduler.runAfter(0, internal.trace.indexPeriod, { entity, period }); // audit trail into Moss "events" (Ask Auditor)
     await audit(ctx, {
       entity,
       period,
@@ -144,6 +145,8 @@ export const ingestBankTransaction = internalMutation({
     counterparty: v.string(),
     memo: v.string(),
     source: v.union(v.literal("bank"), v.literal("stripe")),
+    reference: v.optional(v.string()),
+    vendorId: v.optional(v.string()),
     actor: v.union(v.literal("inject"), v.literal("workflow")),
   },
   returns: v.id("bankTransactions"),

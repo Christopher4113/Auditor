@@ -1,6 +1,6 @@
 # Phase 2 retrieval — A4
 
-FastAPI now performs persistent retrieval. **Moss mode uses the real Moss SDK and native semantic/hybrid search.** Local mode is a separate, labelled lexical provider for tests and offline rehearsals. No query returns canned hits. Moss failures return HTTP 503; the service does not silently switch to local search. `/verify` remains fail-closed until A6.
+FastAPI now performs persistent retrieval. **Moss mode uses the real Moss SDK and native semantic/hybrid search.** Local mode is a separate, labelled lexical provider for tests and offline rehearsals. No query returns canned hits. Moss failures return HTTP 503; the service does not silently switch to local search. Phase 3 adds recoverable reset, scoring and CRS verification/enrichment using the hackathon's default-config routes and P01–P20 personas: [current runbook](PHASE3.md). Missing access or unsupported reports fail closed.
 
 ## Try it on this Mac
 
@@ -76,13 +76,14 @@ Counterparty-only contract queries first select matching canonical contract titl
 | --- | --- |
 | `POST /index` | Persist/upsert `{collection,id,text,meta}`; returns `{ok,id}`. Identical writes are idempotent. |
 | `POST /index/batch` | Batch upsert `{chunks:[...]}` (1–100 chunks); rejects duplicate IDs within the same entity/collection batch. |
+| `POST /reindex-all` | Replace one entity's complete `{entity,chunks,resetCounters?}` snapshot; preserve other entities. See the Phase 3 runbook before resetting real runtime memory. |
 | `POST /query` | Real ranked search within collection, entity and as-of scope; no result means `[]`. |
 | `POST /resolve` | Exact citation resolution `{collection,id,entity,asOf}` → `{id,text,meta}` or HTTP 404. No fuzzy matching for a cited ID. |
-| `GET /stats` | Backend, document counts, measured retrieval count/median latency and labelled token estimates. Counters are process-local. |
+| `GET /stats` | Backend, document counts, retrieval totals, latest-1,000 median latency, labelled token estimates and separate CRS counters. Retrieval counters are process-local and can be explicitly reset. |
 | `GET /health` | Readiness and active backend; no financial text or credentials. |
-| `POST /verify` | `{identityMatch:false,fraudFlags:[],available:false}`; unavailable verification cannot release a hold. |
+| `POST /verify` | `{testIdentityId}` → `{identityMatch,fraudFlags,available}` through the CRS sandbox. Unknown IDs/config/errors fail closed; this endpoint never releases holds. |
 
-Collections: `policy`, `contracts`, `decisions`, `corrections`. `k` is a JSON integer from 1–50 (default 3; agent tools cap it at 5). Blank text, malformed dates and invalid `k` return HTTP 422.
+Collections: `policy`, `contracts`, `decisions`, `corrections`, `events`. Audit summaries in `events` are separate from decision precedent. `k` is a JSON integer from 1–50 (default 3; agent tools cap it at 5). Blank text, malformed dates and invalid `k` return HTTP 422.
 
 **Scope:** pass `entity` and `asOf` for every close. Compatible requests that omit them use `eo-festival-nyc` and the conservative **July 31, 2026** default. Thus an older client never silently sees August/September knowledge during July. The Convex adapter now supplies its actual entity and month-end date. Filters are applied before ranking and checked again before returning source text. The August 10 Brightwater amendment is unavailable in July.
 
@@ -119,6 +120,10 @@ uv run python -m unittest discover -s tests -v
 ```
 
 The tests use isolated local catalogs and mock the SDK boundary; no credentials are needed. The real Moss runs are recorded separately in [PHASE2_AUDIT.md](PHASE2_AUDIT.md). Regenerate the agreed specification with `uv run python export_openapi.py`.
+
+## Vultr deployment
+
+The shared synthetic demo is hosted on Vultr. See [the verified deployment handoff](VULTR.md) for the server, health checks, update commands, and current close-review limitations.
 
 ## Railway package / team connection
 

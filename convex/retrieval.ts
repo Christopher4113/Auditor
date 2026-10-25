@@ -7,7 +7,7 @@ import { env, internalAction, internalQuery } from "./_generated/server";
 import { traceFor } from "./audit";
 
 const vHit = v.object({ id: v.string(), text: v.string(), score: v.number() });
-const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean() });
+const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) });
 type Hit = { id: string; text: string; score: number };
 
 const endpoint = (path: string) => (env.RETRIEVAL_URL ? `${env.RETRIEVAL_URL.replace(/\/$/, "")}${path}` : null);
@@ -50,12 +50,14 @@ export const index = internalAction({
 
 /** verify_payee (controls engine only). Fails closed: no sidecar, no identity, any error -> available=false. */
 export const verify = internalAction({
-  args: { testIdentityId: v.optional(v.string()), traceId: v.optional(v.string()) },
+  args: { testIdentityId: v.optional(v.string()), includeReport: v.optional(v.boolean()), traceId: v.optional(v.string()) },
   returns: vVerify,
-  handler: async (_ctx, { testIdentityId, traceId }) => {
+  handler: async (_ctx, { testIdentityId, includeReport, traceId }) => {
     const closed = { identityMatch: false, fraudFlags: [] as string[], available: false };
     if (!testIdentityId) return closed;
-    return (await post<typeof closed>("/verify", { testIdentityId }, traceId)) ?? closed;
+    type Verify = typeof closed & { report?: unknown };
+    const r = await post<Verify>("/verify", includeReport ? { testIdentityId, includeReport: true } : { testIdentityId }, traceId);
+    return r ? { identityMatch: r.identityMatch, fraudFlags: r.fraudFlags, available: r.available, report: r.report ?? undefined } : closed;
   },
 });
 
@@ -168,5 +170,39 @@ export const indexEntity = internalAction({
     const ok = result?.ok ? chunks.length : 0;
     await ctx.runMutation(internal.audit.write, { entity, actor: "seed", action: env.RETRIEVAL_URL ? "retrieval.index_entity" : "retrieval.skipped", detail: `${ok}/${chunks.length} chunks` });
     return null;
+  },
+});
+
+/** A6: call after seed.load has cleared runtime decisions/corrections. Replaces
+ *  the entity's sidecar snapshot, so a reset cannot retain old approvals in Moss.
+ *  Ordinary indexEntity remains an upsert and preserves reviewed runtime memory.
+ */
+export const resetEntity = internalAction({
+  args: { entity: v.string() },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, { entity }): Promise<{ ok: boolean }> => {
+    const chunks = await ctx.runQuery(internal.retrieval.loadClauses, { entity });
+    let result = await post<{ ok: boolean }>("/reindex-all", { entity, chunks });
+    // A sidecar still on the Phase 2 image has no /reindex-all; upsert the source clauses so citations resolve.
+    if (!result?.ok && chunks.length) result = await post<{ ok: boolean }>("/index/batch", { chunks });
+    const ok = result?.ok === true;
+    await ctx.runMutation(internal.audit.write, { entity, actor: "seed", action: ok ? "retrieval.reset_entity" : "retrieval.reset_entity.failed",
+      detail: `${ok ? chunks.length : 0}/${chunks.length} source chunks; runtime memory reset ${ok ? "confirmed" : "not confirmed"}` });
+    return { ok };
+  },
+});
+
+// ── Audit trail in natural language (Phase 3 add-on): one summary per unit of work, searchable through Moss. ──
+
+export const indexTrace = internalAction({
+  args: { entity: v.string(), traceId: v.string(), effectiveDate: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { entity, traceId, effectiveDate }): Promise<boolean> => {
+    const text = await ctx.runQuery(internal.trace.summary, { entity, traceId });
+    if (!text) return false;
+    // A6 stores audit summaries separately from reviewed decision precedent.
+    const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "events", id: traceId, text, meta: { entity, effectiveDate, sourceType: "trace" }, traceId });
+    await ctx.runMutation(internal.audit.write, { entity, actor: "workflow", action: ok ? "index_trace" : "index_trace.skipped", traceId });
+    return ok;
   },
 });

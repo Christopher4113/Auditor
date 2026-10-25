@@ -43,6 +43,18 @@ class Phase2Tests(unittest.TestCase):
         self.assertEqual({row["breakNumber"] for row in self.data["breaks"]}, set(range(1,7)))
         self.assertEqual(len(self.data["answerKey"]), 11)
 
+    def test_phase3_vendor_ids_are_official_personas_without_identity_bodies(self):
+        vendors={v['id']:v for v in self.data['vendors']}
+        self.assertEqual(vendors['field-flame']['crsTestIdentity'],'P12')
+        self.assertEqual({v['crsTestIdentity'] for v in vendors.values()},{f'P{i:02d}' for i in range(1,16)})
+        def check(value):
+            if isinstance(value,dict):
+                self.assertFalse({'ssn','dob','street1'} & value.keys())
+                for nested in value.values():check(nested)
+            elif isinstance(value,list):
+                for nested in value:check(nested)
+        check(self.data)
+
     def test_repeatability_and_other_seeds(self):
         self.assertEqual(json.dumps(generate()), json.dumps(generate()))
         for seed in (0, 1, 42, 999):

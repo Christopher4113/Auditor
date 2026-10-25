@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: Auditor retrieval
   description: Phase 2 persistent policy/contract and runtime decision/correction
-    retrieval. Backend is reported by /stats and /health. CRS remains unavailable
-    until A6.
-  version: 0.2.0
+    retrieval. Entity-scoped snapshot reset and CRS sandbox verification fail closed.
+    Backend and measured counters are in /stats.
+  version: 0.3.0
 paths:
   /health:
     get:
@@ -98,6 +98,36 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+  /reindex-all:
+    post:
+      summary: Reindex All
+      description: Replace one entity's complete snapshot, including runtime memory.
+        Other entities are preserved. Empty chunks clears this entity. Send only authoritative
+        policy, contracts and reviewed memory; never the answer key.
+      operationId: reindex_all_reindex_all_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reindex'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Reindex All Reindex All Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /resolve:
     post:
       summary: Resolve
@@ -117,6 +147,8 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response Resolve Resolve Post
+        '404':
+          description: Source unavailable in the requested entity/date scope
         '422':
           description: Validation Error
           content:
@@ -189,6 +221,7 @@ components:
           - contracts
           - decisions
           - corrections
+          - events
           title: Collection
         id:
           type: string
@@ -247,6 +280,7 @@ components:
           - contracts
           - decisions
           - corrections
+          - events
           title: Collection
         text:
           type: string
@@ -277,6 +311,27 @@ components:
       - collection
       - text
       title: Query
+    Reindex:
+      properties:
+        entity:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,80}$
+          title: Entity
+        chunks:
+          items:
+            $ref: '#/components/schemas/Chunk'
+          type: array
+          maxItems: 1000
+          title: Chunks
+        resetCounters:
+          type: boolean
+          title: Resetcounters
+          default: false
+      type: object
+      required:
+      - entity
+      - chunks
+      title: Reindex
     Resolve:
       properties:
         collection:
@@ -286,6 +341,7 @@ components:
           - contracts
           - decisions
           - corrections
+          - events
           title: Collection
         id:
           type: string
@@ -342,6 +398,10 @@ components:
           minLength: 1
           pattern: \S
           title: Testidentityid
+        includeReport:
+          type: boolean
+          title: Includereport
+          default: false
       type: object
       required:
       - testIdentityId
@@ -359,6 +419,12 @@ components:
         available:
           type: boolean
           title: Available
+        report:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Report
       type: object
       required:
       - identityMatch

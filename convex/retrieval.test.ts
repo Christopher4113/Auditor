@@ -98,3 +98,41 @@ it("C4 correction publication supplies its period's effective date", async () =>
   await t.action(internal.retrieval.indexCorrection, { correctionId });
   expect(JSON.parse(mock.mock.calls[0][1].body).meta.effectiveDate).toBe("2026-07-31");
 });
+
+it("A6 seed reset replaces only the requested entity and forwards service authentication", async () => {
+  const t = await seeded();
+  const mock = sidecar({ ok: true, entity: sample.entity, documents: 21, deleted: 1 });
+  expect(await t.action(internal.retrieval.resetEntity, { entity: sample.entity })).toEqual({ ok: true });
+  const [url, init] = mock.mock.calls[0];
+  expect(url).toBe("http://sidecar.test/reindex-all");
+  const body = JSON.parse(init.body);
+  expect(body.entity).toBe(sample.entity);
+  expect(body.chunks).toHaveLength(21);
+  expect(body.chunks.every((c: {collection: string}) => c.collection === "policy" || c.collection === "contracts")).toBe(true);
+  expect(init.headers.Authorization).toBe("Bearer test-service-token");
+});
+
+it("A6 reset records a failure instead of claiming stale memory was removed", async () => {
+  const t = await seeded();
+  expect(await t.action(internal.retrieval.resetEntity, { entity: sample.entity })).toEqual({ ok: false });
+  const rows = await t.run(ctx => ctx.db.query("auditLog").take(100));
+  expect(rows.some(row => row.action === "retrieval.reset_entity.failed")).toBe(true);
+});
+
+it("A6 CRS adapter forwards the opaque test ID, trace and normalized fail-closed result", async () => {
+  const t = convexTest(schema,modules);
+  const closed = {identityMatch:false,fraudFlags:[],available:false};
+  const mock = sidecar(closed);
+  expect(await t.action(internal.retrieval.verify,{testIdentityId:"P12",traceId:"T-held-vendor"})).toEqual(closed);
+  expect(mock.mock.calls[0][0]).toBe("http://sidecar.test/verify");
+  expect(JSON.parse(mock.mock.calls[0][1].body)).toEqual({testIdentityId:"P12"});
+  expect(mock.mock.calls[0][1].headers["X-Trace-Id"]).toBe("T-held-vendor");
+});
+
+it('A6 publishes audit trace summaries into events with entity/date metadata',async()=>{
+  const t=await seeded();
+  await t.run(async ctx=>{await ctx.db.insert('auditLog',{entity:sample.entity,period:'2026-09',traceId:'T-fixture',actor:'controls',action:'post_entry.denied',detail:'8.1 refused',at:1});});
+  const mock=sidecar({ok:true,id:'T-fixture'});
+  expect(await t.action(internal.retrieval.indexTrace,{entity:sample.entity,traceId:'T-fixture',effectiveDate:'2026-09-30'})).toBe(true);
+  expect(JSON.parse(mock.mock.calls[0][1].body)).toMatchObject({collection:'events',id:'T-fixture',meta:{entity:sample.entity,effectiveDate:'2026-09-30'}});
+});

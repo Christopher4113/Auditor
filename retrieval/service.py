@@ -54,11 +54,16 @@ class RetrievalService:
         self.lock = asyncio.Lock()
         self.latencies = deque(maxlen=1000)
         self.retrievals = self.tokens_used = self.tokens_full = 0
+        self.ready = True
 
     async def start(self):
         remote = await self.backend.start()
         if self.backend.name == "moss":
             self.catalog.replace(remote)
+        # Replay a durable replacement journal after a crash/partial cloud write.
+        # Readiness is never advertised for a half-reset corpus.
+        for entity, documents in self.catalog.pending_resets():
+            await self.reindex(entity, documents)
         path = self.settings.seed_path
         if path and path.exists():
             seed = json.loads(path.read_text(encoding="utf-8"))
@@ -66,6 +71,8 @@ class RetrievalService:
 
     async def index(self, documents: list[Document]) -> int:
         async with self.lock:
+            if not self.ready:
+                raise RuntimeError("Retry the complete replacement before indexing")
             current = {doc.key: doc for doc in self.catalog.all()}
             documents = [Document(doc.collection, doc.id, doc.text,
                 {**(current[doc.key].meta if doc.key in current else {}), **doc.meta}) for doc in documents]
@@ -75,10 +82,31 @@ class RetrievalService:
                 self.catalog.put(changed)
             return len(changed)
 
+    async def reindex(self, entity: str, documents: list[Document], reset_counters=False):
+        async with self.lock:
+            current = self.catalog.all()
+            keep = {doc.key for doc in documents}
+            removed = [doc for doc in current if doc.meta["entity"] == entity and doc.key not in keep]
+            self.catalog.begin_reset(entity, documents)
+            self.ready = False
+            await self.backend.replace_entity(entity, documents, removed)
+            self.catalog.replace_entity(entity, documents)
+            self.ready = not self.catalog.pending_resets()
+            if reset_counters:
+                self.latencies.clear()
+                self.retrievals = self.tokens_used = self.tokens_full = 0
+            return {"ok": True, "entity": entity, "documents": len(documents), "deleted": len(removed)}
+
     def visible(self, collection, entity, as_of):
         return [doc for doc in self.catalog.all() if doc.visible(collection, entity, as_of)]
 
     async def query(self, collection: str, text: str, k: int, entity: str, as_of: str):
+        async with self.lock:
+            if not self.ready:
+                raise RuntimeError("Index replacement incomplete")
+            return await self._query(collection, text, k, entity, as_of)
+
+    async def _query(self, collection: str, text: str, k: int, entity: str, as_of: str):
         start = time.perf_counter()
         documents = self.visible(collection, entity, as_of)
         # fetch_contract often supplies only an invented counterparty name.
@@ -103,12 +131,13 @@ class RetrievalService:
 
     def stats(self):
         documents = self.catalog.all()
-        return {"backend": self.backend.name, "ready": True, "documents": len(documents),
+        return {"backend": self.backend.name, "ready": self.ready, "documents": len(documents),
             "collections": {name: sum(d.collection == name for d in documents)
-                            for name in ("policy", "contracts", "decisions", "corrections")},
+                            for name in ("policy", "contracts", "decisions", "corrections", "events")},
             "retrievals": self.retrievals, "medianLatencyMs": median(self.latencies) if self.latencies else 0,
             "tokensUsed": self.tokens_used, "tokensFullContext": self.tokens_full,
-            "tokenCounting": "estimate_chars_div_4", "counterScope": "process_lifetime"}
+            "tokenCounting": "estimate_chars_div_4", "counterScope": "process_since_start_or_explicit_reset",
+            "latencySamples": len(self.latencies), "latencyWindowSize": self.latencies.maxlen}
 
     async def close(self):
         try:

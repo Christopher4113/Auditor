@@ -1,31 +1,33 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   ArrowRight,
   BookOpen,
-  Check,
   CheckCheck,
   CircleCheck,
-  FileText,
   LockKeyhole,
-  Mic,
-  MicOff,
   Plus,
-  Send,
   ShieldCheck,
   ShieldX,
   Sparkles,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import type { Proposal } from "../data/types";
 import type { LiveSnapshot } from "../data/live";
-import { needsHumanReview } from "../data/selectors";
+import type { WireCloseSummary } from "../data/contracts";
+import {
+  canSignPeriod,
+  latestProposals,
+  needsHumanReview,
+  unresolvedProposals,
+} from "../data/selectors";
 import {
   controlPolicyRules,
   initialProposals,
   permissionGroups,
 } from "../data/demo";
+import ControllerReview from "./ControllerReview";
+import AskDrawer from "./AskDrawer";
+import type { AskDrawerProps } from "./AskDrawer";
 
 export type DrawerType =
   | "approvals"
@@ -35,46 +37,69 @@ export type DrawerType =
   | "ask"
   | "memory"
   | "activity";
-const DataMode = createContext<"demo" | "live">("demo");
-
-interface WorkspaceDrawerProps {
+export type LoadedControlResult = {
+  proposalId: string;
+  rule: string;
+  kind: "preventive" | "detective" | "enabling";
+  passed: boolean;
+  detail?: string;
+};
+export interface WorkspaceDrawerProps {
   mode?: "demo" | "live";
   liveSnapshot?: LiveSnapshot | null;
   loading?: boolean;
   error?: string;
+  actionsDisabled?: boolean;
+  canSign?: boolean;
+  canDeny?: boolean;
+  controlResults?: LoadedControlResult[];
+  onAsk?: AskDrawerProps["onAsk"];
   type: DrawerType;
   proposals: Proposal[];
   period: string;
   onClose: () => void;
   onSelect: (id: string) => void;
-  onApprove: (id: string, note: string) => void;
-  onReject: (id: string, instruction: string) => void;
+  onApprove: (id: string, note: string) => void | Promise<void>;
+  onReject: (id: string, instruction: string) => void | Promise<void>;
   onInject: (
     kind: string,
     vendor: string,
     amount: number,
     note: string,
-  ) => void;
+  ) => void | Promise<void>;
   onPrepare: () => void | Promise<void>;
-  onSign: () => void;
-  onDeny: () => void;
+  onSign: () => void | Promise<void>;
+  onDeny: () => void | Promise<void>;
   signed: boolean;
   denialCount: number;
 }
+const DataMode = createContext<"demo" | "live">("demo");
 const money = (amount: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
-const isApprovalReady = (proposal: Proposal) =>
-  proposal.status !== "held" &&
-  proposal.citations.length > 0 &&
-  proposal.lines.length > 0 &&
-  Math.abs(
-    proposal.lines.reduce((sum, line) => sum + line.debit - line.credit, 0),
-  ) <= 0.005;
-const unresolved = (proposal: Proposal) => proposal.status !== "posted";
+const cents = (amount: number) => money(amount / 100);
+const currentSnapshot = (props: WorkspaceDrawerProps) =>
+  props.liveSnapshot?.period === props.period
+    ? (props.liveSnapshot as LiveSnapshot & { summary?: WireCloseSummary })
+    : undefined;
+const blockedActions = (props: WorkspaceDrawerProps) =>
+  Boolean(
+    props.actionsDisabled ||
+      props.loading ||
+      props.error ||
+      (props.mode === "live" &&
+        (!currentSnapshot(props) ||
+          currentSnapshot(props)?.loading ||
+          !currentSnapshot(props)?.connected)),
+  );
+const requestMessage = (error: unknown) =>
+  error instanceof Error
+    ? error.message
+    : "The request could not be completed. Please try again.";
 
 function Intro({ title, children }: { title: string; children: ReactNode }) {
   const mode = useContext(DataMode);
@@ -86,6 +111,54 @@ function Intro({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="drawer-title">{title}</h2>
       <p className="drawer-copy">{children}</p>
     </div>
+  );
+}
+function ActionNotice(props: WorkspaceDrawerProps) {
+  if (props.mode !== "live" || !blockedActions(props)) return null;
+  return (
+    <p
+      className={props.error ? "warning-notice" : "drawer-copy"}
+      role={props.error ? "alert" : "status"}
+    >
+      {props.error ||
+        "Waiting for current workspace data or the action already in progress. Your notes stay here."}
+    </p>
+  );
+}
+function Approvals(props: WorkspaceDrawerProps) {
+  const pending = latestProposals(props.proposals).filter(needsHumanReview);
+  const disabled = blockedActions(props);
+  return (
+    <>
+      <Intro title="Review items">
+        {pending.length
+          ? `${pending.length} ${pending.length === 1 ? "item needs" : "items need"} your decision.`
+          : disabled
+            ? "Waiting for the current review queue…"
+            : "No current items are awaiting a controller decision."}
+      </Intro>
+      <ActionNotice {...props} />
+      <div className="drawer-list">
+        {pending.map((proposal) => (
+          <ControllerReview
+            key={proposal.id}
+            proposal={proposal}
+            signed={props.signed}
+            disabled={disabled}
+            onSelect={props.onSelect}
+            onApprove={props.onApprove}
+            onReject={props.onReject}
+          />
+        ))}
+        {!pending.length && !disabled && (
+          <div className="empty-state">
+            <CircleCheck size={27} />
+            <h3>No items to review</h3>
+            <p>Open a transaction to inspect its sources and decision.</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 interface MemorySource {
@@ -170,153 +243,6 @@ const sourceMemory: MemorySource[] = [
   },
 ];
 
-function Approvals({
-  proposals,
-  onSelect,
-  onApprove,
-  onReject,
-  signed,
-}: Pick<
-  WorkspaceDrawerProps,
-  "proposals" | "onSelect" | "onApprove" | "onReject" | "signed"
->) {
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const pending = proposals.filter(
-    (proposal) => proposal.status === "review" || proposal.status === "held",
-  );
-  const reject = (id: string) => {
-    const instruction = notes[id]?.trim();
-    if (!instruction) {
-      setErrors((previous) => ({
-        ...previous,
-        [id]: "Add a short instruction before returning this item.",
-      }));
-      return;
-    }
-    onReject(id, instruction);
-    setErrors((previous) => ({ ...previous, [id]: "" }));
-  };
-  return (
-    <>
-      <Intro title="Review payments">
-        {pending.length
-          ? `${pending.length} ${pending.length === 1 ? "item needs" : "items need"} your decision.`
-          : "You’re all caught up."}
-      </Intro>
-      <div className="drawer-list">
-        {pending.length === 0 && (
-          <div className="empty-state">
-            <CircleCheck size={28} />
-            <h3>No items to review</h3>
-            <p>Return to the workspace to continue your close.</p>
-          </div>
-        )}
-        {pending.map((proposal) => (
-          <article className="drawer-card" key={proposal.id}>
-            <div className="drawer-card-head">
-              <h3>{proposal.vendor}</h3>
-              <strong>
-                {proposal.sourceBank.available === false
-                  ? "Amount unavailable"
-                  : money(proposal.amount)}
-              </strong>
-            </div>
-            <span
-              className={`badge ${proposal.status === "held" ? "badge-amber" : "badge-neutral"}`}
-            >
-              {proposal.status === "held" ? "Payment held" : "Needs review"}
-            </span>
-            <p className="drawer-copy">{proposal.description}</p>
-            <button
-              className="text-button"
-              onClick={() => onSelect(proposal.id)}
-            >
-              Review evidence <ArrowRight size={14} />
-            </button>
-            <details>
-              <summary>Make a decision</summary>
-              <label className="form-field">
-                <span>Your note</span>
-                <textarea
-                  className="textarea"
-                  rows={2}
-                  value={notes[proposal.id] ?? ""}
-                  placeholder="Add context or an instruction…"
-                  onChange={(event) => {
-                    setNotes((previous) => ({
-                      ...previous,
-                      [proposal.id]: event.target.value,
-                    }));
-                    setErrors((previous) => ({
-                      ...previous,
-                      [proposal.id]: "",
-                    }));
-                  }}
-                  aria-invalid={Boolean(errors[proposal.id])}
-                  aria-describedby={
-                    errors[proposal.id] ? `error-${proposal.id}` : undefined
-                  }
-                />
-              </label>
-              {errors[proposal.id] && (
-                <p
-                  className="warning-notice"
-                  role="alert"
-                  id={`error-${proposal.id}`}
-                >
-                  {errors[proposal.id]}
-                </p>
-              )}
-              <div className="drawer-row">
-                <button
-                  className="primary-button"
-                  disabled={signed || !isApprovalReady(proposal)}
-                  onClick={() => {
-                    if (!signed && isApprovalReady(proposal))
-                      onApprove(
-                        proposal.id,
-                        notes[proposal.id]?.trim() || "Reviewed and approved.",
-                      );
-                  }}
-                >
-                  <Check size={15} />
-                  {proposal.status === "held"
-                    ? "Release unavailable"
-                    : isApprovalReady(proposal)
-                      ? "Approve"
-                      : "Investigation required"}
-                </button>
-                <button
-                  className="secondary-button"
-                  disabled={signed}
-                  onClick={() => reject(proposal.id)}
-                >
-                  {proposal.status === "held"
-                    ? "Keep hold"
-                    : "Return for revision"}
-                </button>
-              </div>
-              {proposal.status === "held" && (
-                <p className="drawer-label">
-                  Bank verification is unavailable. Keep the payment held until
-                  independently confirmed.
-                </p>
-              )}
-              {proposal.status !== "held" && !isApprovalReady(proposal) && (
-                <p className="drawer-label">
-                  A balanced entry and supporting evidence are needed before
-                  approval.
-                </p>
-              )}
-            </details>
-          </article>
-        ))}
-      </div>
-    </>
-  );
-}
-
 const fixtureScenarios = [
   {
     name: "Stripe",
@@ -355,136 +281,356 @@ const fixtureScenarios = [
   },
 ];
 
-function Scoreboard({
-  proposals,
-  period,
-  onPrepare,
-  onSign,
-  signed,
-}: Pick<
-  WorkspaceDrawerProps,
-  "proposals" | "period" | "onPrepare" | "onSign" | "signed"
->) {
+function Scoreboard(props: WorkspaceDrawerProps) {
+  const live = props.mode === "live";
+  const snapshot = currentSnapshot(props);
+  const summary = snapshot?.summary;
+  const score = snapshot?.score;
+  const workflow = snapshot?.workflow;
+  const current = latestProposals(props.proposals);
+  const pending = unresolvedProposals(current).length;
+  const toReview = current.filter(needsHumanReview).length;
+  const signed = props.signed || summary?.status === "signed";
+  const running =
+    workflow?.type === "inProgress" ||
+    Boolean(workflow?.running) ||
+    summary?.status === "closing";
+  const disabled = blockedActions(props);
+  const summaryReady =
+    !live || Boolean(summary && summary.status !== "missing");
+  const balanced =
+    !live ||
+    Boolean(
+      summary &&
+        Number.isFinite(summary.debits) &&
+        Number.isFinite(summary.credits) &&
+        summary.debits === summary.credits,
+    );
+  const emptyPeriodComplete =
+    live &&
+    snapshot?.feedComplete === true &&
+    workflow?.type === "completed" &&
+    summary?.status === "open" &&
+    summary.openItems === 0 &&
+    summary.awaitingController === 0;
+  const fallbackCanSign = canSignPeriod(props.proposals, {
+    status: live ? summary?.status : signed ? "signed" : "open",
+    loading: disabled,
+    closeRunning: running,
+    feedComplete: live ? snapshot?.feedComplete === true : true,
+    allowEmpty: emptyPeriodComplete,
+  });
+  const signAllowed =
+    (props.canSign ?? true) &&
+    fallbackCanSign &&
+    summaryReady &&
+    balanced &&
+    !running &&
+    !signed &&
+    !disabled &&
+    (!live ||
+      (snapshot?.feedComplete === true &&
+        (current.length > 0 || emptyPeriodComplete)));
+  const [busy, setBusy] = useState<"prepare" | "sign" | null>(null);
+  const [accepted, setAccepted] = useState<"prepare" | "sign" | null>(null);
+  const [requestError, setRequestError] = useState("");
   const [routineMinutes, setRoutineMinutes] = useState(3);
   const [exceptionMinutes, setExceptionMinutes] = useState(20);
   const [escalationMinutes, setEscalationMinutes] = useState(15);
-  const [prepared, setPrepared] = useState(false);
-  const [preparing, setPreparing] = useState(false);
-  const [prepareError, setPrepareError] = useState("");
-  const pending = proposals.filter(unresolved).length;
-  const posted = proposals.filter(
-    (proposal) => proposal.status === "posted",
-  ).length;
-  const baselineMinutes =
-    106 * routineMinutes + 11 * exceptionMinutes + escalationMinutes;
-  const savedHours = Math.max(0, (baselineMinutes - escalationMinutes) / 60);
+  const inFlight = useRef(false);
+  const routineCount = live ? score?.closedByCode : 106;
+  const exceptionCount = live ? current.length : 11;
+  const escalationCount = live ? toReview : 1;
+  const estimateKnown =
+    routineCount !== undefined &&
+    (!live || Boolean(snapshot && !snapshot.loading));
+  const baselineMinutes = estimateKnown
+    ? routineCount * routineMinutes +
+      exceptionCount * exceptionMinutes +
+      escalationCount * escalationMinutes
+    : null;
+  const savedHours =
+    baselineMinutes === null
+      ? null
+      : Math.max(
+          0,
+          (baselineMinutes - escalationCount * escalationMinutes) / 60,
+        );
+  const request = async (action: "prepare" | "sign") => {
+    if (
+      inFlight.current ||
+      disabled ||
+      signed ||
+      running ||
+      (action === "sign" && !signAllowed)
+    )
+      return;
+    inFlight.current = true;
+    setBusy(action);
+    setRequestError("");
+    try {
+      await (action === "prepare" ? props.onPrepare : props.onSign)();
+      setAccepted(action);
+    } catch (error) {
+      setRequestError(requestMessage(error));
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
+    }
+  };
+  const nextStep = signed
+    ? "This period is signed and locked."
+    : disabled
+      ? "Wait for current workspace data before preparing or signing."
+      : running
+        ? "The close is running. Sign after it finishes."
+        : !summaryReady
+          ? "The server close summary is not available yet."
+          : pending && !signAllowed
+            ? `${pending} current ${pending === 1 ? "item remains" : "items remain"} unresolved.`
+            : pending && signAllowed
+              ? `${pending} ${pending === 1 ? "item carries" : "items carry"} forward to the next period. Sign to lock this one.`
+            : !balanced
+              ? "The trial balance does not balance. Review it before signing."
+              : !signAllowed
+                ? "This period is not ready for signing."
+                : "Review the trial balance, then sign to lock this period.";
   return (
     <>
-      <Intro title="Close summary">Your progress for {period}.</Intro>
+      <Intro title="Close summary">
+        {live ? "Server records" : "Your progress"} for {props.period}.
+      </Intro>
+      <ActionNotice {...props} />
       <div className="drawer-stat-grid">
         <div className="drawer-stat">
-          <span className="drawer-label">Completed</span>
+          <span className="drawer-label">
+            {live ? "Bank transactions" : "Completed"}
+          </span>
           <strong>
-            {posted}
-            <small> / {proposals.length}</small>
+            {live
+              ? (score?.transactions ?? "—")
+              : current.filter((item) => item.status === "posted").length}
+            {!live && <small> / {current.length}</small>}
           </strong>
         </div>
         <div className="drawer-stat">
-          <span className="drawer-label">To review</span>
-          <strong>{pending}</strong>
+          <span className="drawer-label">
+            {live ? "Journal entries" : "To review"}
+          </span>
+          <strong>{live ? (summary?.entriesPosted ?? "—") : pending}</strong>
         </div>
         <div className="drawer-stat">
-          <span className="drawer-label">Est. time saved</span>
+          <span className="drawer-label">
+            {live ? "Current review queue" : "Estimated time saved"}
+          </span>
           <strong>
-            {savedHours.toFixed(1)}
-            <small> hrs</small>
+            {live ? toReview : (savedHours?.toFixed(1) ?? "—")}
+            {!live && <small> hrs</small>}
           </strong>
         </div>
       </div>
       <section className="drawer-card">
         <div className="drawer-card-head">
           <h3>{signed ? "Period signed" : "Finish this close"}</h3>
-          {signed ? <CircleCheck size={22} /> : <LockKeyhole size={22} />}
+          <span className="badge badge-neutral">
+            {signed
+              ? "Locked"
+              : running
+                ? "Running"
+                : live && !summaryReady
+                  ? "Not available"
+                  : "Open"}
+          </span>
         </div>
-        <p className="drawer-copy">
-          {signed
-            ? "This period is locked."
-            : pending
-              ? `${pending} unresolved ${pending === 1 ? "item remains" : "items remain"} before you can sign.`
-              : "Everything is reviewed. You can sign this period."}
-        </p>
-        <div className="drawer-row">
-          <button
-            className="secondary-button"
-            disabled={signed || prepared || preparing}
-            onClick={async () => {
-              setPreparing(true);
-              setPrepareError("");
-              try {
-                await onPrepare();
-                setPrepared(true);
-              } catch {
-                setPrepareError("The close couldn’t be prepared. Try again.");
-              } finally {
-                setPreparing(false);
+        <p className="drawer-copy">{nextStep}</p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void request("sign");
+          }}
+          aria-busy={busy !== null}
+        >
+          <div className="drawer-row">
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={
+                disabled ||
+                signed ||
+                running ||
+                busy !== null ||
+                (accepted === "prepare" && workflow?.type !== "failed")
               }
-            }}
-          >
-            <Sparkles size={15} />
-            {preparing
-              ? "Preparing…"
-              : prepared
-                ? "Close prepared"
-                : "Prepare close"}
-          </button>
-          <button
-            className="primary-button"
-            disabled={signed || pending > 0}
-            onClick={onSign}
-          >
-            <CheckCheck size={15} />
-            {signed ? "Signed" : "Sign period"}
-          </button>
-        </div>
-        {prepareError && (
+              onClick={() => void request("prepare")}
+            >
+              <Sparkles size={15} />
+              {busy === "prepare"
+                ? "Preparing…"
+                : running
+                  ? "Close running"
+                  : accepted === "prepare"
+                    ? live
+                      ? "Close requested"
+                      : "Close prepared"
+                    : "Prepare close"}
+            </button>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={!signAllowed || busy !== null || accepted === "sign"}
+            >
+              <CheckCheck size={15} />
+              {signed
+                ? "Signed"
+                : busy === "sign"
+                  ? "Signing…"
+                  : accepted === "sign"
+                    ? "Awaiting server update"
+                    : "Sign period"}
+            </button>
+          </div>
+        </form>
+        {requestError && (
           <p className="warning-notice" role="alert">
-            {prepareError}
+            {requestError}
           </p>
         )}
-        {prepared && (
-          <p className="success-notice" role="status">
-            Close prepared. Review any remaining items in the workspace.
+        {accepted === "prepare" && live && (
+          <p className="drawer-label" role="status">
+            Close request accepted. Follow the server activity as it runs.
+          </p>
+        )}
+        {workflow?.type === "failed" && (
+          <p className="warning-notice" role="alert">
+            The close stopped before finishing. Review its recorded activity
+            before retrying.
           </p>
         )}
       </section>
+      {live && (
+        <details className="drawer-card">
+          <summary>View trial balance and server totals</summary>
+          {summary ? (
+            <>
+              <p className="drawer-copy">
+                Debits{" "}
+                <strong style={{ fontFamily: "var(--mono)" }}>
+                  {cents(summary.debits)}
+                </strong>{" "}
+                · Credits{" "}
+                <strong style={{ fontFamily: "var(--mono)" }}>
+                  {cents(summary.credits)}
+                </strong>
+                <span
+                  className={`badge ${balanced ? "badge-green" : "badge-amber"}`}
+                >
+                  {balanced ? "Balanced" : "Needs review"}
+                </span>
+              </p>
+              {summary.trialBalance.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table aria-label="Server trial balance">
+                    <thead>
+                      <tr>
+                        <th scope="col">Account</th>
+                        <th scope="col">Debit</th>
+                        <th scope="col">Credit</th>
+                        <th scope="col">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summary.trialBalance.map((row) => (
+                        <tr className="permission-row" key={row.code}>
+                          <td>
+                            <strong>{row.code}</strong>
+                            <p className="drawer-label">{row.name}</p>
+                          </td>
+                          <td style={{ fontFamily: "var(--mono)" }}>
+                            {cents(row.debit)}
+                          </td>
+                          <td style={{ fontFamily: "var(--mono)" }}>
+                            {cents(row.credit)}
+                          </td>
+                          <td style={{ fontFamily: "var(--mono)" }}>
+                            {cents(row.balance)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="drawer-copy">
+                  No trial-balance rows were returned.
+                </p>
+              )}
+              <p className="drawer-label">
+                Server record counts across all revisions: {summary.openItems}{" "}
+                open; {summary.awaitingController} awaiting controller. Signing
+                uses the latest current proposals.
+              </p>
+              {summary.signedAt && (
+                <p className="drawer-label">
+                  Signed{" "}
+                  {new Date(summary.signedAt).toLocaleString("en-US", {
+                    timeZone: "America/Los_Angeles",
+                  })}{" "}
+                  PT.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="drawer-copy">
+              The server close summary has not loaded.
+            </p>
+          )}
+          {score && (
+            <p className="drawer-copy">
+              {score.closedByCode} matched by code · {score.posted} posted
+              proposals · {score.plantedBreaks} answer-key scenarios ·{" "}
+              {score.caught} recorded as caught · {score.correct} recorded as
+              correct.
+            </p>
+          )}
+          <p className="drawer-label">
+            Measured time savings, precision, recall, and repeat-mistake metrics
+            have not been supplied.
+          </p>
+        </details>
+      )}
       <details className="drawer-card">
-        <summary>View calculations and progress</summary>
-        <h3>Fewer questions each month</h3>
-        <div
-          className="chart-bars"
-          aria-label="Example escalations: July five, August two, September one"
-        >
-          {[
-            { month: "July", value: 5 },
-            { month: "August", value: 2 },
-            { month: "September", value: 1 },
-          ].map(({ month, value }) => (
-            <div className="chart-column" key={month}>
-              <strong>{value}</strong>
-              <div
-                className="chart-bar"
-                style={{ height: `${value * 20}px` }}
-              />
-              <span>{month}</span>
+        <summary>View planning assumptions{!live && " and progress"}</summary>
+        {!live && (
+          <>
+            <h3>Human escalations</h3>
+            <div
+              className="chart-bars"
+              aria-label="Illustrative escalations: July five, August two, September one"
+            >
+              {[
+                { month: "July", value: 5 },
+                { month: "August", value: 2 },
+                { month: "September", value: 1 },
+              ].map(({ month, value }) => (
+                <div className="chart-column" key={month}>
+                  <strong>{value}</strong>
+                  <div
+                    className="chart-bar"
+                    style={{ height: `${value * 20}px` }}
+                  />
+                  <span>{month}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <p className="drawer-label">
-          Illustrative monthly escalations · July–September 2026
-        </p>
-        <h3>Time saved assumptions</h3>
+            <p className="drawer-label">
+              Illustrative examples, not measured live performance.
+            </p>
+          </>
+        )}
+        <h3>Time calculator</h3>
         <p className="drawer-copy">
-          106 routine transactions, 11 exceptions, and 1 escalation. Edit
+          {routineCount ?? "—"} routine transactions, {exceptionCount}{" "}
+          proposals, and {escalationCount} current escalations. Edit estimated
           minutes per item.
         </p>
         <div className="drawer-stat-grid">
@@ -517,204 +663,290 @@ function Scoreboard({
             </label>
           ))}
         </div>
-        <p className="citation-quote">
-          Manual time: (106 × {routineMinutes} + 11 × {exceptionMinutes} +{" "}
-          {escalationMinutes}) ÷ 60 = {(baselineMinutes / 60).toFixed(1)} hours.
-          Less {(escalationMinutes / 60).toFixed(2)} hours of controller time ={" "}
-          {savedHours.toFixed(1)} estimated hours saved.
-        </p>
+        {baselineMinutes !== null ? (
+          <p className="citation-quote">
+            ({routineCount} × {routineMinutes} + {exceptionCount} ×{" "}
+            {exceptionMinutes} + {escalationCount} × {escalationMinutes}) ÷ 60 ={" "}
+            {(baselineMinutes / 60).toFixed(1)} baseline hours. Less{" "}
+            {((escalationCount * escalationMinutes) / 60).toFixed(2)} controller
+            hours = {savedHours?.toFixed(1)} estimated hours saved.
+          </p>
+        ) : (
+          <p className="drawer-label">
+            Load the workload counts to calculate an estimate.
+          </p>
+        )}
         <p className="drawer-label">
-          Planning estimate; excludes setup and review overhead.
+          Planning estimate only; excludes setup and review overhead. This is
+          separate from measured results.
         </p>
       </details>
-      <details className="drawer-card">
-        <summary>View test scenarios and impact</summary>
-        <p className="drawer-label">Fixture scenarios · expected outcomes</p>
-        <table aria-label="Expected test scenario outcomes">
-          <thead>
-            <tr>
-              <th scope="col">Scenario</th>
-              <th scope="col">Expected treatment</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fixtureScenarios.map((scenario) => (
-              <tr className="permission-row" key={scenario.name}>
-                <td>
-                  <strong>{scenario.name}</strong>
-                  <p className="drawer-label">{scenario.amount}</p>
-                </td>
-                <td>{scenario.treatment}</td>
+      {!live && (
+        <details className="drawer-card">
+          <summary>View test scenarios and illustrative impact</summary>
+          <p className="drawer-label">Fixture scenarios · expected outcomes</p>
+          <table aria-label="Expected fixture outcomes">
+            <thead>
+              <tr>
+                <th scope="col">Scenario</th>
+                <th scope="col">Expected treatment</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="drawer-copy">
-          Precision and recall: <strong>Pending live scoring.</strong>
-        </p>
-        <p className="drawer-copy">
-          Repeat mistakes: <strong>0</strong> in the seeded example.
-        </p>
-        <p className="citation-quote">
-          <strong>$69,500</strong> illustrative dollars protected: $42,000
-          payment hold + $18,500 duplicate invoice + $9,000 misclassification.
-        </p>
-        <p className="drawer-label">
-          Expected outcomes and illustrative impact, not measured cash savings.
-        </p>
-      </details>
+            </thead>
+            <tbody>
+              {fixtureScenarios.map((scenario) => (
+                <tr className="permission-row" key={scenario.name}>
+                  <td>
+                    <strong>{scenario.name}</strong>
+                    <p className="drawer-label">{scenario.amount}</p>
+                  </td>
+                  <td>{scenario.treatment}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="drawer-copy">
+            Precision and recall: Pending live scoring. Repeat mistakes: 0 in
+            the seeded example.
+          </p>
+          <p className="citation-quote">
+            $69,500 illustrative dollars protected: $42,000 hold + $18,500
+            duplicate + $9,000 misclassification. This is not measured cash
+            savings.
+          </p>
+        </details>
+      )}
     </>
   );
 }
 
-function Permissions({
-  onDeny,
-  denialCount,
-}: Pick<WorkspaceDrawerProps, "onDeny" | "denialCount">) {
+type ControlCount = {
+  rule: string;
+  kind?: string;
+  checked: number;
+  flagged: number;
+};
+function loadedControlCounts(
+  results: readonly LoadedControlResult[],
+  proposals: readonly Proposal[] = [],
+): ControlCount[] {
+  const records: readonly { rule: string; kind?: string; passed: boolean }[] =
+    results.length
+      ? results
+      : proposals.flatMap((proposal) =>
+          proposal.rules.map((rule) => ({
+            rule: rule.label,
+            passed: rule.passed,
+          })),
+        );
+  const counts = new Map<string, ControlCount>();
+  for (const record of records) {
+    const key = `${record.kind ?? "unknown"}:${record.rule}`;
+    const count = counts.get(key) ?? {
+      rule: record.rule,
+      kind: record.kind,
+      checked: 0,
+      flagged: 0,
+    };
+    count.checked += 1;
+    if (!record.passed) count.flagged += 1;
+    counts.set(key, count);
+  }
+  return [...counts.values()];
+}
+function Permissions(props: WorkspaceDrawerProps) {
+  const live = props.mode === "live";
+  const counts = loadedControlCounts(
+    props.controlResults ?? [],
+    props.proposals,
+  );
+  const [busy, setBusy] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  const seats = [
+  const [error, setError] = useState("");
+  const inFlight = useRef(false);
+  const enabled = (!live || props.canDeny === true) && !blockedActions(props);
+  const testPosting = async () => {
+    if (!enabled || inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await props.onDeny();
+      setAttempted(true);
+    } catch (cause) {
+      setError(requestMessage(cause));
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  };
+  const roles = [
     {
       title: "Auditor",
-      description: "Finds mismatches and suggests what to do.",
-      badge: "Can propose",
+      copy: "Finds mismatches and proposes entries.",
+      capability: "Can propose",
       icon: BookOpen,
     },
     {
       title: "Controls",
-      description: "Checks the rules before recording an entry.",
-      badge: "Can post",
+      copy: "Checks the rules before posting an eligible entry.",
+      capability: "Can post",
       icon: ShieldCheck,
     },
     {
       title: "You",
-      description: "Review exceptions and sign the completed close.",
-      badge: "Can approve",
+      copy: "Review exceptions and sign the completed close.",
+      capability: "Can approve",
       icon: CheckCheck,
     },
   ];
   return (
     <>
       <Intro title="How approvals work">
-        Auditor prepares the work. You make the final decisions.
+        Three separate roles keep every entry accountable.
       </Intro>
       <div className="drawer-list">
-        {seats.map(({ title, description, badge, icon: Icon }) => (
+        {roles.map(({ title, copy, capability, icon: Icon }) => (
           <section className="drawer-card" key={title}>
             <div className="drawer-card-head">
               <h3>
                 <Icon size={18} />
                 {title}
               </h3>
-              <span className="badge badge-neutral">{badge}</span>
+              <span className="badge badge-neutral">{capability}</span>
             </div>
-            <p className="drawer-copy">{description}</p>
+            <p className="drawer-copy">{copy}</p>
           </section>
         ))}
       </div>
       <details className="drawer-card">
-        <summary>View permissions and policies</summary>
+        <summary>View recorded control checks</summary>
+        {counts.length ? (
+          <table aria-label="Loaded control check counts">
+            <thead>
+              <tr>
+                <th scope="col">Control</th>
+                <th scope="col">Type</th>
+                <th scope="col">Checked</th>
+                <th scope="col">Flagged</th>
+              </tr>
+            </thead>
+            <tbody>
+              {counts.map((count) => (
+                <tr
+                  className="permission-row"
+                  key={`${count.kind}-${count.rule}`}
+                >
+                  <td>{count.rule}</td>
+                  <td>
+                    {count.kind
+                      ? count.kind.charAt(0).toUpperCase() + count.kind.slice(1)
+                      : "Not supplied"}
+                  </td>
+                  <td>{count.checked}</td>
+                  <td>{count.flagged}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="drawer-copy">
+            No control results were returned in the loaded records.
+          </p>
+        )}
+        <p className="drawer-label">
+          Counts cover only the loaded {live ? "server" : "sample"} records,
+          including revisions. Flagged means a check did not pass.
+        </p>
+      </details>
+      <details className="drawer-card">
+        <summary>View configured tools and policy reference</summary>
         {permissionGroups.map((group) => (
           <section className="drawer-section" key={group.identity}>
             <h3>{group.title}</h3>
             <p className="drawer-label">{group.restriction}</p>
-            <table aria-label={`${group.title} tools`}>
-              <thead>
-                <tr>
-                  <th scope="col">Allowed tool</th>
-                  <th scope="col">Access</th>
-                </tr>
-              </thead>
-              <tbody>
-                {group.tools.map((tool) => (
-                  <tr className="permission-row" key={tool}>
-                    <td>
-                      <code>{tool}</code>
-                    </td>
-                    <td>
-                      <Check size={13} aria-label="Allowed" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p className="drawer-copy">
+              {group.tools.map((tool, index) => (
+                <span key={tool}>
+                  <code>{tool}</code>
+                  {index < group.tools.length - 1 ? " · " : ""}
+                </span>
+              ))}
+            </p>
           </section>
         ))}
-        <h3>Control policies</h3>
-        <table aria-label="Control policies">
-          <thead>
-            <tr>
-              <th scope="col">Rule</th>
-              <th scope="col">What it checks</th>
-              <th scope="col">Example count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {controlPolicyRules.map((rule, index) => (
-              <tr className="permission-row" key={rule.clause}>
-                <td>{rule.clause}</td>
-                <td>
-                  <strong>{rule.title}</strong>
-                  <p className="drawer-label">{rule.description}</p>
-                </td>
-                <td>{[1, 2, 2, 0, 2][index]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="drawer-label">Firing counts are illustrative.</p>
+        {controlPolicyRules.map((rule) => (
+          <p className="drawer-copy" key={rule.clause}>
+            <strong>
+              {rule.clause} · {rule.title}
+            </strong>
+            <br />
+            {rule.description}
+          </p>
+        ))}
       </details>
       <details className="drawer-card">
         <summary>Advanced: test posting access</summary>
         <p className="drawer-copy">
-          Try posting as the proposing agent. The simulated check should refuse
-          it.
+          {live
+            ? props.canDeny
+              ? "Run the connected server check using the agent identity."
+              : "A server posting test is not connected yet."
+            : "Simulate an attempt to post as the proposing agent."}
         </p>
         <button
           className="secondary-button"
-          onClick={() => {
-            setAttempted(true);
-            onDeny();
-          }}
+          disabled={!enabled || busy}
+          onClick={() => void testPosting()}
         >
           <LockKeyhole size={15} />
-          Attempt agent post
+          {busy
+            ? "Testing…"
+            : live && !props.canDeny
+              ? "Server test unavailable"
+              : "Attempt agent post"}
         </button>
-        {attempted && (
+        {attempted && !live && (
           <p className="warning-notice" role="status">
-            <ShieldX size={16} />
-            Permission denied. Simulated test; no entry was posted.
+            <ShieldX size={15} />
+            Simulated permission denial. No entry was posted.
           </p>
         )}
-        <p className="drawer-label">
-          {denialCount} simulated {denialCount === 1 ? "denial" : "denials"}.
-        </p>
+        {!live && (
+          <p className="drawer-label">{props.denialCount} simulated denials.</p>
+        )}
+        {error && (
+          <p className="warning-notice" role="alert">
+            {error}
+          </p>
+        )}
       </details>
     </>
   );
 }
 
-function Inject({
-  onInject,
-  signed,
-}: Pick<WorkspaceDrawerProps, "onInject" | "signed">) {
+function Inject(props: WorkspaceDrawerProps) {
+  const live = props.mode === "live";
   const [kind, setKind] = useState("bank_transaction");
   const [vendor, setVendor] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const inFlight = useRef(false);
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSuccess("");
-    if (signed) {
+    if (props.signed) {
       setError("This period is locked. Choose an open period.");
       return;
     }
+    if (inFlight.current || blockedActions(props)) return;
+    const value = Number(amount);
     if (!vendor.trim()) {
       setError("Enter a vendor or counterparty.");
       return;
     }
-    const value = Number(amount);
     if (
       !amount.trim() ||
       !Number.isFinite(value) ||
@@ -728,19 +960,39 @@ function Inject({
       setError("Add at least 10 characters of context.");
       return;
     }
-    onInject(kind, vendor.trim(), Math.round(value * 100) / 100, note.trim());
+    inFlight.current = true;
+    setBusy(true);
     setError("");
-    setSuccess("Added to the review queue.");
-    setVendor("");
-    setAmount("");
-    setNote("");
+    try {
+      await props.onInject(
+        kind,
+        vendor.trim(),
+        Math.round(value * 100) / 100,
+        note.trim(),
+      );
+      setSuccess(live ? "Submitted. Watch the activity rail." : "Added to the demo review queue.");
+      setVendor("");
+      setAmount("");
+      setNote("");
+    } catch (cause) {
+      setError(requestMessage(cause));
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
   };
   return (
     <>
       <Intro title="Add a test scenario">
-        Try a new transaction or change. Use fictional information.
+        {live
+          ? "Submit a scenario to the live close. The Workflow picks it up within seconds."
+          : "Try a fictional transaction or change."}
       </Intro>
-      <form className="drawer-card" onSubmit={submit}>
+      <form
+        className="drawer-card"
+        onSubmit={(event) => void submit(event)}
+        aria-busy={busy}
+      >
         <label className="form-field">
           <span>Scenario type</span>
           <select
@@ -749,6 +1001,7 @@ function Inject({
             onChange={(event) => {
               setKind(event.target.value);
               setSuccess("");
+              setError("");
             }}
           >
             <option value="bank_transaction">Bank transaction</option>
@@ -757,19 +1010,27 @@ function Inject({
           </select>
         </label>
         <label className="form-field">
-          <span>Vendor or counterparty</span>
+          <span>{kind === "bank_transaction" ? "Counterparty" : "Vendor"}</span>
           <input
             className="input"
             required
             maxLength={100}
             value={vendor}
+            disabled={busy}
             onChange={(event) => setVendor(event.target.value)}
             placeholder="e.g. Meridian Production"
             autoComplete="off"
           />
         </label>
         <label className="form-field">
-          <span>Amount · USD</span>
+          <span>
+            {kind === "contract_amendment"
+              ? "Updated contract amount"
+              : kind === "vendor_bank_change"
+                ? "Payment affected"
+                : "Transaction amount"}{" "}
+            · USD
+          </span>
           <input
             className="input"
             required
@@ -778,12 +1039,19 @@ function Inject({
             max="100000000"
             step="0.01"
             value={amount}
+            disabled={busy}
             onChange={(event) => setAmount(event.target.value)}
             placeholder="0.00"
           />
         </label>
         <label className="form-field">
-          <span>What changed?</span>
+          <span>
+            {kind === "contract_amendment"
+              ? "New contract terms"
+              : kind === "vendor_bank_change"
+                ? "Bank change context"
+                : "Transaction context"}
+          </span>
           <textarea
             className="textarea"
             required
@@ -791,13 +1059,14 @@ function Inject({
             minLength={10}
             maxLength={1500}
             value={note}
+            disabled={busy}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Describe the transaction or change…"
+            placeholder="Describe what changed…"
           />
         </label>
         {kind === "vendor_bank_change" && (
           <p className="drawer-label">
-            Bank changes require review. Don’t enter real account details.
+            Use fictional details. Bank changes create a held item for review.
           </p>
         )}
         {error && (
@@ -807,389 +1076,38 @@ function Inject({
         )}
         {success && (
           <p className="success-notice" role="status">
-            <CircleCheck size={15} />
             {success}
           </p>
         )}
-        {signed && (
-          <p className="warning-notice" role="status">
-            This period is locked. Choose an open period.
+        {live && (
+          <p className="drawer-label">
+            Amounts are fictitious. Payments are recorded as money out; bank
+            changes hold the vendor and request payee verification.
           </p>
         )}
-        <button className="primary-button" type="submit" disabled={signed}>
-          {signed ? <LockKeyhole size={15} /> : <Plus size={15} />}
-          {signed ? "Period locked" : "Add scenario"}
+        {props.signed && (
+          <p className="drawer-label">This period is signed and locked.</p>
+        )}
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={props.signed || busy || blockedActions(props)}
+        >
+          {props.signed ? (
+            <LockKeyhole size={15} />
+          ) : (
+            <Plus size={15} />
+          )}
+          {props.signed
+              ? "Period locked"
+              : busy
+                ? "Adding…"
+                : "Add scenario"}
         </button>
       </form>
     </>
   );
 }
-
-interface ChatMessage {
-  id: number;
-  role: "user" | "assistant";
-  text: string;
-  sources?: string[];
-}
-interface SpeechAlternative {
-  transcript: string;
-  confidence: number;
-}
-interface SpeechResult {
-  readonly length: number;
-  readonly isFinal: boolean;
-  readonly [index: number]: SpeechAlternative;
-}
-interface SpeechResultList {
-  readonly length: number;
-  readonly [index: number]: SpeechResult;
-}
-interface RecognitionResultEvent {
-  readonly resultIndex: number;
-  readonly results: SpeechResultList;
-}
-interface RecognitionErrorEvent {
-  readonly error: string;
-  readonly message?: string;
-}
-interface BrowserSpeechRecognition {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((event: RecognitionResultEvent) => void) | null;
-  onerror: ((event: RecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
-interface SpeechRecognitionConstructor {
-  new (): BrowserSpeechRecognition;
-}
-type SpeechWindow = Window & {
-  SpeechRecognition?: SpeechRecognitionConstructor;
-  webkitSpeechRecognition?: SpeechRecognitionConstructor;
-};
-
-const suggestedQuestions = [
-  "Why was Apex expensed?",
-  "Why is Field & Flame on hold?",
-  "What changed with Stripe?",
-];
-function answerQuestion(
-  question: string,
-): Pick<ChatMessage, "text" | "sources"> {
-  const text = question.toLowerCase();
-  if (/field|flame|hold|bank/.test(text))
-    return {
-      text: "Field & Flame changed its bank details before a $42,000 payment. Policy 4.3 requires a hold and controller review. Bank verification is unavailable, so the payment remains held in account 1400.",
-      sources: ["policy-4.3"],
-    };
-  if (
-    /stripe|learn|precedent/.test(text) &&
-    !/apex|deposit|inspection/.test(text)
-  )
-    return {
-      text: "The $1,420 difference between Stripe’s gross receipts and net deposit is processing fees. July’s reviewed decision can be reused for matching payouts when all controls pass.",
-      sources: ["D-0408"],
-    };
-  if (/sound|duplicate|mistake|correction/.test(text))
-    return {
-      text: "SoundWave invoice SW-1042 was recorded twice. Void the duplicate $18,500 entry and keep the original payable. This exception needs controller approval.",
-      sources: ["SW-1042"],
-    };
-  if (/apex|deposit|inspection|fee|2400|2,400/.test(text))
-    return {
-      text: "Apex returned $13,600 of a $16,000 deposit. Its contract makes the $2,400 inspection fee non-recoverable, so it is expensed under policy 5.1, following decision D-0417.",
-      sources: ["apex-9.4", "policy-5.1", "D-0417"],
-    };
-  if (/post|permission|agent|approve/.test(text))
-    return {
-      text: "Auditor proposes entries, controls check and post eligible entries, and you approve exceptions. The proposing agent cannot post its own work.",
-    };
-  return {
-    text: "I can help with the sample Apex deposit, Field & Flame hold, Stripe fees, and SoundWave duplicate. Ask about one of these to explore its supporting context.",
-  };
-}
-function Ask() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [question, setQuestion] = useState("");
-  const [speaking, setSpeaking] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [voiceStatus, setVoiceStatus] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const sequence = useRef(0);
-  const speechAvailable =
-    typeof window !== "undefined" && "speechSynthesis" in window;
-  const speechWindow =
-    typeof window !== "undefined" ? (window as SpeechWindow) : undefined;
-  const Recognition =
-    speechWindow?.SpeechRecognition ?? speechWindow?.webkitSpeechRecognition;
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [messages]);
-  useEffect(
-    () => () => {
-      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-      const recognition = recognitionRef.current;
-      if (recognition) {
-        recognition.onresult = null;
-        recognition.onerror = null;
-        recognition.onend = null;
-        recognition.abort();
-      }
-    },
-    [],
-  );
-  const toggleMicrophone = () => {
-    if (listening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      return;
-    }
-    if (!Recognition) {
-      setVoiceStatus(
-        "Voice input is unavailable in this browser. Type your question instead.",
-      );
-      return;
-    }
-    const previousRecognition = recognitionRef.current;
-    if (previousRecognition) {
-      previousRecognition.onresult = null;
-      previousRecognition.onerror = null;
-      previousRecognition.onend = null;
-      previousRecognition.abort();
-    }
-    if (speechAvailable) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-    }
-    const recognition = new Recognition();
-    recognitionRef.current = recognition;
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    const prefix = question.trim();
-    let receivedTranscript = false;
-    let failed = false;
-    recognition.onresult = (event) => {
-      const transcript = Array.from(
-        { length: event.results.length },
-        (_, index) => event.results[index][0]?.transcript ?? "",
-      )
-        .join(" ")
-        .trim();
-      receivedTranscript = receivedTranscript || Boolean(transcript);
-      setQuestion(
-        [prefix, transcript].filter(Boolean).join(" ").slice(0, 1000),
-      );
-      setVoiceStatus(
-        "Listening… your transcript is appearing in the question field.",
-      );
-    };
-    recognition.onerror = (event) => {
-      failed = true;
-      setListening(false);
-      const errors: Record<string, string> = {
-        "not-allowed":
-          "Microphone permission was denied. Allow microphone access in your browser or type your question.",
-        "service-not-allowed":
-          "Your browser does not allow speech recognition here. Type your question instead.",
-        "audio-capture":
-          "No microphone is available. Connect one or type your question.",
-        network:
-          "The browser speech service is unavailable. Try again or type your question.",
-        "no-speech": "No speech was detected. Try again or type your question.",
-        aborted:
-          "Voice input stopped. You can edit the transcript or type your question.",
-      };
-      setVoiceStatus(
-        errors[event.error] ??
-          "Voice input could not finish. Try again or type your question.",
-      );
-    };
-    recognition.onend = () => {
-      if (recognitionRef.current === recognition) recognitionRef.current = null;
-      setListening(false);
-      if (!failed)
-        setVoiceStatus(
-          receivedTranscript
-            ? "Transcript ready. Review it, then select Ask Auditor to send."
-            : "No transcript captured. Try again or type your question.",
-        );
-    };
-    try {
-      recognition.start();
-      setListening(true);
-      setVoiceStatus(
-        "Listening… speak your question. Select Stop listening when you’re done.",
-      );
-    } catch {
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-      recognitionRef.current = null;
-      setListening(false);
-      setVoiceStatus(
-        "Voice input could not start. Check your browser microphone permission or type your question.",
-      );
-    }
-  };
-  const send = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    const recognition = recognitionRef.current;
-    if (recognition) {
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-      recognition.abort();
-      recognitionRef.current = null;
-    }
-    setListening(false);
-    setVoiceStatus("");
-    const answer = answerQuestion(trimmed);
-    const id = sequence.current++;
-    setMessages((previous) => [
-      ...previous,
-      { id: id * 2, role: "user", text: trimmed },
-      { id: id * 2 + 1, role: "assistant", ...answer },
-    ]);
-    setQuestion("");
-  };
-  const read = (text: string) => {
-    if (!speechAvailable) return;
-    window.speechSynthesis.cancel();
-    if (speaking) {
-      setSpeaking(false);
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    setSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  };
-  return (
-    <>
-      <Intro title="Ask Auditor">Ask about a payment or a past decision.</Intro>
-      {messages.length === 0 && (
-        <div className="drawer-list">
-          {suggestedQuestions.map((suggestion) => (
-            <button
-              className="suggestion-button"
-              key={suggestion}
-              onClick={() => send(suggestion)}
-            >
-              {suggestion}
-              <ArrowRight size={15} />
-            </button>
-          ))}
-        </div>
-      )}
-      <div
-        className="drawer-list"
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions"
-        aria-label="Conversation"
-      >
-        {messages.map((message) => (
-          <article className={`chat-message ${message.role}`} key={message.id}>
-            <span className="drawer-kicker">
-              {message.role === "user" ? "You" : "Auditor"}
-            </span>
-            <p>{message.text}</p>
-            {message.sources && (
-              <details>
-                <summary>
-                  View {message.sources.length}{" "}
-                  {message.sources.length === 1 ? "source" : "sources"}
-                </summary>
-                {message.sources.map((id) => {
-                  const source = sourceMemory.find((item) => item.id === id);
-                  return source ? (
-                    <div className="citation-quote" key={id}>
-                      <strong>{source.title}</strong>
-                      <p>{source.quote ?? source.text}</p>
-                      <span className="drawer-label">
-                        {id} ·{" "}
-                        {source.quote ? "Source excerpt" : "Source summary"}
-                      </span>
-                    </div>
-                  ) : null;
-                })}
-              </details>
-            )}
-            {message.role === "assistant" && speechAvailable && (
-              <button
-                className="text-button"
-                aria-label={
-                  speaking ? "Stop reading answer" : "Read answer aloud"
-                }
-                onClick={() => read(message.text)}
-              >
-                {speaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
-                {speaking ? "Stop" : "Read aloud"}
-              </button>
-            )}
-          </article>
-        ))}
-        <div ref={endRef} />
-      </div>
-      <form
-        className="drawer-card"
-        onSubmit={(event) => {
-          event.preventDefault();
-          send(question);
-        }}
-      >
-        <label className="form-field">
-          <span>Your question</span>
-          <textarea
-            className="textarea"
-            rows={3}
-            maxLength={1000}
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="What would you like to know?"
-            aria-describedby="voice-input-status"
-          />
-        </label>
-        <div className="drawer-row">
-          <button
-            className="secondary-button"
-            type="button"
-            disabled={!Recognition}
-            onClick={toggleMicrophone}
-            aria-pressed={listening}
-          >
-            {listening ? <MicOff size={15} /> : <Mic size={15} />}
-            {!Recognition
-              ? "Voice unavailable"
-              : listening
-                ? "Stop listening"
-                : "Speak"}
-          </button>
-          <button
-            className="primary-button"
-            type="submit"
-            disabled={!question.trim() || listening}
-          >
-            <Send size={15} />
-            Ask Auditor
-          </button>
-        </div>
-        <p className="drawer-label" role="status" id="voice-input-status">
-          {!Recognition
-            ? "Voice isn’t available in this browser. You can type instead."
-            : voiceStatus || "Review your transcript before sending."}
-        </p>
-      </form>
-    </>
-  );
-}
-
 function Memory() {
   const [query, setQuery] = useState("");
   const sources = sourceMemory.filter((source) =>
@@ -1236,316 +1154,17 @@ function Memory() {
   );
 }
 
-function Activity({
-  proposals,
-  period,
-  signed,
-  denialCount,
-}: Pick<
-  WorkspaceDrawerProps,
-  "proposals" | "period" | "signed" | "denialCount"
->) {
-  const events = proposals
-    .flatMap((proposal) =>
-      proposal.audit.map((event, index) => ({
-        ...event,
-        proposal,
-        key: `${proposal.id}-${index}`,
-      })),
-    )
-    .reverse();
-  const renderEvents = (items: typeof events) =>
-    items.map((event) => (
-      <details className="drawer-card" key={event.key}>
-        <summary>
-          <span>{event.title}</span>
-          <span className="drawer-label">
-            {event.proposal.vendor} · {event.time}
-          </span>
-        </summary>
-        <p className="drawer-copy">{event.detail}</p>
-        <span className="drawer-label">
-          {event.proposal.decisionId} · {event.proposal.status}
-        </span>
-      </details>
-    ));
-  return (
-    <>
-      <Intro title="Activity">Recent updates for {period}.</Intro>
-      {signed && (
-        <p className="success-notice">
-          <CheckCheck size={16} />
-          Period signed and locked.
-        </p>
-      )}
-      {denialCount > 0 && (
-        <p className="drawer-label">
-          {denialCount} simulated agent posting{" "}
-          {denialCount === 1 ? "attempt denied" : "attempts denied"}.
-        </p>
-      )}
-      <div className="drawer-list">{renderEvents(events.slice(0, 6))}</div>
-      {events.length > 6 && (
-        <details className="drawer-card">
-          <summary>View {events.length - 6} earlier updates</summary>
-          <div className="drawer-list">{renderEvents(events.slice(6))}</div>
-        </details>
-      )}
-      {events.length === 0 && (
-        <div className="empty-state">
-          <FileText size={26} />
-          <h3>No updates yet</h3>
-        </div>
-      )}
-    </>
-  );
-}
-
-function LiveDrawerContent(props: WorkspaceDrawerProps) {
-  const {
-    type,
-    proposals,
-    period,
-    liveSnapshot: snapshot,
-    loading,
-    signed,
-    onSelect,
-    onPrepare,
-  } = props;
-  const [busy, setBusy] = useState(false);
-  const [requested, setRequested] = useState(false);
-  const [requestError, setRequestError] = useState("");
-  const score = snapshot?.period === period ? snapshot.score : undefined;
-  const workflow = snapshot?.period === period ? snapshot.workflow : undefined;
-  const pending = proposals.filter(needsHumanReview);
-  const prepare = async () => {
-    setBusy(true);
-    setRequestError("");
-    try {
-      await onPrepare();
-      setRequested(true);
-    } catch {
-      setRequestError(
-        "The close couldn’t be started. Check that the period is open, then retry.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-  if (props.error)
-    return (
-      <>
-        <Intro title="Live records are unavailable">
-          The connection needs another try.
-        </Intro>
-        <p className="warning-notice" role="alert">
-          {props.error}
-        </p>
-        <p className="drawer-copy">
-          Close this panel and use Retry in the workspace connection banner.
-        </p>
-      </>
-    );
-  if (loading)
-    return (
-      <>
-        <Intro title="Loading live records">
-          Getting the latest information for {period}.
-        </Intro>
-        <p className="drawer-copy" role="status">
-          Sources, decisions, and activity will appear when the server responds.
-        </p>
-      </>
-    );
-  if (type === "scoreboard")
-    return (
-      <>
-        <Intro title="Close summary">Live progress for {period}.</Intro>
-        {loading ? (
-          <p className="drawer-copy" role="status">
-            Loading period totals…
-          </p>
-        ) : (
-          <div className="drawer-stat-grid">
-            <div className="drawer-stat">
-              <span>Bank transactions</span>
-              <strong>{score?.transactions ?? "—"}</strong>
-            </div>
-            <div className="drawer-stat">
-              <span>Matched by code</span>
-              <strong>{score?.closedByCode ?? "—"}</strong>
-            </div>
-            <div className="drawer-stat">
-              <span>Entries posted</span>
-              <strong>{score?.posted ?? "—"}</strong>
-            </div>
-            <div className="drawer-stat">
-              <span>Escalations</span>
-              <strong>{score?.escalated ?? "—"}</strong>
-            </div>
-          </div>
-        )}
-        <section className="drawer-card">
-          <div className="drawer-card-head">
-            <h3>{signed ? "Period signed" : "Prepare the close"}</h3>
-            <span className="badge badge-neutral">
-              {signed
-                ? "Locked"
-                : workflow?.type === "inProgress"
-                  ? "Running"
-                  : "Open"}
-            </span>
-          </div>
-          <p className="drawer-copy">
-            {signed
-              ? "This period is signed and locked on the server."
-              : "Prepare the period to let the workflow investigate unmatched items. New proposals and decisions appear automatically."}
-          </p>
-          <div className="drawer-row">
-            <button
-              className="secondary-button"
-              disabled={
-                loading || signed || busy || workflow?.type === "inProgress"
-              }
-              onClick={() => void prepare()}
-            >
-              <Sparkles size={15} />
-              {busy
-                ? "Starting…"
-                : workflow?.type === "inProgress"
-                  ? "Close running"
-                  : "Prepare close"}
-            </button>
-            <button className="primary-button" disabled>
-              <LockKeyhole size={14} />
-              {signed ? "Signed" : "Sign-off unavailable"}
-            </button>
-          </div>
-          {!signed && (
-            <p className="drawer-label">
-              Live controller approval and sign-off will be available when
-              review actions are enabled.
-            </p>
-          )}
-          {requestError && (
-            <p className="warning-notice" role="alert">
-              {requestError}
-            </p>
-          )}
-          {requested && !requestError && (
-            <p className="success-notice" role="status">
-              The server accepted the close request. Follow the activity as it
-              runs.
-            </p>
-          )}
-          {workflow?.type === "failed" && (
-            <p className="warning-notice" role="alert">
-              The close stopped before finishing. Review the activity before
-              trying again.
-            </p>
-          )}
-        </section>
-        <p className="drawer-label">
-          Only server totals are shown. Time savings and accuracy scores are not
-          available for this close yet.
-        </p>
-      </>
-    );
-  if (type === "approvals")
-    return (
-      <>
-        <Intro title="Review items">
-          {pending.length
-            ? `${pending.length} ${pending.length === 1 ? "item needs" : "items need"} a controller decision.`
-            : "No loaded items are awaiting a controller decision."}
-        </Intro>
-        <p className="readonly-notice">
-          <LockKeyhole size={15} />
-          Live records are read-only. You can inspect the evidence; approval
-          actions aren’t enabled yet.
-        </p>
-        {pending.map((proposal) => (
-          <section className="drawer-card" key={proposal.id}>
-            <div className="drawer-card-head">
-              <h3>{proposal.vendor}</h3>
-              <strong>
-                {proposal.sourceBank.available === false
-                  ? "Amount unavailable"
-                  : money(proposal.amount)}
-              </strong>
-            </div>
-            <span
-              className={`badge ${proposal.status === "held" ? "badge-amber" : "badge-neutral"}`}
-            >
-              {proposal.status === "held" ? "Payment held" : "Needs review"}
-            </span>
-            <p className="drawer-copy">
-              {proposal.decisionReason || proposal.description}
-            </p>
-            <button
-              className="text-button"
-              onClick={() => onSelect(proposal.id)}
-            >
-              Review sources and decision
-              <ArrowRight size={14} />
-            </button>
-          </section>
-        ))}
-      </>
-    );
-  if (type === "activity")
-    return (
-      <>
-        <Intro title="Activity">Server-recorded updates for {period}.</Intro>
-        {loading ? (
-          <p role="status" className="drawer-copy">
-            Loading activity…
-          </p>
-        ) : snapshot?.audit.length ? (
-          <div className="drawer-list">
-            {snapshot.audit.map((event, index) => (
-              <details className="drawer-card" key={`${event.at}-${index}`}>
-                <summary>
-                  {event.title}
-                  <span className="drawer-label">
-                    {" "}
-                    · {event.actor} · {event.time} PT
-                  </span>
-                </summary>
-                <p className="drawer-copy">
-                  {event.detail || "No additional detail recorded."}
-                </p>
-                {event.at && (
-                  <time
-                    className="drawer-label"
-                    dateTime={new Date(event.at).toISOString()}
-                  >
-                    {new Intl.DateTimeFormat("en-US", {
-                      timeZone: "America/Los_Angeles",
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    }).format(new Date(event.at))}{" "}
-                    PT
-                  </time>
-                )}
-              </details>
-            ))}
-          </div>
-        ) : (
-          <p className="drawer-copy">
-            No activity has been recorded for this period.
-          </p>
-        )}
-      </>
-    );
-  if (type === "memory")
+function EvidenceAndActivity(props: WorkspaceDrawerProps) {
+  const snapshot = currentSnapshot(props);
+  if (props.type === "memory")
     return (
       <>
         <Intro title="Decision evidence">
           Sources attached to the loaded proposals.
         </Intro>
-        {proposals
-          .filter((p) => p.citations.length)
+        <ActionNotice {...props} />
+        {props.proposals
+          .filter((proposal) => proposal.citations.length)
           .map((proposal) => (
             <details className="drawer-card" key={proposal.id}>
               <summary>
@@ -1562,80 +1181,101 @@ function LiveDrawerContent(props: WorkspaceDrawerProps) {
                 >
                   <strong>{citation.sourceId}</strong>
                   <p>{citation.text}</p>
+                  <span className="drawer-label">
+                    {citation.sourceType} · Retrieval score {citation.score}
+                  </span>
                 </div>
               ))}
               <button
                 className="text-button"
-                onClick={() => onSelect(proposal.id)}
+                onClick={() => props.onSelect(proposal.id)}
               >
                 Open transaction
                 <ArrowRight size={13} />
               </button>
             </details>
           ))}
-        {!proposals.some((p) => p.citations.length) && (
-          <p className="drawer-copy">
-            There are no cited sources in the loaded proposals yet.
-          </p>
+        {!props.proposals.some((proposal) => proposal.citations.length) && (
+          <p className="drawer-copy">No cited sources have been loaded yet.</p>
         )}
       </>
     );
-  if (type === "permissions")
-    return (
-      <>
-        <Intro title="How approvals work">
-          Three separate roles keep every entry accountable.
-        </Intro>
-        {permissionGroups.map((group) => (
-          <section className="drawer-card" key={group.identity}>
-            <h3>{group.title}</h3>
-            <p className="drawer-copy">{group.description}</p>
-            <p className="drawer-label">{group.restriction}</p>
-            <details>
-              <summary>Allowed tools</summary>
-              <p className="drawer-label">{group.tools.join(" · ")}</p>
-            </details>
-          </section>
-        ))}
-        <p className="readonly-notice">
-          <LockKeyhole size={15} />
-          This view describes permissions. No posting test has been run.
-        </p>
-      </>
-    );
+  const events =
+    props.mode === "live"
+      ? (snapshot?.audit ?? [])
+      : props.proposals.flatMap((proposal) => proposal.audit).reverse();
   return (
     <>
-      <Intro title={type === "ask" ? "Ask Auditor" : "Add a test scenario"}>
-        {type === "ask"
-          ? "Live questions aren’t available in this workspace yet."
-          : "Test scenarios are available in the demo workspace."}
-      </Intro>
-      <section className="drawer-card">
-        <h3>
-          {type === "ask"
-            ? "The evidence is already here."
-            : "Your live records stay unchanged."}
-        </h3>
-        <p className="drawer-copy">
-          {type === "ask"
-            ? "Open any transaction to read its exact source passages and recorded decision. Live question answering will be enabled when it can use this workspace’s sources."
-            : "Use the workspace menu to open the demo and try a fictional bank transaction, contract change, or payment hold."}
+      <Intro title="Activity">Recorded updates for {props.period}.</Intro>
+      <ActionNotice {...props} />
+      {props.loading && (
+        <p className="drawer-copy" role="status">
+          Loading activity…
         </p>
-      </section>
+      )}
+      <div className="drawer-list">
+        {events.map((event, index) => (
+          <details
+            className="drawer-card"
+            key={`${event.at ?? event.time}-${index}`}
+          >
+            <summary>
+              {event.title}
+              <span className="drawer-label">
+                {" "}
+                · {event.actor || "Actor not supplied"}
+              </span>
+            </summary>
+            <p className="drawer-copy">
+              {event.detail || "No additional detail recorded."}
+            </p>
+            {event.at ? (
+              <time
+                className="drawer-label"
+                dateTime={new Date(event.at).toISOString()}
+              >
+                {new Intl.DateTimeFormat("en-US", {
+                  timeZone: "America/Los_Angeles",
+                  dateStyle: "medium",
+                  timeStyle: "medium",
+                }).format(new Date(event.at))}{" "}
+                PT
+              </time>
+            ) : (
+              <span className="drawer-label">
+                {event.time || "Timestamp not supplied"}
+              </span>
+            )}
+          </details>
+        ))}
+      </div>
+      {!events.length && !props.loading && (
+        <p className="drawer-copy">
+          {blockedActions(props)
+            ? "Activity will appear when the feed is current."
+            : "No activity has been recorded for this period."}
+        </p>
+      )}
     </>
   );
 }
-
 export default function WorkspaceDrawer(props: WorkspaceDrawerProps) {
   let content: ReactNode;
-  if (props.mode === "live") content = <LiveDrawerContent {...props} />;
+  if (props.type === "ask")
+    content = (
+      <AskDrawer
+        mode={props.mode ?? "demo"}
+        period={props.period}
+        onAsk={props.onAsk}
+      />
+    );
   else if (props.type === "approvals") content = <Approvals {...props} />;
   else if (props.type === "scoreboard") content = <Scoreboard {...props} />;
   else if (props.type === "permissions") content = <Permissions {...props} />;
   else if (props.type === "inject") content = <Inject {...props} />;
-  else if (props.type === "ask") content = <Ask />;
-  else if (props.type === "memory") content = <Memory />;
-  else content = <Activity {...props} />;
+  else if (props.type === "memory" && props.mode !== "live")
+    content = <Memory />;
+  else content = <EvidenceAndActivity {...props} />;
   return (
     <DataMode.Provider value={props.mode ?? "demo"}>
       {content}
