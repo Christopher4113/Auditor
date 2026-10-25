@@ -1,0 +1,464 @@
+/* A quiet glass layer for controls; accounting content keeps its solid canvas. */
+:root {
+  --glass-bg: #f8f6fd;
+  --glass-bg-hover: #f0ebfa;
+  --glass-border: #d6cce8;
+  --glass-highlight: #ffffffdb;
+  --glass-sheen: #ffffff70;
+  --glass-shadow:
+    inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 #5b39740a,
+    0 3px 9px #24123e0b;
+  --glass-shadow-hover:
+    inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 #5b39740a,
+    0 6px 16px #24123e14;
+  --glass-blur: 18px;
+  --glass-primary-from: #6841d8;
+  --glass-primary-to: #4d2ab6;
+  --glass-primary-border: #a18add;
+  --glass-primary-text: #ffffff;
+  --glass-nav: #211936;
+  --glass-nav-border: #625178;
+  --glass-nav-active: #f4effc;
+  --glass-nav-text: #e1d9ef;
+  --glass-nav-active-text: #2a1c48;
+  --focus-ring: #7950d0;
+}
+:root[data-theme="dark"] {
+  --glass-bg: #2b233b;
+  --glass-bg-hover: #352b48;
+  --glass-border: #655374;
+  --glass-highlight: #ffffff29;
+  --glass-sheen: #ffffff12;
+  --glass-shadow:
+    inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 #00000024,
+    0 3px 10px #00000024;
+  --glass-shadow-hover:
+    inset 0 1px 0 #ffffff38, inset 0 -1px 0 #00000024, 0 6px 20px #00000038;
+  --glass-primary-from: #6841d8;
+  --glass-primary-to: #4d2ab6;
+  --glass-primary-border: #9d81e6;
+  --glass-nav: #201a2e;
+  --glass-nav-border: #5b476f;
+  --glass-nav-active: #46365f;
+  --glass-nav-text: #d4c9e4;
+  --glass-nav-active-text: #faf7ff;
+  --focus-ring: #c4afff;
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse at 90% 0%, #b8a2ff14, transparent 38%),
+    radial-gradient(ellipse at 0% 65%, #b8a2ff0a, transparent 44%);
+}
+
+:is(
+  .primary-button,
+  .secondary-button,
+  .navy-button,
+  .attention-button,
+  .ask-header,
+  .icon-button
+) {
+  align-items: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--glass-shadow);
+  display: inline-flex;
+  font-weight: 550;
+  justify-content: center;
+  line-height: 1.45;
+  min-height: 44px;
+  position: relative;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    color 200ms ease,
+    transform 200ms cubic-bezier(0.2, 0.75, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+:is(.primary-button, .secondary-button, .navy-button, .attention-button) {
+  font-size: 13px;
+  gap: 9px;
+  padding: 11px 20px;
+}
+:is(.secondary-button, .attention-button, .ask-header, .icon-button) {
+  --control-glass-background:
+    linear-gradient(165deg, var(--glass-sheen), transparent 55%),
+    var(--glass-bg);
+  background: var(--control-glass-background);
+  color: var(--text-secondary);
+}
+:is(.primary-button, .navy-button) {
+  --control-glass-background:
+    linear-gradient(180deg, #ffffff20, #ffffff02 38%, #0000000a),
+    linear-gradient(135deg, var(--glass-primary-from), var(--glass-primary-to));
+  background: var(--control-glass-background);
+  border-color: var(--glass-primary-border);
+  box-shadow:
+    inset 0 1px 0 #ffffff59,
+    inset 0 -1px 0 #21103940,
+    0 4px 12px #5530aa24;
+  color: var(--glass-primary-text);
+}
+.navy-button {
+  --control-glass-background:
+    linear-gradient(180deg, #ffffff1c, #ffffff00 45%),
+    linear-gradient(135deg, #3c2c59, #211735);
+  background: var(--control-glass-background);
+  border-color: #84708e;
+}
+.assistant-card > .navy-button {
+  background: var(--control-glass-background);
+  border-color: #84708e;
+  border-radius: 999px;
+  padding: 12px 16px;
+}
+.assistant-question {
+  background:
+    linear-gradient(155deg, var(--glass-sheen), transparent 60%),
+    var(--glass-bg);
+  border-color: var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  color: var(--text-secondary);
+  min-height: 48px;
+  padding: 12px 14px;
+  touch-action: manipulation;
+}
+:is(
+  .primary-button,
+  .secondary-button,
+  .navy-button,
+  .attention-button,
+  .ask-header,
+  .icon-button
+):hover {
+  background: var(--control-glass-background);
+  transform: none;
+}
+.ask-header {
+  padding: 9px 14px;
+  gap: 7px;
+}
+.icon-button {
+  flex: 0 0 44px;
+  height: 44px;
+  padding: 0;
+  width: 44px;
+}
+:root[data-theme] .top-nav {
+  background:
+    linear-gradient(155deg, #ffffff16, transparent 58%), var(--glass-nav);
+  border: 1px solid var(--glass-nav-border);
+  box-shadow:
+    inset 0 1px 0 #ffffff2e,
+    0 5px 15px #1a0d3012;
+  padding: 5px;
+}
+:root[data-theme] .top-nav button {
+  align-items: center;
+  border: 1px solid transparent;
+  color: var(--glass-nav-text);
+  font-size: 13px;
+  font-weight: 500;
+  justify-content: center;
+  min-height: 44px;
+  padding: 9px 19px;
+  touch-action: manipulation;
+}
+:root[data-theme] .top-nav button.active {
+  background:
+    linear-gradient(160deg, #ffffff26, transparent 65%), var(--glass-nav-active);
+  border-color: #ffffff36;
+  box-shadow:
+    inset 0 1px 0 #ffffff52,
+    0 2px 7px #0000001a;
+  color: var(--glass-nav-active-text);
+}
+.activity-tabs {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  gap: 3px;
+  padding: 4px;
+}
+.activity-tabs button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  touch-action: manipulation;
+}
+.activity-tabs button.active {
+  background:
+    linear-gradient(150deg, var(--glass-sheen), transparent 65%),
+    var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  color: var(--accent-text);
+}
+.period-select-wrap {
+  background:
+    linear-gradient(155deg, var(--glass-sheen), transparent 65%),
+    var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--glass-shadow);
+  min-height: 44px;
+  padding: 0 14px;
+}
+.period-select-wrap select {
+  min-height: 42px;
+}
+.search-box {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 12px;
+}
+.search-box input {
+  font-size: 12px;
+  min-height: 42px;
+  min-width: 0;
+}
+.search-box:focus-within {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  color: var(--accent-text);
+}
+.tools-menu {
+  border-color: var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow-hover);
+  top: calc(100% + 10px);
+}
+.tools-menu > button {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+.tools-menu > button:hover:not(:disabled) {
+  border-color: var(--border);
+}
+:is(
+  .text-button,
+  .hero-text-button,
+  .activity-card-footer > button,
+  .workspace-footer > button,
+  .progress-card-bottom > button
+) {
+  align-items: center;
+  border-radius: 12px;
+  font-weight: 500;
+  min-height: 44px;
+  padding: 8px 10px;
+  touch-action: manipulation;
+}
+.hero-text-button {
+  font-size: 12px;
+}
+.activity-card-footer > button,
+.workspace-footer > button {
+  color: var(--accent-text);
+}
+.dialog-header .icon-button {
+  flex-shrink: 0;
+}
+.toast > button {
+  align-items: center;
+  border-radius: 50%;
+  flex: 0 0 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  width: 44px;
+}
+.toast > button:hover {
+  background: #ffffff12;
+}
+
+/* Blur stays on the small control layer, away from scrolling financial tables. */
+@supports (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  :root {
+    --glass-bg: #ffffffb3;
+    --glass-bg-hover: #f8f5ffeb;
+    --glass-border: #d5c9e8bf;
+    --glass-highlight: #fffffff0;
+  }
+  :root[data-theme="dark"] {
+    --glass-bg: #30263dcc;
+    --glass-bg-hover: #3a2e4ae6;
+    --glass-border: #9180aa66;
+    --glass-highlight: #ffffff30;
+  }
+  :is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button,
+    .period-select-wrap
+  ) {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+  }
+  :root[data-theme] .top-nav {
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    backdrop-filter: blur(24px) saturate(140%);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(
+      .primary-button,
+      .secondary-button,
+      .navy-button,
+      .attention-button,
+      .ask-header,
+      .icon-button
+    ):hover:not(:disabled) {
+    box-shadow: var(--glass-shadow-hover);
+    transform: translateY(-1px);
+  }
+  :is(
+      .secondary-button,
+      .attention-button,
+      .ask-header,
+      .icon-button
+    ):hover:not(:disabled) {
+    background:
+      linear-gradient(155deg, var(--glass-sheen), transparent 55%),
+      var(--glass-bg-hover);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+  :is(.primary-button, .navy-button):hover:not(:disabled) {
+    box-shadow:
+      inset 0 1px 0 #ffffff6b,
+      inset 0 -1px 0 #21103940,
+      0 7px 18px #5530aa35;
+  }
+  :root[data-theme] .top-nav button:hover:not(.active):not(:disabled) {
+    background: #ffffff12;
+    color: #ffffff;
+  }
+  :is(
+      .text-button,
+      .hero-text-button,
+      .activity-card-footer > button,
+      .workspace-footer > button
+    ):hover:not(:disabled) {
+    background: var(--accent-soft);
+  }
+}
+:is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button
+  ):active:not(:disabled) {
+  box-shadow: inset 0 1px 3px #1e0b3026;
+  transform: translateY(0) scale(0.98);
+}
+:is(
+  .primary-button,
+  .secondary-button,
+  .navy-button,
+  .attention-button,
+  .ask-header,
+  .icon-button
+):disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.46;
+  transform: none;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.search-box input:focus-visible {
+  outline: none;
+}
+.top-nav button:focus-visible {
+  outline-color: #e1cfff;
+  outline-offset: -3px;
+}
+.progress-card button:focus-visible {
+  outline-color: #e1cfff;
+}
+.transaction-row:focus-visible {
+  outline-offset: -3px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: #f8f6fd;
+    --glass-bg-hover: #f0ebfa;
+    --glass-sheen: transparent;
+  }
+  :root[data-theme="dark"] {
+    --glass-bg: #2b233b;
+    --glass-bg-hover: #352b48;
+  }
+  :is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button,
+    .period-select-wrap
+  ),
+  :root[data-theme] .top-nav {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button
+  ),
+  .top-nav button,
+  .activity-tabs button,
+  .tools-menu > button {
+    transition: none;
+  }
+  :is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button
+  ):hover,
+  :is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button
+  ):active {
+    transform: none;
+  }
+}

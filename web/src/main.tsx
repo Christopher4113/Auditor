@@ -4,6 +4,11 @@ import "./index.css";
 import { ConvexProvider } from "convex/react";
 import App from "./App.tsx";
 import { convex } from "./data/live";
+import "./styles/glass.css";
+import "./styles/glass-components.css";
+import "./styles/responsive.css";
+import "./components/LiquidSegmentedControl.css";
+import "./styles/liquid-refinements.css";
 
 // With CONVEX_URL (root .env.local, written by `pnpm dev:convex`) the rail is live; without it, fixtures.
 createRoot(document.getElementById("root")!).render(

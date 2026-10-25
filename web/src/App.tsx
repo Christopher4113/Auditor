@@ -23,6 +23,9 @@ import {
   X,
 } from "lucide-react";
 import WorkspaceDrawer from "./components/WorkspaceDrawer";
+import SponsorRibbon from "./components/SponsorRibbon";
+import ThemeToggle from "./components/ThemeToggle";
+import LiquidSegmentedControl from "./components/LiquidSegmentedControl";
 import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
 import {
@@ -648,12 +651,16 @@ export default function App() {
   };
   const goTo = (view: string) => {
     setActiveNav(view);
+    const behavior = window.matchMedia?.("(prefers-reduced-motion: reduce)")
+      .matches
+      ? "auto"
+      : "smooth";
     if (view === "activity")
       activityRef.current?.scrollIntoView({
-        behavior: "smooth",
+        behavior,
         block: "start",
       });
-    else window.scrollTo({ top: 0, behavior: "smooth" });
+    else window.scrollTo({ top: 0, behavior });
   };
   return (
     <div className="app-shell">
@@ -688,28 +695,33 @@ export default function App() {
               auditor<span className="brand-dot">.</span>
             </span>
           </a>
-          <nav className="top-nav" aria-label="Main navigation">
-            <button
-              className={activeNav === "overview" ? "active" : ""}
-              onClick={() => goTo("overview")}
-            >
-              Overview
-            </button>
-            <button
-              className={activeNav === "activity" ? "active" : ""}
-              onClick={() => goTo("activity")}
-            >
-              Activity
-            </button>
-            <button onClick={() => openDrawer("memory")}>
-              Past decisions
-              <ChevronDown size={13} />
-            </button>
-          </nav>
+          <LiquidSegmentedControl
+            as="nav"
+            className="top-nav"
+            ariaLabel="Main navigation"
+            value={drawer === "memory" ? "memory" : activeNav}
+            onValueChange={(value) =>
+              value === "memory" ? openDrawer("memory") : goTo(value)
+            }
+            options={[
+              { value: "overview", label: "Overview" },
+              { value: "activity", label: "Activity" },
+              {
+                value: "memory",
+                label: (
+                  <>
+                    Past decisions
+                    <ChevronDown size={13} />
+                  </>
+                ),
+              },
+            ]}
+          />
           <div className="header-actions">
             <span className={`demo-tag ${live ? "live-mode-tag" : ""}`}>
               {live ? "Live data" : "Demo"}
             </span>
+            <ThemeToggle />
             <button className="ask-header" onClick={() => openDrawer("ask")}>
               <Sparkles size={15} />
               Ask Auditor
@@ -1102,20 +1114,26 @@ export default function App() {
             </div>
             <div className="activity-card">
               <div className="activity-toolbar">
-                <div className="activity-tabs">
-                  <button
-                    className={filter === "all" ? "active" : ""}
-                    onClick={() => setFilter("all")}
-                  >
-                    All activity
-                  </button>
-                  <button
-                    className={filter === "review" ? "active" : ""}
-                    onClick={() => setFilter("review")}
-                  >
-                    Needs attention<span>{pending}</span>
-                  </button>
-                </div>
+                <LiquidSegmentedControl
+                  className="activity-tabs"
+                  ariaLabel="Activity filters"
+                  value={filter}
+                  onValueChange={setFilter}
+                  options={[
+                    { value: "all", label: "All activity" },
+                    {
+                      value: "review",
+                      label: (
+                        <>
+                          Needs attention
+                          <span className="glass-segments__count">
+                            {pending}
+                          </span>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
                 <div className="search-box">
                   <Search size={15} />
                   <input
@@ -1266,6 +1284,7 @@ export default function App() {
             </button>
           </aside>
         </div>
+        <SponsorRibbon />
         <footer className="workspace-footer">
           <a
             href="#"
@@ -1368,20 +1387,34 @@ export default function App() {
                 ? liveSnapshot.controlResults
                 : undefined
             }
-            canDeny={live ? periodProposals.some((p) => p.status === "posted") : undefined}
-            onAsk={live ? (question) => askAuditor(question, period, selected?.id) : undefined}
+            canDeny={
+              live
+                ? periodProposals.some((p) => p.status === "posted")
+                : undefined
+            }
+            onAsk={
+              live
+                ? (question) => askAuditor(question, period, selected?.id)
+                : undefined
+            }
             onDeny={() => {
               if (live) {
                 const target =
                   (selected?.status === "posted" ? selected : undefined) ??
                   periodProposals.find((p) => p.status === "posted");
                 if (!target) {
-                  notify("No posted entry in this period to test against.", "error");
+                  notify(
+                    "No posted entry in this period to test against.",
+                    "error",
+                  );
                   return;
                 }
                 return controllerAction(async () => {
                   const r = await attemptAgentPost(target.id);
-                  if (r.ok) throw new Error("The agent was allowed to post. That is a bug.");
+                  if (r.ok)
+                    throw new Error(
+                      "The agent was allowed to post. That is a bug.",
+                    );
                   setDenialCount((count) => count + 1);
                   return r;
                 }, "Refused: 8.1, the agent proposed this entry and may not post it. The denial is in the audit log.");

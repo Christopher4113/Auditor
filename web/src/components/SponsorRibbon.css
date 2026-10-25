@@ -1,0 +1,316 @@
+.sponsor-ribbon {
+  --ribbon-ink: #776f82;
+  --ribbon-ink-hover: #4d405f;
+  --ribbon-border: #e9e6ef;
+  --ribbon-surface: rgba(255, 255, 255, 0.72);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 38px;
+  padding: 23px 25px;
+  overflow: hidden;
+  border: 1px solid var(--ribbon-border);
+  border-radius: 18px;
+  background: var(--ribbon-surface);
+  box-shadow: 0 8px 32px -22px #30214226;
+}
+
+.sponsor-ribbon__heading {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.sponsor-ribbon__eyebrow {
+  padding-left: 1px;
+  color: var(--ribbon-ink);
+  font-size: 9px;
+  font-weight: 550;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sponsor-ribbon__label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #7a61b1;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sponsor-ribbon__label > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #9a80d4;
+  box-shadow: 0 0 0 3px #9874db0d;
+}
+
+.sponsor-ribbon__viewport {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 5%,
+    #000 95%,
+    transparent
+  );
+}
+
+.sponsor-ribbon__track {
+  display: flex;
+  width: max-content;
+}
+
+.sponsor-ribbon__names {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-around;
+  gap: 55px;
+  min-width: max(1160px, 100vw);
+  margin: 0;
+  padding: 10px 55px 10px 0;
+  list-style: none;
+}
+
+.sponsor-ribbon__partner {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ribbon-ink);
+  font-size: 22px;
+  font-weight: 620;
+  letter-spacing: -0.055em;
+  white-space: nowrap;
+  transition:
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.sponsor-ribbon__partner:hover {
+  transform: translateY(-2px);
+  color: var(--ribbon-ink-hover);
+}
+
+.sponsor-ribbon__partner--hyphenate {
+  font-weight: 580;
+  letter-spacing: -0.065em;
+}
+
+.sponsor-ribbon__partner--moss {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.06em;
+}
+
+.sponsor-ribbon__partner--credit {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+
+.sponsor-ribbon__partner--anthropic {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.sponsor-ribbon__partner--vultr {
+  font-size: 19px;
+  font-weight: 550;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sponsor-ribbon__partner--context {
+  font-family: var(--mono, monospace);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.07em;
+}
+
+.sponsor-ribbon__mark {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(2, 6px);
+  grid-template-rows: repeat(2, 6px);
+  gap: 3px;
+  opacity: 0.75;
+}
+
+.sponsor-ribbon__mark i {
+  display: block;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+}
+
+.sponsor-ribbon__mark--hyphenate {
+  transform: rotate(-12deg);
+}
+
+.sponsor-ribbon__mark--hyphenate i:nth-child(even) {
+  opacity: 0;
+}
+
+.sponsor-ribbon__mark--convex {
+  transform: rotate(45deg);
+}
+
+.sponsor-ribbon__mark--convex i:nth-child(3),
+.sponsor-ribbon__mark--moss i:nth-child(2),
+.sponsor-ribbon__mark--context i:nth-child(4) {
+  background: currentColor;
+}
+
+.sponsor-ribbon__mark--moss i {
+  border-radius: 50%;
+}
+
+.sponsor-ribbon__mark--credit i {
+  border-radius: 0;
+  transform: skewY(-15deg);
+}
+
+.sponsor-ribbon__mark--anthropic {
+  display: none;
+}
+
+.sponsor-ribbon__mark--vultr i {
+  border-radius: 0 4px 0 4px;
+}
+
+.sponsor-ribbon__motion {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--ribbon-border);
+  border-radius: 50%;
+  color: var(--ribbon-ink);
+}
+
+.sponsor-ribbon__motion:hover {
+  background: #9874db0d;
+  color: var(--ribbon-ink-hover);
+}
+
+html[data-theme="dark"] .sponsor-ribbon {
+  --ribbon-ink: #9e97ad;
+  --ribbon-ink-hover: #ded3ef;
+  --ribbon-border: #302a40;
+  --ribbon-surface: rgba(31, 26, 44, 0.75);
+  box-shadow: 0 8px 32px -22px #0006;
+}
+
+html[data-theme="dark"] .sponsor-ribbon__label {
+  color: #b6a0de;
+}
+
+@keyframes sponsor-ribbon-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sponsor-ribbon__track {
+    animation: sponsor-ribbon-drift 54s linear infinite;
+    will-change: transform;
+  }
+
+  .sponsor-ribbon:hover .sponsor-ribbon__track,
+  .sponsor-ribbon:focus-within .sponsor-ribbon__track,
+  .sponsor-ribbon--paused .sponsor-ribbon__track {
+    animation-play-state: paused;
+  }
+}
+
+@media (max-width: 650px) {
+  .sponsor-ribbon {
+    gap: 12px;
+    margin-top: 28px;
+    padding: 18px;
+  }
+
+  .sponsor-ribbon__heading {
+    gap: 6px;
+  }
+
+  .sponsor-ribbon__eyebrow {
+    font-size: 8px;
+  }
+
+  .sponsor-ribbon__label {
+    max-width: 78px;
+    align-items: flex-start;
+    font-size: 10px;
+    line-height: 1.6;
+    white-space: normal;
+  }
+
+  .sponsor-ribbon__label > span {
+    flex: 0 0 auto;
+    margin-top: 5px;
+  }
+
+  .sponsor-ribbon__names {
+    gap: 36px;
+    min-width: 1100px;
+    padding-right: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sponsor-ribbon {
+    align-items: flex-start;
+  }
+
+  .sponsor-ribbon__viewport {
+    overflow-x: auto;
+    mask-image: none;
+  }
+
+  .sponsor-ribbon__track {
+    width: auto;
+  }
+
+  .sponsor-ribbon__names {
+    min-width: 0;
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 22px 30px;
+    padding: 2px 0;
+  }
+
+  .sponsor-ribbon__names[aria-hidden="true"],
+  .sponsor-ribbon__motion {
+    display: none;
+  }
+
+  .sponsor-ribbon__partner {
+    transition: none;
+  }
+
+  .sponsor-ribbon__partner:hover {
+    transform: none;
+  }
+}

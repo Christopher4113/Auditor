@@ -151,6 +151,57 @@ afterEach(() => {
 });
 
 describe("live controller rehearsal from the workspace", () => {
+  it("connects glass navigation to activity, filters, and the past-decisions drawer", async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    vi.stubGlobal("scrollTo", vi.fn());
+    const originalScroll = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      render(<App />);
+      const navigation = screen.getByRole("navigation", {
+        name: "Main navigation",
+      });
+      const overview = within(navigation).getByRole("button", {
+        name: "Overview",
+      });
+      overview.focus();
+      await user.keyboard("{ArrowRight}");
+      const activity = within(navigation).getByRole("button", {
+        name: "Activity",
+      });
+      expect(activity.getAttribute("aria-pressed")).toBe("true");
+      expect(scrollIntoView).toHaveBeenCalled();
+
+      const filters = screen.getByRole("group", { name: "Activity filters" });
+      await user.click(
+        within(filters).getByRole("button", { name: /Needs attention/ }),
+      );
+      expect(
+        within(filters)
+          .getByRole("button", { name: /Needs attention/ })
+          .getAttribute("aria-pressed"),
+      ).toBe("true");
+
+      await user.click(
+        within(navigation).getByRole("button", { name: "Past decisions" }),
+      );
+      expect(
+        screen.getByRole("dialog", { name: "Past decisions" }),
+      ).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: "Close dialog" }));
+      expect(activity.getAttribute("aria-pressed")).toBe("true");
+      expect(transport.approve).not.toHaveBeenCalled();
+      expect(transport.reject).not.toHaveBeenCalled();
+      expect(transport.signPeriod).not.toHaveBeenCalled();
+    } finally {
+      if (originalScroll) HTMLElement.prototype.scrollIntoView = originalScroll;
+      else
+        delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("sends the external proposal code and note, then shows a success toast without inventing a posted record", async () => {
     const user = userEvent.setup();
     render(<App />);

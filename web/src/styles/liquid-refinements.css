@@ -1,0 +1,460 @@
+/* Liquid materials belong to controls. Evidence and accounting content stay solid. */
+:root {
+  --glass-bg: #f8f8fc;
+  --glass-bg-hover: #ffffff;
+  --glass-border: #ccc9d6;
+  --glass-highlight: #ffffff;
+  --glass-sheen: #ffffffb8;
+  --glass-shadow:
+    inset 0 1px 0 #ffffff, inset 1px 0 0 #ffffffbd, inset -1px -1px 0 #b8b1c51a,
+    0 1px 2px #241b3610, 0 5px 16px #241b3609;
+  --glass-shadow-hover:
+    inset 0 1px 0 #ffffff, inset 1px 0 0 #ffffffe0, inset -1px -1px 0 #b8b1c524,
+    0 2px 4px #241b3610, 0 7px 22px #241b3614;
+  --glass-blur: 16px;
+  --glass-primary-from: #6235ca;
+  --glass-primary-to: #4d2ab6;
+  --liquid-foreground: #40384f;
+  --liquid-menu: #fcfbff;
+  --liquid-rim: #ffffffed;
+  --liquid-rim-shadow: #b7adcb42;
+  --liquid-lens: #ffffff;
+  --liquid-lens-edge: #d2cbdc;
+  --liquid-press-shadow: #3424441c;
+  --liquid-spring: cubic-bezier(0.22, 1.35, 0.4, 1);
+  --liquid-settle: cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+:root[data-theme="dark"] {
+  --glass-primary-from: #6235ca;
+  --glass-primary-to: #4d2ab6;
+  --glass-bg: #302c3a;
+  --glass-bg-hover: #3d3749;
+  --glass-border: #6c627a;
+  --glass-highlight: #ffffff38;
+  --glass-sheen: #ffffff12;
+  --glass-shadow:
+    inset 0 1px 0 #ffffff38, inset 1px 0 0 #ffffff12,
+    inset -1px -1px 0 #ffffff05, 0 1px 2px #00000040, 0 5px 18px #0000001c;
+  --glass-shadow-hover:
+    inset 0 1px 0 #ffffff4d, inset 1px 0 0 #ffffff1f,
+    inset -1px -1px 0 #ffffff0a, 0 2px 4px #00000045, 0 7px 22px #00000030;
+  --liquid-foreground: #e6dfef;
+  --liquid-menu: #28232f;
+  --liquid-rim: #ffffff30;
+  --liquid-rim-shadow: #00000045;
+  --liquid-lens: #4b435b;
+  --liquid-lens-edge: #84758f;
+  --liquid-press-shadow: #00000052;
+}
+
+:is(
+  .primary-button,
+  .secondary-button,
+  .navy-button,
+  .attention-button,
+  .ask-header,
+  .icon-button,
+  .ask-submit,
+  .ask-mic,
+  .ask-read-button,
+  .theme-toggle,
+  .sponsor-ribbon__motion
+) {
+  border-radius: 999px;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 260ms ease,
+    color 180ms ease,
+    transform 340ms var(--liquid-spring);
+}
+
+:is(
+  .secondary-button,
+  .attention-button,
+  .ask-header,
+  .icon-button,
+  .ask-mic,
+  .ask-read-button,
+  .sponsor-ribbon__motion,
+  .theme-toggle
+) {
+  --control-glass-background:
+    radial-gradient(ellipse at 20% 0%, var(--glass-sheen), transparent 65%),
+    linear-gradient(180deg, #ffffff0a, #ffffff00 46%, #7c6b9605),
+    var(--glass-bg);
+  background: var(--control-glass-background);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  color: var(--liquid-foreground);
+}
+
+:is(.primary-button, .navy-button, .ask-submit) {
+  --control-glass-background:
+    radial-gradient(ellipse at 24% 0%, #ffffff29, transparent 62%),
+    linear-gradient(180deg, #ffffff0f, #ffffff00 45%, #22103d14),
+    linear-gradient(135deg, var(--glass-primary-from), var(--glass-primary-to));
+  background: var(--control-glass-background);
+  border-color: #9b7be2;
+  box-shadow:
+    inset 0 1px 0 #ffffff73,
+    inset 1px 0 0 #ffffff21,
+    inset 0 -1px 0 #2b145934,
+    0 1px 3px #40227817,
+    0 5px 15px #5530aa21;
+  color: #ffffff;
+}
+
+/* The violet tint identifies the primary action, while secondary actions stay clear. */
+.navy-button,
+.assistant-card > .navy-button {
+  --control-glass-background:
+    radial-gradient(ellipse at 25% 0%, #ffffff21, transparent 65%),
+    linear-gradient(145deg, #47395e, #2e233f);
+  background: var(--control-glass-background);
+  border-color: #867393;
+  color: #ffffff;
+}
+
+.period-select-wrap,
+.theme-toggle,
+.tools-menu,
+.dialog-header {
+  box-shadow: var(--glass-shadow);
+}
+
+.period-select-wrap {
+  background:
+    radial-gradient(ellipse at 22% 0%, var(--glass-sheen), transparent 65%),
+    var(--glass-bg);
+  border-color: var(--glass-border);
+  color: var(--liquid-foreground);
+}
+
+.period-select-wrap select {
+  color: var(--liquid-foreground);
+}
+
+.period-select-wrap:focus-within {
+  border-color: var(--focus-ring);
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* The surrounding pill stays still while the selected light/dark lens settles. */
+.theme-toggle::before {
+  background:
+    radial-gradient(ellipse at 20% 0%, var(--glass-highlight), transparent 80%),
+    var(--liquid-lens);
+  border-color: var(--liquid-lens-edge);
+  box-shadow:
+    inset 0 1px 0 var(--liquid-rim),
+    inset 1px 0 0 var(--glass-sheen),
+    0 1px 2px var(--liquid-rim-shadow),
+    0 3px 7px #251b3512;
+  transition:
+    transform 440ms var(--liquid-spring),
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+
+.theme-toggle-option {
+  transition: color 180ms ease;
+}
+
+.tools-menu {
+  background: var(--liquid-menu);
+  border-color: var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--liquid-rim),
+    inset 1px 0 0 var(--glass-sheen),
+    0 8px 16px #241b360c,
+    0 20px 48px #241b3614;
+  transform-origin: top right;
+  animation: liquid-menu-in 220ms var(--liquid-settle) both;
+}
+
+.tools-menu > button {
+  color: var(--text-secondary);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.dialog-panel {
+  border-color: var(--glass-border);
+  box-shadow:
+    inset 1px 0 0 var(--liquid-rim),
+    -16px 0 64px #17102214,
+    var(--shadow-elevated);
+}
+
+.dialog-header {
+  background:
+    linear-gradient(165deg, var(--glass-sheen), transparent 75%),
+    var(--glass-bg);
+  border-color: var(--glass-border);
+  position: relative;
+  z-index: 1;
+}
+
+.source-modal {
+  border-radius: 26px;
+  overflow: hidden;
+}
+
+@keyframes liquid-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Moderate blur refracts the control layer without blurring financial content. */
+@supports (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  :root {
+    --glass-bg: #ffffff9e;
+    --glass-bg-hover: #ffffffd9;
+    --glass-border: #cac5d4b3;
+    --liquid-menu: #fcfbfff0;
+    --liquid-lens: #ffffffe0;
+  }
+
+  :root[data-theme="dark"] {
+    --glass-bg: #342f40b8;
+    --glass-bg-hover: #443b50d9;
+    --glass-border: #9685aa80;
+    --liquid-menu: #28232ff5;
+    --liquid-lens: #5b5066bf;
+  }
+
+  :is(
+    .secondary-button,
+    .attention-button,
+    .ask-header,
+    .icon-button,
+    .ask-mic,
+    .ask-read-button,
+    .sponsor-ribbon__motion,
+    .period-select-wrap,
+    .theme-toggle,
+    .tools-menu,
+    .dialog-header
+  ) {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(
+      .secondary-button,
+      .attention-button,
+      .ask-header,
+      .icon-button,
+      .ask-mic,
+      .ask-read-button,
+      .sponsor-ribbon__motion,
+      .theme-toggle
+    ):hover:not(:disabled) {
+    background:
+      radial-gradient(ellipse at 20% 0%, var(--glass-sheen), transparent 65%),
+      var(--glass-bg-hover);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow-hover);
+    color: var(--liquid-foreground);
+    transform: translateY(-1px);
+  }
+
+  :is(.primary-button, .navy-button, .ask-submit):hover:not(:disabled),
+  .assistant-card > .navy-button:hover:not(:disabled) {
+    background: var(--control-glass-background);
+    border-color: #ad92e7;
+    box-shadow:
+      inset 0 1px 0 #ffffff8c,
+      inset 1px 0 0 #ffffff24,
+      inset 0 -1px 0 #2b14592b,
+      0 2px 4px #40227814,
+      0 8px 22px #5530aa2e;
+    color: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .period-select-wrap:hover {
+    background:
+      radial-gradient(ellipse at 22% 0%, var(--glass-sheen), transparent 65%),
+      var(--glass-bg-hover);
+    box-shadow: var(--glass-shadow-hover);
+  }
+
+  .tools-menu > button:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--border);
+    color: var(--text);
+  }
+}
+
+:is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button,
+    .ask-submit,
+    .ask-mic,
+    .ask-read-button,
+    .theme-toggle,
+    .sponsor-ribbon__motion
+  ):active:not(:disabled),
+.assistant-card > .navy-button:active:not(:disabled) {
+  box-shadow:
+    inset 0 1px 4px var(--liquid-press-shadow),
+    inset 0 1px 0 var(--glass-highlight),
+    0 1px 3px #20132f0d;
+  transform: translateY(1px) scale(0.975);
+  transition-duration: 110ms;
+}
+
+/* Retain the recording state through generic material hover/press treatments. */
+.ask-mic.ask-mic-active,
+.ask-mic.ask-mic-active:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+:is(
+  .primary-button,
+  .secondary-button,
+  .navy-button,
+  .attention-button,
+  .ask-header,
+  .icon-button,
+  .ask-submit,
+  .ask-mic,
+  .ask-read-button,
+  .theme-toggle,
+  .sponsor-ribbon__motion
+):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 4px;
+}
+
+:is(
+  .primary-button,
+  .secondary-button,
+  .navy-button,
+  .attention-button,
+  .ask-header,
+  .icon-button,
+  .ask-submit,
+  .ask-mic,
+  .ask-read-button,
+  .theme-toggle,
+  .sponsor-ribbon__motion
+):disabled {
+  box-shadow: none;
+  transform: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: #f8f8fc;
+    --glass-bg-hover: #ffffff;
+    --glass-sheen: transparent;
+    --liquid-menu: #fcfbff;
+    --liquid-lens: #ffffff;
+  }
+
+  :root[data-theme="dark"] {
+    --glass-bg: #302c3a;
+    --glass-bg-hover: #3d3749;
+    --liquid-menu: #28232f;
+    --liquid-lens: #4b435b;
+  }
+
+  :is(
+    .secondary-button,
+    .attention-button,
+    .ask-header,
+    .icon-button,
+    .ask-mic,
+    .ask-read-button,
+    .sponsor-ribbon__motion,
+    .period-select-wrap,
+    .theme-toggle,
+    .tools-menu,
+    .dialog-header
+  ) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --glass-bg: #ffffff;
+    --glass-bg-hover: #ffffff;
+    --glass-border: #776e88;
+    --liquid-menu: #ffffff;
+    --liquid-lens: #ffffff;
+    --liquid-lens-edge: #776e88;
+  }
+
+  :root[data-theme="dark"] {
+    --glass-bg: #302c3a;
+    --glass-bg-hover: #3d3749;
+    --glass-border: #c1b3cf;
+    --liquid-menu: #28232f;
+    --liquid-lens: #4b435b;
+    --liquid-lens-edge: #c1b3cf;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .primary-button,
+    .secondary-button,
+    .navy-button,
+    .attention-button,
+    .ask-header,
+    .icon-button,
+    .ask-submit,
+    .ask-mic,
+    .ask-read-button,
+    .theme-toggle,
+    .theme-toggle::before,
+    .theme-toggle-option,
+    .sponsor-ribbon__motion,
+    .tools-menu
+  ) {
+    transition: none;
+    animation: none;
+  }
+
+  :is(
+      .primary-button,
+      .secondary-button,
+      .navy-button,
+      .attention-button,
+      .ask-header,
+      .icon-button,
+      .ask-submit,
+      .ask-mic,
+      .ask-read-button,
+      .theme-toggle,
+      .sponsor-ribbon__motion
+    ):is(:hover, :active):not(:disabled),
+  .assistant-card > .navy-button:is(:hover, :active):not(:disabled) {
+    transform: none;
+  }
+}
