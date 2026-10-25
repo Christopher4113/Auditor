@@ -22,6 +22,7 @@ import type * as controls_postGuard from "../controls/postGuard.js";
 import type * as controls_rules from "../controls/rules.js";
 import type * as controls_stub from "../controls/stub.js";
 import type * as crons from "../crons.js";
+import type * as http from "../http.js";
 import type * as human from "../human.js";
 import type * as inject from "../inject.js";
 import type * as ledger from "../ledger.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "controls/rules": typeof controls_rules;
   "controls/stub": typeof controls_stub;
   crons: typeof crons;
+  http: typeof http;
   human: typeof human;
   inject: typeof inject;
   ledger: typeof ledger;

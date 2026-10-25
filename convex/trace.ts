@@ -2,7 +2,8 @@
 // audit trail is searchable in natural language (Phase 3 add-on). Built from the audit rows only, so it says
 // nothing the log cannot back up.
 import { v } from "convex/values";
-import { internalQuery, type QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 
 const dollars = (c: number) => (Math.abs(c) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
@@ -48,4 +49,17 @@ export const summary = internalQuery({
   args: { entity: v.string(), traceId: v.string() },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, { entity, traceId }) => summarizeTrace(ctx, entity, traceId),
+});
+
+/** Schedules one Moss "events" chunk per unit of work in the period. Called after every close and sign-off. */
+export const indexPeriod = internalMutation({
+  args: { entity: v.string(), period: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { entity, period }) => {
+    const rows = await ctx.db.query("auditLog").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(5000);
+    const p = await ctx.db.query("periods").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).unique();
+    const traces = [...new Set(rows.map((r) => r.traceId).filter((t): t is string => !!t))];
+    for (const traceId of traces) await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: p?.end ?? `${period}-28` });
+    return traces.length;
+  },
 });

@@ -55,6 +55,7 @@ export async function approve(
   const r: { ok: true; entryId: Id<"journalEntries"> } | { ok: false; reason: string } = await ctx.runMutation(internal.ledger.postEntry, { caller: "human", proposalId: p._id, decisionId });
   if (!r.ok) throw new Error(r.reason);
   await ctx.scheduler.runAfter(0, internal.retrieval.indexDecision, { decisionId });
+  if (traceId) await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: `${p.period}-28` });
   return { decisionId, entryId: r.entryId };
 }
 
@@ -95,6 +96,7 @@ export async function reject(ctx: MutationCtx, entity: string, proposalId: strin
   if (brk) await ctx.db.patch("breaks", brk._id, { status: "open" }); // the Workflow proposes a revision
   await audit(ctx, { entity, period: p.period, actor: "human", action: "reject", proposalId: p._id, decisionId, detail: instruction });
   await ctx.scheduler.runAfter(0, internal.retrieval.indexCorrection, { correctionId });
+  if (traceId) await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: `${p.period}-28` });
   await ensureClose(ctx, entity, p.period, "human");
   return { decisionId, correctionId };
 }

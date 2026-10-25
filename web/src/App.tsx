@@ -629,7 +629,7 @@ export default function App() {
   const exportClose = () => {
     const payload = {
       mode,
-      entity: "Experts Only Festival NYC",
+      entity: "Coachella Valley Music & Arts Festival",
       period,
       signed,
       proposals: periodProposals,
@@ -727,8 +727,8 @@ export default function App() {
               <Layers3 size={17} />
             </span>
             <span>
-              Experts Only<span className="workspace-slash">/</span>
-              <strong>Festival NYC</strong>
+              Goldenvoice<span className="workspace-slash">/</span>
+              <strong>Coachella</strong>
             </span>
             <span className="currency-tag">USD</span>
           </div>

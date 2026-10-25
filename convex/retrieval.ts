@@ -7,7 +7,7 @@ import { env, internalAction, internalQuery } from "./_generated/server";
 import { traceFor } from "./audit";
 
 const vHit = v.object({ id: v.string(), text: v.string(), score: v.number() });
-const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean() });
+const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) });
 type Hit = { id: string; text: string; score: number };
 
 const endpoint = (path: string) => (env.RETRIEVAL_URL ? `${env.RETRIEVAL_URL.replace(/\/$/, "")}${path}` : null);
@@ -50,12 +50,14 @@ export const index = internalAction({
 
 /** verify_payee (controls engine only). Fails closed: no sidecar, no identity, any error -> available=false. */
 export const verify = internalAction({
-  args: { testIdentityId: v.optional(v.string()), traceId: v.optional(v.string()) },
+  args: { testIdentityId: v.optional(v.string()), includeReport: v.optional(v.boolean()), traceId: v.optional(v.string()) },
   returns: vVerify,
-  handler: async (_ctx, { testIdentityId, traceId }) => {
+  handler: async (_ctx, { testIdentityId, includeReport, traceId }) => {
     const closed = { identityMatch: false, fraudFlags: [] as string[], available: false };
     if (!testIdentityId) return closed;
-    return (await post<typeof closed>("/verify", { testIdentityId }, traceId)) ?? closed;
+    type Verify = typeof closed & { report?: unknown };
+    const r = await post<Verify>("/verify", includeReport ? { testIdentityId, includeReport: true } : { testIdentityId }, traceId);
+    return r ? { identityMatch: r.identityMatch, fraudFlags: r.fraudFlags, available: r.available, report: r.report ?? undefined } : closed;
   },
 });
 

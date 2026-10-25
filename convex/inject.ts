@@ -5,11 +5,17 @@
 // reseeds from the last loaded seed file.
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalAction, internalMutation, internalQuery, mutation } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import { audit } from "./audit";
 import { ensureClose } from "./close";
 
 const stamp = () => Date.now().toString(36);
+/** The demo clock is the books' clock: evidence from an event belongs to the latest unsigned period. */
+async function currentPeriodEnd(ctx: { db: MutationCtx["db"] }, entity: string): Promise<string> {
+  const periods = await ctx.db.query("periods").withIndex("by_entity_period", (q) => q.eq("entity", entity)).take(24);
+  const open = periods.filter((p) => p.status !== "signed").sort((a, b) => b.period.localeCompare(a.period));
+  return (open[0] ?? periods[periods.length - 1])?.end ?? new Date().toISOString().slice(0, 10);
+}
 /** Judges type names loosely: "Field & Flame" should find "Field & Flame Catering" and vice versa. */
 const nameMatches = (stored: string, typed?: string) => {
   const a = stored.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -109,7 +115,7 @@ export const verifyVendor = internalAction({
   returns: v.null(),
   handler: async (ctx, { entity, vendorId, traceId }): Promise<null> => {
     const identity: string | null = await ctx.runQuery(internal.inject.vendorIdentity, { entity, vendorId });
-    const result = await ctx.runAction(internal.retrieval.verify, { testIdentityId: identity ?? undefined, traceId });
+    const result = await ctx.runAction(internal.retrieval.verify, { testIdentityId: identity ?? undefined, includeReport: true, traceId });
     await ctx.runMutation(internal.inject.recordVerification, { entity, vendorId, traceId, ...result });
     return null;
   },
@@ -125,18 +131,29 @@ export const vendorIdentity = internalQuery({
 });
 
 export const recordVerification = internalMutation({
-  args: { entity: v.string(), vendorId: v.string(), traceId: v.string(), identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean() },
+  args: { entity: v.string(), vendorId: v.string(), traceId: v.string(), identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) },
   returns: v.null(),
   handler: async (ctx, { entity, vendorId, traceId, ...result }) => {
     const vendor = await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", vendorId)).unique();
     if (!vendor) return null;
     await ctx.db.patch("vendors", vendor._id, { verification: { at: Date.now(), ...result } });
+    // The CRS report is evidence for the controller, never an automatic verdict (brief: A6 add-on).
+    const rep = (result.report ?? {}) as { fraudFinder?: { score?: number; reviewThreshold?: number }; criminal?: { records?: number }; publicRecords?: { bankruptcies?: number; liens?: number; judgments?: number } };
+    const extra = result.available
+      ? [
+          rep.fraudFinder?.score !== undefined ? `fraud score ${rep.fraudFinder.score}/${rep.fraudFinder.reviewThreshold ?? 70}` : null,
+          rep.criminal?.records !== undefined ? `criminal records ${rep.criminal.records}` : null,
+          rep.publicRecords ? `bankruptcies ${rep.publicRecords.bankruptcies ?? 0}, liens ${rep.publicRecords.liens ?? 0}, judgments ${rep.publicRecords.judgments ?? 0}` : null,
+        ].filter(Boolean).join("; ")
+      : "";
     await audit(ctx, {
       entity,
       actor: "controls",
       action: "verify_payee",
       traceId,
-      detail: result.available ? `CRS: identityMatch=${result.identityMatch}${result.fraudFlags.length ? " flags=" + result.fraudFlags.join(",") : ""}` : "CRS unavailable or no test identity: fail closed, hold stays",
+      detail: result.available
+        ? `CRS: identityMatch=${result.identityMatch}${result.fraudFlags.length ? " flags=" + result.fraudFlags.join(",") : ""}${extra ? "; " + extra : ""}`
+        : "CRS unavailable or no test identity: fail closed, hold stays",
     });
     await audit(ctx, { entity, actor: "controls", action: "escalate", traceId, detail: `${vendor.name}: bank-detail change needs the controller's callback decision` });
     return null;
@@ -155,6 +172,7 @@ export const decideVendorHold = mutation({
     const traceId = vendor.bankChange?.traceId;
     if (release) await ctx.db.patch("vendors", vendor._id, { paymentsHeld: false });
     await audit(ctx, { entity, actor: "human", action: release ? "vendor.hold.released" : "vendor.hold.kept", traceId, detail: note.trim() });
+    if (traceId) await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: await currentPeriodEnd(ctx, entity) });
     return null;
   },
 });

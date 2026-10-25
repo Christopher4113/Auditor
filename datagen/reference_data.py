@@ -138,7 +138,7 @@ def master_data(seed: int, dataset: str = "generated") -> dict:
         "schemaVersion": "1.0.0", "seed": seed, "dataset": dataset,
         "entity": ENTITY, "currency": CURRENCY,
         "company": {
-            "name": "Experts Only Festival NYC", "synthetic": True,
+            "name": "Coachella Valley Music & Arts Festival", "synthetic": True,
             "eventStartDate": "2026-09-19", "eventEndDate": "2026-09-20",
             "paidAttendance": 50_000,
         },

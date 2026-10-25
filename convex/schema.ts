@@ -141,7 +141,7 @@ export default defineSchema({
     paymentsHeld: v.boolean(), // rule 4.3
     contractId: v.optional(v.string()),
     bankChange: v.optional(v.object({ at: v.number(), previousLast4: v.string(), newLast4: v.string(), source: v.string(), traceId: v.string() })),
-    verification: v.optional(v.object({ at: v.number(), identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean() })), // verify_payee result
+    verification: v.optional(v.object({ at: v.number(), identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) })), // verify_payee result; report = CRS identity/criminal/fraud/public-records summary (A6)
   }).index("by_entity_vendorId", ["entity", "vendorId"]),
 
   // The last loaded seed, so resetAll can wipe and reseed from inside Convex (C5).
