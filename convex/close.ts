@@ -2,6 +2,7 @@
 // started by the scheduled advance (C4) and by data (a bank transaction arriving). api.startClose exists
 // for the Phase 1 gate and the "prepare September close" button.
 // fetch -> reconcile -> propose -> review -> post. Each step runs under its seat's identity.
+import type { Id } from "./_generated/dataModel";
 import { WorkflowManager, start, getStatus, vWorkflowId, vResultValidator, type WorkflowId } from "@convex-dev/workflow";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
@@ -21,38 +22,31 @@ export const closePeriod = workflow
     // Breaks a human rejection reopened get a revision in the same run (C3 loop).
     const reopened = await step.runQuery(internal.close.fetchOpenBreaks, { entity, period });
     const breakIds = [...new Set([...reconciled, ...reopened])];
-    let posted = 0;
-    let escalated = 0;
-    for (const breakId of breakIds) {
+    // One break is one agent run (about 45 s). Breaks are independent, so they run side by side; the
+    // ledger and the review are mutations and serialize on their own.
+    const handle = async (breakId: Id<"breaks">): Promise<"posted" | "escalated" | "returned"> => {
       const proposalId = await step.runAction(internal.agent.propose, { caller: "agent", breakId });
       const decision = await step.runMutation(internal.controls.review, { caller: "controls", proposalId });
       if (decision.outcome === "posted") {
         const r = await step.runMutation(internal.ledger.postEntry, { caller: "controls", proposalId, decisionId: decision.decisionId });
-        if (r.ok) {
-          posted++;
-          await step.runAction(internal.retrieval.indexDecision, { decisionId: decision.decisionId }, { retry: true }); // index_decision (C4)
-        } else escalated++;
-      } else {
-        escalated++;
+        if (!r.ok) return "escalated";
+        await step.runAction(internal.retrieval.indexDecision, { decisionId: decision.decisionId }, { retry: true }); // index_decision (C4)
+        return "posted";
       }
-    }
+      return decision.outcome === "escalated" ? "escalated" : "returned";
+    };
+    const first = await Promise.all(breakIds.map(handle));
+    let posted = first.filter((o) => o === "posted").length;
+    let escalated = first.filter((o) => o !== "posted").length;
     // Returned proposals (a rule failed, e.g. missing citation) get a revision in the same run; B4's
     // revision_cap rule escalates the third, so at most two extra passes.
     for (let pass = 0; pass < 2; pass++) {
       const returned = await step.runQuery(internal.close.fetchReturnedBreaks, { entity, period });
       if (returned.length === 0) break;
-      for (const breakId of returned) {
-        const proposalId = await step.runAction(internal.agent.propose, { caller: "agent", breakId });
-        const decision = await step.runMutation(internal.controls.review, { caller: "controls", proposalId });
-        if (decision.outcome === "posted") {
-          const r = await step.runMutation(internal.ledger.postEntry, { caller: "controls", proposalId, decisionId: decision.decisionId });
-          if (r.ok) {
-            posted++;
-            escalated--;
-            await step.runAction(internal.retrieval.indexDecision, { decisionId: decision.decisionId }, { retry: true });
-          }
-        }
-      }
+      const again = await Promise.all(returned.map(handle));
+      const nowPosted = again.filter((o) => o === "posted").length;
+      posted += nowPosted;
+      escalated -= nowPosted;
     }
     return { breaks: breakIds.length, posted, escalated };
   });
