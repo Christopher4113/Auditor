@@ -8,6 +8,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 SNAP=demo/golden.zip
 TARGET=--prod
+# With a production deploy key in CONVEX_DEPLOY_KEY (teammates, CI) the key names the deployment; no login or --prod needed.
+[[ -n "${CONVEX_DEPLOY_KEY:-}" ]] && TARGET=""
 [[ "${1:-}" == "--dev" ]] && TARGET="" && shift
 if [[ "${1:-}" == "save" ]]; then
   rm -f "$SNAP" && npx convex export $TARGET --path "$SNAP" && exit
