@@ -343,6 +343,16 @@ export default function App() {
     const timer = window.setTimeout(() => setToast(""), 4500);
     return () => window.clearTimeout(timer);
   }, [toast]);
+  // The close runs for a minute or two. Say so while it runs, and say when it is done.
+  const closeRunning = live && workflow?.type === "inProgress";
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (closeRunning) wasRunning.current = true;
+    else if (wasRunning.current && workflow?.type === "completed") {
+      wasRunning.current = false;
+      notify(`${period} close finished · ${progress.posted} handled · ${progress.pending} need you`);
+    }
+  }, [closeRunning, workflow?.type, period, progress.posted, progress.pending]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -911,7 +921,9 @@ export default function App() {
                   ? "Loading the live close…"
                   : !liveSnapshot?.connected
                     ? "Reconnecting. Showing the last received records."
-                    : "Connected to live data · controller decisions are recorded"}
+                    : closeRunning
+                      ? "Close running · the agent and the rules are working through the breaks · items appear below as they are decided"
+                      : "Connected to live data · controller decisions are recorded"}
             </span>
             {liveFailure && (
               <button

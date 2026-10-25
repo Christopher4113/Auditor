@@ -290,6 +290,9 @@ export async function attemptAgentPost(proposalId: string): Promise<{ ok: boolea
 }
 /** Ask Auditor: Group B's action answers from retrieved citations only. */
 export async function askAuditor(question: string, period: Period, proposalCode?: string): Promise<AskAnswer> {
-  const r = await requireLive().action(phase3.ask, { entity: ENTITY, question, asOf: `${toPeriodKey(period)}-28`, proposalCode });
+  const key = toPeriodKey(period);
+  const [y, m] = key.split("-").map(Number);
+  // As of the last day of the month, so traces indexed at period end (holds, closes) are visible.
+  const r = await requireLive().action(phase3.ask, { entity: ENTITY, question, asOf: `${key}-${new Date(Date.UTC(y, m, 0)).getUTCDate()}`, proposalCode });
   return { text: r.answer, citations: r.citations.map((c) => ({ sourceType: c.sourceId.startsWith("D-") ? "precedent" : c.sourceId.startsWith("policy") ? "policy" : "contract", sourceId: c.sourceId, text: c.text })) };
 }

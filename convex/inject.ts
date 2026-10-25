@@ -170,6 +170,8 @@ export const recordVerification = internalMutation({
         : "CRS unavailable or no test identity: fail closed, hold stays",
     });
     await audit(ctx, { entity, actor: "controls", action: "escalate", traceId, detail: `${vendor.name}: bank-detail change needs the controller's callback decision` });
+    // Searchable at once, so Ask Auditor can explain the hold before the controller has decided.
+    await ctx.scheduler.runAfter(0, internal.retrieval.indexTrace, { entity, traceId, effectiveDate: await currentPeriodEnd(ctx, entity) });
     return null;
   },
 });
