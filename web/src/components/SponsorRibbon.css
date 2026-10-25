@@ -191,24 +191,6 @@
   border-radius: 0 4px 0 4px;
 }
 
-.sponsor-ribbon__motion {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid var(--ribbon-border);
-  border-radius: 50%;
-  color: var(--ribbon-ink);
-}
-
-.sponsor-ribbon__motion:hover {
-  background: #9874db0d;
-  color: var(--ribbon-ink-hover);
-}
-
 html[data-theme="dark"] .sponsor-ribbon {
   --ribbon-ink: #9e97ad;
   --ribbon-ink-hover: #ded3ef;
@@ -234,12 +216,6 @@ html[data-theme="dark"] .sponsor-ribbon__label {
   .sponsor-ribbon__track {
     animation: sponsor-ribbon-drift 54s linear infinite;
     will-change: transform;
-  }
-
-  .sponsor-ribbon:hover .sponsor-ribbon__track,
-  .sponsor-ribbon:focus-within .sponsor-ribbon__track,
-  .sponsor-ribbon--paused .sponsor-ribbon__track {
-    animation-play-state: paused;
   }
 }
 
@@ -301,8 +277,7 @@ html[data-theme="dark"] .sponsor-ribbon__label {
     padding: 2px 0;
   }
 
-  .sponsor-ribbon__names[aria-hidden="true"],
-  .sponsor-ribbon__motion {
+  .sponsor-ribbon__names[aria-hidden="true"] {
     display: none;
   }
 

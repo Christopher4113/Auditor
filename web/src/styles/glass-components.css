@@ -2,8 +2,7 @@
 .theme-toggle,
 .ask-mic,
 .ask-read-button,
-.ask-suggestions button,
-.sponsor-ribbon__motion {
+.ask-suggestions button {
   background: var(--surface);
   border: 1px solid var(--glass-border, var(--border));
   box-shadow: var(--glass-shadow, var(--shadow-card));
@@ -93,13 +92,6 @@
   border: 1px solid var(--glass-border, var(--border));
   border-radius: 24px;
   box-shadow: var(--glass-shadow, var(--shadow-card));
-}
-
-.sponsor-ribbon__motion {
-  border-radius: 999px;
-  min-width: 44px;
-  min-height: 44px;
-  color: var(--text-secondary);
 }
 
 .ask-composer {
@@ -199,7 +191,6 @@
 .ask-submit:focus-visible,
 .ask-read-button:focus-visible,
 .ask-suggestions button:focus-visible,
-.sponsor-ribbon__motion:focus-visible,
 .td-disclosure > summary:focus-visible,
 .td-source-detail > summary:focus-visible,
 .td-citation > summary:focus-visible,
@@ -218,8 +209,7 @@
 .ask-mic:disabled,
 .ask-submit:disabled,
 .ask-read-button:disabled,
-.ask-suggestions button:disabled,
-.sponsor-ribbon__motion:disabled {
+.ask-suggestions button:disabled {
   cursor: not-allowed;
   background: var(--surface-subtle);
   border-color: var(--border);
@@ -231,8 +221,7 @@
 
 /* Cancel legacy hover fills on touch; material changes are pointer-only. */
 .ask-suggestions button:hover:not(:disabled),
-.ask-mic:hover:not(:disabled),
-.sponsor-ribbon__motion:hover:not(:disabled) {
+.ask-mic:hover:not(:disabled) {
   background: var(--surface);
   border-color: var(--glass-border, var(--border));
   color: var(--text-secondary);
@@ -246,10 +235,8 @@
   .ask-read-button,
   .ask-suggestions button,
   .sponsor-ribbon,
-  .sponsor-ribbon__motion,
   .ask-suggestions button:hover:not(:disabled),
-  .ask-mic:hover:not(:disabled),
-  .sponsor-ribbon__motion:hover:not(:disabled) {
+  .ask-mic:hover:not(:disabled) {
     background: var(--glass-bg, var(--surface));
     -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(140%);
     backdrop-filter: blur(var(--glass-blur, 14px)) saturate(140%);
@@ -266,8 +253,7 @@
   .theme-toggle:hover:not(:disabled),
   .ask-mic:hover:not(:disabled),
   .ask-read-button:hover:not(:disabled),
-  .ask-suggestions button:hover:not(:disabled),
-  .sponsor-ribbon__motion:hover:not(:disabled) {
+  .ask-suggestions button:hover:not(:disabled) {
     background: var(--glass-bg-hover, var(--surface-hover));
     border-color: var(--accent-border);
     box-shadow: var(--glass-shadow-hover, var(--shadow-card));
@@ -297,8 +283,7 @@
 .ask-mic:active:not(:disabled),
 .ask-submit:active:not(:disabled),
 .ask-read-button:active:not(:disabled),
-.ask-suggestions button:active:not(:disabled),
-.sponsor-ribbon__motion:active:not(:disabled) {
+.ask-suggestions button:active:not(:disabled) {
   box-shadow: inset 0 1px 4px #17132f14;
   transform: translateY(1px) scale(0.985);
 }
@@ -309,12 +294,10 @@
   .ask-read-button,
   .ask-suggestions button,
   .sponsor-ribbon,
-  .sponsor-ribbon__motion,
   .theme-toggle:hover:not(:disabled),
   .ask-mic:hover:not(:disabled),
   .ask-read-button:hover:not(:disabled),
-  .ask-suggestions button:hover:not(:disabled),
-  .sponsor-ribbon__motion:hover:not(:disabled) {
+  .ask-suggestions button:hover:not(:disabled) {
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -333,7 +316,6 @@
   .ask-submit,
   .ask-read-button,
   .ask-suggestions button,
-  .sponsor-ribbon__motion,
   .input,
   .textarea,
   .ask-composer textarea,
@@ -350,8 +332,7 @@
   .ask-mic:is(:hover, :active):not(:disabled),
   .ask-submit:is(:hover, :active):not(:disabled),
   .ask-read-button:is(:hover, :active):not(:disabled),
-  .ask-suggestions button:is(:hover, :active):not(:disabled),
-  .sponsor-ribbon__motion:is(:hover, :active):not(:disabled) {
+  .ask-suggestions button:is(:hover, :active):not(:disabled) {
     transform: none;
   }
 }
