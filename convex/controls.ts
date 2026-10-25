@@ -104,7 +104,8 @@ export const review = internalMutation({
     }
     // Correction instructions: keyed by correctionId
     for (const c of allCorrections) {
-      sources.set(c.correctionId, c.instruction);
+      // The raw instruction and the exact chunk Moss serves (see retrieval.loadCorrection), so either quote verifies.
+      sources.set(c.correctionId, `${c.correctionId} (${c.kind}, scope: ${c.scope}): ${c.instruction}\n${c.instruction}`);
     }
     // Real public documents (fee schedules, terms), keyed by their pub- id
     for (const ps of await ctx.db.query("publicSources").withIndex("by_entity_sourceId", (q) => q.eq("entity", p.entity)).take(50)) {
