@@ -390,11 +390,11 @@ function Scoreboard(props: WorkspaceDrawerProps) {
             ? `${pending} current ${pending === 1 ? "item remains" : "items remain"} unresolved.`
             : pending && signAllowed
               ? `${pending} ${pending === 1 ? "item carries" : "items carry"} forward to the next period. Sign to lock this one.`
-            : !balanced
-              ? "The trial balance does not balance. Review it before signing."
-              : !signAllowed
-                ? "This period is not ready for signing."
-                : "Review the trial balance, then sign to lock this period.";
+              : !balanced
+                ? "The trial balance does not balance. Review it before signing."
+                : !signAllowed
+                  ? "This period is not ready for signing."
+                  : "Review the trial balance, then sign to lock this period.";
   return (
     <>
       <Intro title="Close summary">
@@ -970,7 +970,11 @@ function Inject(props: WorkspaceDrawerProps) {
         Math.round(value * 100) / 100,
         note.trim(),
       );
-      setSuccess(live ? "Submitted. Watch the activity rail." : "Added to the demo review queue.");
+      setSuccess(
+        live
+          ? "Submitted. Watch the activity rail."
+          : "Added to the demo review queue.",
+      );
       setVendor("");
       setAmount("");
       setNote("");
@@ -1093,16 +1097,8 @@ function Inject(props: WorkspaceDrawerProps) {
           type="submit"
           disabled={props.signed || busy || blockedActions(props)}
         >
-          {props.signed ? (
-            <LockKeyhole size={15} />
-          ) : (
-            <Plus size={15} />
-          )}
-          {props.signed
-              ? "Period locked"
-              : busy
-                ? "Adding…"
-                : "Add scenario"}
+          {props.signed ? <LockKeyhole size={15} /> : <Plus size={15} />}
+          {props.signed ? "Period locked" : busy ? "Adding…" : "Add scenario"}
         </button>
       </form>
     </>
@@ -1110,10 +1106,21 @@ function Inject(props: WorkspaceDrawerProps) {
 }
 function Memory() {
   const [query, setQuery] = useState("");
+  const search = query.trim().toLowerCase();
   const sources = sourceMemory.filter((source) =>
-    `${source.title} ${source.type} ${source.text} ${source.id}`
+    [
+      source.title,
+      source.type,
+      source.text,
+      source.id,
+      source.quote,
+      source.context,
+      source.scope,
+      source.date,
+    ]
+      .join(" ")
       .toLowerCase()
-      .includes(query.toLowerCase()),
+      .includes(search),
   );
   return (
     <>

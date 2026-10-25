@@ -9,6 +9,8 @@ import "./styles/glass-components.css";
 import "./styles/responsive.css";
 import "./components/LiquidSegmentedControl.css";
 import "./styles/liquid-refinements.css";
+import "./components/PeriodPicker.css";
+import "./styles/demo-polish.css";
 
 // With CONVEX_URL (root .env.local, written by `pnpm dev:convex`) the rail is live; without it, fixtures.
 createRoot(document.getElementById("root")!).render(

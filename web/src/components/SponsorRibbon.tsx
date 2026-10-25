@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Pause, Play } from "lucide-react";
 import "./SponsorRibbon.css";
 
 const partners = [
@@ -37,11 +35,9 @@ function PartnerNames({ duplicate = false }: { duplicate?: boolean }) {
 }
 
 export default function SponsorRibbon() {
-  const [paused, setPaused] = useState(false);
-
   return (
     <section
-      className={`sponsor-ribbon${paused ? " sponsor-ribbon--paused" : ""}`}
+      className="sponsor-ribbon"
       aria-label="Cal Hacks tracks and technology"
     >
       <div className="sponsor-ribbon__heading">
@@ -56,20 +52,6 @@ export default function SponsorRibbon() {
           <PartnerNames duplicate />
         </div>
       </div>
-      <button
-        className="sponsor-ribbon__motion"
-        type="button"
-        aria-label={
-          paused
-            ? "Resume company name animation"
-            : "Pause company name animation"
-        }
-        aria-pressed={paused}
-        aria-controls="sponsor-ribbon-track"
-        onClick={() => setPaused((value) => !value)}
-      >
-        {paused ? <Play size={13} /> : <Pause size={13} />}
-      </button>
     </section>
   );
 }

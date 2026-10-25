@@ -58,8 +58,7 @@
   .ask-submit,
   .ask-mic,
   .ask-read-button,
-  .theme-toggle,
-  .sponsor-ribbon__motion
+  .theme-toggle
 ) {
   border-radius: 999px;
   transition:
@@ -77,7 +76,6 @@
   .icon-button,
   .ask-mic,
   .ask-read-button,
-  .sponsor-ribbon__motion,
   .theme-toggle
 ) {
   --control-glass-background:
@@ -243,7 +241,6 @@
     .icon-button,
     .ask-mic,
     .ask-read-button,
-    .sponsor-ribbon__motion,
     .period-select-wrap,
     .theme-toggle,
     .tools-menu,
@@ -262,7 +259,6 @@
       .icon-button,
       .ask-mic,
       .ask-read-button,
-      .sponsor-ribbon__motion,
       .theme-toggle
     ):hover:not(:disabled) {
     background:
@@ -312,8 +308,7 @@
     .ask-submit,
     .ask-mic,
     .ask-read-button,
-    .theme-toggle,
-    .sponsor-ribbon__motion
+    .theme-toggle
   ):active:not(:disabled),
 .assistant-card > .navy-button:active:not(:disabled) {
   box-shadow:
@@ -342,8 +337,7 @@
   .ask-submit,
   .ask-mic,
   .ask-read-button,
-  .theme-toggle,
-  .sponsor-ribbon__motion
+  .theme-toggle
 ):focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 4px;
@@ -359,8 +353,7 @@
   .ask-submit,
   .ask-mic,
   .ask-read-button,
-  .theme-toggle,
-  .sponsor-ribbon__motion
+  .theme-toggle
 ):disabled {
   box-shadow: none;
   transform: none;
@@ -389,7 +382,6 @@
     .icon-button,
     .ask-mic,
     .ask-read-button,
-    .sponsor-ribbon__motion,
     .period-select-wrap,
     .theme-toggle,
     .tools-menu,
@@ -434,7 +426,6 @@
     .theme-toggle,
     .theme-toggle::before,
     .theme-toggle-option,
-    .sponsor-ribbon__motion,
     .tools-menu
   ) {
     transition: none;
@@ -451,8 +442,7 @@
       .ask-submit,
       .ask-mic,
       .ask-read-button,
-      .theme-toggle,
-      .sponsor-ribbon__motion
+      .theme-toggle
     ):is(:hover, :active):not(:disabled),
   .assistant-card > .navy-button:is(:hover, :active):not(:disabled) {
     transform: none;

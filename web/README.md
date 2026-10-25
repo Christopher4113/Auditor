@@ -2,13 +2,15 @@
 
 A responsive React and TypeScript workspace with white and soft gray surfaces, navy text, violet accents, a complete dark theme, and reduced-motion support. The overview stays simple; evidence and accounting details expand inside a transaction.
 
-The header's sun/moon toggle remembers your appearance choice across reloads. It follows the system preference until you choose a mode. The bottom “Tracks & technology” strip loops through Hyphenate, Convex, Moss, CRS Credit, Anthropic, Vultr, and context.dev. Hover or focus pauses it; the pause button keeps it still. Reduced-motion preferences show a static list instead.
+The header's sun/moon toggle remembers your appearance choice across reloads. It follows the system preference until you choose a mode. The bottom “Tracks & technology” strip loops continuously through Hyphenate, Convex, Moss, CRS Credit, Anthropic, Vultr, and context.dev, including while hovered. Reduced-motion preferences show a static list instead.
 
 Controls use a glass finish with subtle highlights, frosted surfaces, clear focus rings, and spring press feedback. The header navigation and activity filters share a moving glass lens: tap an option or drag across the control and release to select. Vertical gestures keep scrolling, and cancelling a drag restores the current selection. Arrow keys, Home, and End select options when the control has focus.
 
+The fiscal period picker uses a custom glass menu with a selected checkmark, keyboard navigation, typeahead, and Escape/outside-click dismissal. Keyboard focus uses one outline around the whole control. The workspace tools menu flips or scrolls to fit short viewports and returns focus after dismissal. Past-decision searches include source excerpts and context as well as titles.
+
 The material and motion follow [Apple’s Liquid Glass design guidance](https://developer.apple.com/videos/play/wwdc2025/219/) and [interactive control guidance](https://developer.apple.com/videos/play/wwdc2025/323/): a quiet floating control layer, responsive highlights, and clear content underneath. This implementation uses web CSS and pointer events.
 
-Layouts adapt from narrow phones to large displays: mobile transactions retain the vendor, amount, and status; drawers and wide tables scroll locally; form fields stay readable and touch targets are at least 44px. Reduced-motion removes spring movement, and reduced-transparency or unsupported-blur environments use solid surfaces. The override styles load in order from `src/styles/glass.css`, `glass-components.css`, `responsive.css`, `components/LiquidSegmentedControl.css`, and `styles/liquid-refinements.css`.
+Layouts adapt from narrow phones to large displays: mobile transactions retain the vendor, amount, and status; drawers and wide tables scroll locally; form fields stay readable and touch targets are at least 44px. Reduced-motion removes spring movement, and reduced-transparency or unsupported-blur environments use solid surfaces. The override styles load in order from `src/styles/glass.css`, `glass-components.css`, `responsive.css`, `components/LiquidSegmentedControl.css`, `styles/liquid-refinements.css`, `components/PeriodPicker.css`, and `styles/demo-polish.css`.
 
 ## Run
 
