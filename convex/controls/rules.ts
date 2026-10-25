@@ -171,6 +171,11 @@ export function evaluate(proposal: Proposal, ctx: EvalCtx): EvalResult {
   // ── Outcome determination ─────────────────────────────────────────────────
   const get = (name: string) => rulesRun.find((r) => r.rule === name)!;
 
+  // Revision cap first: a third revision goes to the human whatever else failed, or returns loop forever.
+  if (!get("revision_cap").passed) {
+    return { rulesRun, outcome: "escalated", reason: `Revision cap: revision ${proposal.revision} ≥ 3` };
+  }
+
   // Return-to-agent: any of the first four rules failed.
   const returnRules = ["balance", "citation", "period_lock", "correction"];
   const returnFailed = rulesRun.filter((r) => returnRules.includes(r.rule) && !r.passed);

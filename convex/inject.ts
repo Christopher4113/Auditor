@@ -10,6 +10,12 @@ import { audit } from "./audit";
 import { ensureClose } from "./close";
 
 const stamp = () => Date.now().toString(36);
+/** Judges type names loosely: "Field & Flame" should find "Field & Flame Catering" and vice versa. */
+const nameMatches = (stored: string, typed?: string) => {
+  const a = stored.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const b = (typed ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return b.length > 0 && (a === b || a.startsWith(b) || b.startsWith(a));
+};
 
 /** A bank transaction arrives. The data trigger starts a close for its period. */
 export const injectBankTransaction = mutation({
@@ -46,13 +52,17 @@ export const injectBankTransaction = mutation({
 
 /** A contract is amended: the clause is appended, indexed into Moss, and the period's close re-runs. */
 export const amendContract = mutation({
-  args: { entity: v.string(), contractId: v.string(), text: v.string(), effectiveDate: v.string(), number: v.optional(v.string()) },
+  args: { entity: v.string(), contractId: v.optional(v.string()), counterparty: v.optional(v.string()), text: v.string(), effectiveDate: v.string(), number: v.optional(v.string()) },
   returns: v.object({ clauseId: v.string(), traceId: v.string() }),
-  handler: async (ctx, { entity, contractId, text, effectiveDate, number }) => {
+  handler: async (ctx, { entity, contractId: givenId, counterparty, text, effectiveDate, number }) => {
     if (!text.trim()) throw new Error("an amendment needs text");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) throw new Error("effectiveDate must be YYYY-MM-DD");
-    const contract = await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity).eq("contractId", contractId)).unique();
-    if (!contract) throw new Error(`contract ${contractId} not found`);
+    // The Inject drawer sends the vendor's name; the CLI sends the contract id.
+    const contract = givenId
+      ? await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity).eq("contractId", givenId)).unique()
+      : (await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity)).take(100)).find((c) => nameMatches(c.counterparty, counterparty)) ?? null;
+    if (!contract) throw new Error(`no contract for ${givenId ?? counterparty}`);
+    const contractId = contract.contractId;
     const n = contract.clauses.filter((c) => c.id.includes("amendment")).length + 1;
     const clauseId = `${contractId}-amendment-${n}`;
     const clause = { id: clauseId, number: number ?? `Amendment ${n}`, text: text.trim(), effectiveDate };
@@ -74,12 +84,15 @@ export const amendContract = mutation({
 
 /** A vendor's bank details change (seeded email or judge's injection). Rule 4.3 fires the same day. */
 export const changeVendorBank = mutation({
-  args: { entity: v.string(), vendorId: v.string(), newLast4: v.string(), source: v.optional(v.string()) },
+  args: { entity: v.string(), vendorId: v.optional(v.string()), vendorName: v.optional(v.string()), newLast4: v.string(), source: v.optional(v.string()) },
   returns: v.object({ traceId: v.string() }),
-  handler: async (ctx, { entity, vendorId, newLast4, source }) => {
+  handler: async (ctx, { entity, vendorId: givenId, vendorName, newLast4, source }) => {
     if (!/^\d{4}$/.test(newLast4)) throw new Error("newLast4 must be four digits");
-    const vendor = await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", vendorId)).unique();
-    if (!vendor) throw new Error(`vendor ${vendorId} not found`);
+    const vendor = givenId
+      ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", givenId)).unique()
+      : (await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity)).take(100)).find((vd) => nameMatches(vd.name, vendorName)) ?? null;
+    if (!vendor) throw new Error(`vendor ${givenId ?? vendorName} not found`);
+    const vendorId = vendor.vendorId;
     const traceId = `T-vendor-${vendorId}-${stamp()}`;
     const bankChange = { at: Date.now(), previousLast4: vendor.bankAccountLast4, newLast4, source: source ?? "email", traceId };
     await ctx.db.patch("vendors", vendor._id, { bankAccountLast4: newLast4, paymentsHeld: true, bankChange, verification: undefined });

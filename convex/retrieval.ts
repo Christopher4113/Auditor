@@ -180,7 +180,9 @@ export const resetEntity = internalAction({
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, { entity }): Promise<{ ok: boolean }> => {
     const chunks = await ctx.runQuery(internal.retrieval.loadClauses, { entity });
-    const result = await post<{ ok: boolean }>("/reindex-all", { entity, chunks });
+    let result = await post<{ ok: boolean }>("/reindex-all", { entity, chunks });
+    // A sidecar still on the Phase 2 image has no /reindex-all; upsert the source clauses so citations resolve.
+    if (!result?.ok && chunks.length) result = await post<{ ok: boolean }>("/index/batch", { chunks });
     const ok = result?.ok === true;
     await ctx.runMutation(internal.audit.write, { entity, actor: "seed", action: ok ? "retrieval.reset_entity" : "retrieval.reset_entity.failed",
       detail: `${ok ? chunks.length : 0}/${chunks.length} source chunks; runtime memory reset ${ok ? "confirmed" : "not confirmed"}` });

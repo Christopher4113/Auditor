@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
-  fireEvent,
   render,
   screen,
   waitFor,
@@ -526,9 +525,9 @@ describe("Live drawer capabilities and close summary", () => {
     expect(onDeny).not.toHaveBeenCalled();
   });
 
-  it("allows live scenario drafts but never calls an unavailable submission endpoint", async () => {
+  it("submits a live scenario through the wired handler", async () => {
     const user = userEvent.setup();
-    const onInject = vi.fn();
+    const onInject = vi.fn(() => Promise.resolve());
     render(<WorkspaceDrawer {...drawerProps({ type: "inject", onInject })} />);
     await user.type(
       screen.getByRole("textbox", { name: "Counterparty" }),
@@ -539,22 +538,18 @@ describe("Live drawer capabilities and close summary", () => {
       screen.getByRole("textbox", { name: "Transaction context" }),
       "A fictional unmatched transaction.",
     );
-    const submit = screen.getByRole("button", {
-      name: "Live submission unavailable",
-    });
-    expect(disabled(submit)).toBe(true);
-    const form = submit.closest("form");
-    if (!form) throw new Error("Expected the scenario form");
-    fireEvent.submit(form);
-    expect(onInject).not.toHaveBeenCalled();
+    const submit = screen.getByRole("button", { name: "Add scenario" });
+    expect(disabled(submit)).toBe(false);
+    await user.click(submit);
+    expect(onInject).toHaveBeenCalledWith(
+      "bank_transaction",
+      "Sample vendor",
+      1234.56,
+      "A fictional unmatched transaction.",
+    );
     expect(
-      (
-        screen.getByRole("textbox", {
-          name: "Counterparty",
-        }) as HTMLInputElement
-      ).value,
-    ).toBe("Sample vendor");
-    expect(screen.queryByText("Added to the demo review queue.")).toBeNull();
+      await screen.findByText("Submitted. Watch the activity rail."),
+    ).toBeTruthy();
   });
 
   it("awaits a demo injection and acknowledges it only after its callback completes", async () => {

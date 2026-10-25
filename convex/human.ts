@@ -106,7 +106,8 @@ export async function signPeriod(ctx: MutationCtx, entity: string, period: strin
   if (p.status === "closing") throw new Error(`${period} close is still running`);
   const proposals = await ctx.db.query("proposals").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
   const entries = await ctx.db.query("journalEntries").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
-  const openItemsCarried = proposals.filter((x) => x.status === "escalated" || x.status === "under_review" || x.status === "failed_rule").length;
+  const breaks = await ctx.db.query("breaks").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", period)).take(500);
+  const openItemsCarried = breaks.filter((b) => b.status !== "resolved").length; // one per break, not per revision
   const tb = await trialBalance(ctx, entity, period);
   const closeSummary = { entriesPosted: entries.length, openItemsCarried, debits: tb.debits, credits: tb.credits };
   await ctx.db.patch("periods", p._id, { status: "signed", signedAt: Date.now(), closeSummary });

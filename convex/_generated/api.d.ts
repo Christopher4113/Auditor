@@ -18,6 +18,7 @@ import type * as ask from "../ask.js";
 import type * as audit from "../audit.js";
 import type * as close from "../close.js";
 import type * as controls from "../controls.js";
+import type * as controls_postGuard from "../controls/postGuard.js";
 import type * as controls_rules from "../controls/rules.js";
 import type * as controls_stub from "../controls/stub.js";
 import type * as crons from "../crons.js";
@@ -26,9 +27,9 @@ import type * as inject from "../inject.js";
 import type * as ledger from "../ledger.js";
 import type * as retrieval from "../retrieval.js";
 import type * as retrievalClient from "../retrievalClient.js";
-import type * as seed from "../seed.js";
 import type * as scoring from "../scoring.js";
 import type * as scoring_metrics from "../scoring/metrics.js";
+import type * as seed from "../seed.js";
 import type * as tools from "../tools.js";
 import type * as trace from "../trace.js";
 
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   close: typeof close;
   controls: typeof controls;
+  "controls/postGuard": typeof controls_postGuard;
   "controls/rules": typeof controls_rules;
   "controls/stub": typeof controls_stub;
   crons: typeof crons;
@@ -57,9 +59,9 @@ declare const fullApi: ApiFromModules<{
   ledger: typeof ledger;
   retrieval: typeof retrieval;
   retrievalClient: typeof retrievalClient;
-  seed: typeof seed;
   scoring: typeof scoring;
   "scoring/metrics": typeof scoring_metrics;
+  seed: typeof seed;
   tools: typeof tools;
   trace: typeof trace;
 }>;

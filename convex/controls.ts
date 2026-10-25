@@ -117,16 +117,31 @@ export const review = internalMutation({
       breakKind: brk?.kind ?? "unmatched",
     };
 
-    const { rulesRun, outcome, reason } = evaluate(
-      {
-        lines: p.lines,
-        citations: p.citations,
-        revision: p.revision,
-        correctionsApplied: p.correctionsApplied,
-        discardedFirstRead: p.discardedFirstRead,
-      },
-      evalCtx,
-    );
+    // The agent sometimes cites the decision id its own proposal will get (D-<proposalId>...). That is not
+    // evidence; drop self-references so the citation rule judges the real sources.
+    const citations = p.citations.filter((c) => !c.sourceId.includes(p.proposalId));
+    if (citations.length !== p.citations.length) await ctx.db.patch("proposals", proposalId, { citations });
+    const proposalView = {
+      lines: p.lines,
+      citations,
+      revision: p.revision,
+      correctionsApplied: p.correctionsApplied,
+      discardedFirstRead: p.discardedFirstRead,
+    };
+    let { rulesRun, outcome, reason } = evaluate(proposalView, evalCtx);
+
+    // A rule-failure correction is addressed when that rule passes now; the agent fixed what it was told to.
+    // Corrections on rules the agent cannot act on (precedent, threshold, cap) never block a revision.
+    const passedNow = new Set(rulesRun.filter((r) => r.passed).map((r) => r.rule));
+    const actionable = new Set(["balance", "citation", "period_lock"]);
+    const addressed = allCorrections
+      .filter((c) => openCorrectionIds.includes(c.correctionId))
+      .filter((c) => c.kind === "rule_failure" && (!c.rule || !actionable.has(c.rule) || passedNow.has(c.rule)));
+    if (addressed.length) {
+      const remaining = openCorrectionIds.filter((id) => !addressed.some((c) => c.correctionId === id));
+      ({ rulesRun, outcome, reason } = evaluate(proposalView, { ...evalCtx, openCorrectionIds: remaining }));
+      for (const c of addressed) await ctx.db.patch("corrections", c._id, { appliedBy: [...c.appliedBy, p.proposalId] });
+    }
 
     // Audit every rule result.
     for (const r of rulesRun) {
@@ -149,7 +164,7 @@ export const review = internalMutation({
       outcome: outcome as Infer<typeof vOutcome>,
       reason,
       rulesRun,
-      citations: p.citations,
+      citations,
       latencyMs: Date.now() - started,
     });
 
@@ -163,7 +178,7 @@ export const review = internalMutation({
 
     // Write a correction when a return rule fails (so the agent learns).
     if (outcome === "returned") {
-      const failedRules = rulesRun.filter((r) => !r.passed);
+      const failedRules = rulesRun.filter((r) => !r.passed && ["balance", "citation", "period_lock"].includes(r.rule));
       for (const r of failedRules) {
         await ctx.db.insert("corrections", {
           entity: p.entity,

@@ -935,12 +935,6 @@ function Inject(props: WorkspaceDrawerProps) {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSuccess("");
-    if (live) {
-      setError(
-        "Live scenario submission is not connected. You can prepare the fields here or use the demo.",
-      );
-      return;
-    }
     if (props.signed) {
       setError("This period is locked. Choose an open period.");
       return;
@@ -974,7 +968,7 @@ function Inject(props: WorkspaceDrawerProps) {
         Math.round(value * 100) / 100,
         note.trim(),
       );
-      setSuccess("Added to the demo review queue.");
+      setSuccess(live ? "Submitted. Watch the activity rail." : "Added to the demo review queue.");
       setVendor("");
       setAmount("");
       setNote("");
@@ -989,7 +983,7 @@ function Inject(props: WorkspaceDrawerProps) {
     <>
       <Intro title="Add a test scenario">
         {live
-          ? "Prepare a scenario. Live submission is not connected yet."
+          ? "Submit a scenario to the live close. The Workflow picks it up within seconds."
           : "Try a fictional transaction or change."}
       </Intro>
       <form
@@ -1085,8 +1079,8 @@ function Inject(props: WorkspaceDrawerProps) {
         )}
         {live && (
           <p className="drawer-label">
-            These fields are a draft. No live transaction, amendment, or bank
-            change will be submitted.
+            Amounts are fictitious. Payments are recorded as money out; bank
+            changes hold the vendor and request payee verification.
           </p>
         )}
         {props.signed && (
@@ -1095,16 +1089,14 @@ function Inject(props: WorkspaceDrawerProps) {
         <button
           className="primary-button"
           type="submit"
-          disabled={live || props.signed || busy || blockedActions(props)}
+          disabled={props.signed || busy || blockedActions(props)}
         >
-          {live || props.signed ? (
+          {props.signed ? (
             <LockKeyhole size={15} />
           ) : (
             <Plus size={15} />
           )}
-          {live
-            ? "Live submission unavailable"
-            : props.signed
+          {props.signed
               ? "Period locked"
               : busy
                 ? "Adding…"

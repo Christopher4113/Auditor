@@ -38,6 +38,7 @@ import {
   signPeriod as signLive,
   reason,
 } from "./data/live";
+import { injectScenario, attemptAgentPost, askAuditor } from "./data/live";
 import type { LiveSnapshot, LiveDetails } from "./data/live";
 import {
   latestProposals,
@@ -469,8 +470,14 @@ export default function App() {
     note: string,
   ) => {
     if (live) {
-      notify("Test scenarios are available only in the demo workspace.");
-      return;
+      return controllerAction(
+        () => injectScenario(kind, vendor, amount, note, period),
+        kind === "vendor_bank_change"
+          ? `${vendor} bank change recorded: payments held, payee verification requested, escalated.`
+          : kind === "contract_amendment"
+            ? `${vendor} contract amended and indexed; the ${period} close is re-running.`
+            : `${vendor} transaction injected; the Workflow picks it up within seconds.`,
+      );
     }
     if (signed) {
       notify("This period is locked. Choose an open period first.");
@@ -1361,12 +1368,23 @@ export default function App() {
                 ? liveSnapshot.controlResults
                 : undefined
             }
+            canDeny={live ? periodProposals.some((p) => p.status === "posted") : undefined}
+            onAsk={live ? (question) => askAuditor(question, period) : undefined}
             onDeny={() => {
               if (live) {
-                notify(
-                  "Posting tests are available only in the demo workspace.",
-                );
-                return;
+                const target =
+                  (selected?.status === "posted" ? selected : undefined) ??
+                  periodProposals.find((p) => p.status === "posted");
+                if (!target) {
+                  notify("No posted entry in this period to test against.", "error");
+                  return;
+                }
+                return controllerAction(async () => {
+                  const r = await attemptAgentPost(target.id);
+                  if (r.ok) throw new Error("The agent was allowed to post. That is a bug.");
+                  setDenialCount((count) => count + 1);
+                  return r;
+                }, "Refused: 8.1, the agent proposed this entry and may not post it. The denial is in the audit log.");
               }
               setDenialCount((count) => count + 1);
               const target = periodProposals[0];
