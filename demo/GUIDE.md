@@ -19,8 +19,8 @@ About a minute. Puts prod back to: July and August signed, September open and un
 |---|---|---|
 | 1 | Open the site, pick **September 2026** | Hero says "Your September close", 123 bank transactions, 0 entries handled |
 | 2 | **View close summary** → **Prepare close** | Status flips to running. Over 2–4 minutes proposals appear in the rail with no refresh. Open the site on a phone too: same rows appear there |
-| 3 | Click **Apex Staging** ($13,600, Sept 25) | Posted by controls. Entry Dr 1000 / Dr 5160 / Cr 1200 ($2,400 inspection fee). Three citations: Apex clause 9.4, policy 5.1, the July precedent. "First read discarded" line present |
-| 4 | Click a **Stripe** payout | Posted under the Stripe precedent from July/August, citing policy 6.1 and the Stripe fee schedule (a real public source with a URL) |
+| 3 | Click **Apex Staging** ($13,600, Sept 25) | Posted by controls at revision 1. Entry books the $2,400 shortfall as inspection fee expense. Three citations: Apex clause 9.4, policy 5.1, policy 2.0. "First read discarded" line present |
+| 4 | Click a **Stripe** payout | Posted by controls at revision 1 with no human touch (the learning loop). Two citations: policy 6.1 and the July decision D-P-bank-stripe-20260710-r1-h, whose text reads "approved by human". Some payouts also cite the Stripe fee schedule, a real public source with a URL |
 | 5 | **Review inbox** | Escalated items wait here: Brightwater sponsorship settlement ($40,000, contract amendment) and Ironclad setup invoice ($9,400, accrual reversal). Open one: rule checks listed, evidence on the right |
 | 6 | **Approve** one, **Return for revision** the other with an instruction | Approved: "Approved and posted", entry appears under the human identity. Returned: a revision arrives in the rail within a minute citing your instruction |
 | 7 | ⋯ → **Add a test scenario** → **Bank detail change**, vendor `Field & Flame`, note "new account ending 8832" | A held item appears: payment parked in 1400, CRS verification result with the TransUnion report summary. Only **Keep hold with instruction** is offered |
