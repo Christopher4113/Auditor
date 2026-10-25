@@ -127,12 +127,6 @@
   text-transform: uppercase;
 }
 
-.sponsor-ribbon__partner--microsoft {
-  font-size: 21px;
-  font-weight: 500;
-  letter-spacing: -0.045em;
-}
-
 .sponsor-ribbon__partner--vultr {
   font-size: 19px;
   font-weight: 550;
@@ -190,22 +184,6 @@
 }
 
 .sponsor-ribbon__mark--anthropic {
-  display: none;
-}
-
-.sponsor-ribbon__mark--microsoft {
-  grid-template-columns: repeat(2, 3px);
-  grid-template-rows: 15px;
-  gap: 4px;
-}
-
-.sponsor-ribbon__mark--microsoft i {
-  border: 0;
-  border-radius: 2px;
-  background: currentColor;
-}
-
-.sponsor-ribbon__mark--microsoft i:nth-child(n + 3) {
   display: none;
 }
 

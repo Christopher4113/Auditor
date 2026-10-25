@@ -8,7 +8,6 @@ const partners = [
   { name: "Moss", mark: "moss", style: "moss" },
   { name: "CRS Credit", mark: "credit", style: "credit" },
   { name: "Anthropic", mark: "anthropic", style: "anthropic" },
-  { name: "Microsoft", mark: "microsoft", style: "microsoft" },
   { name: "Vultr", mark: "vultr", style: "vultr" },
   { name: "context.dev", mark: "context", style: "context" },
 ] as const;

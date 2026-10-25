@@ -1,0 +1,276 @@
+/* The selection is one refracting lens that follows a finger across the rail. */
+:root[data-theme] .glass-segments.glass-segments {
+  --segment-ink: #47414f;
+  --segment-selected-ink: #211333;
+  --segment-rail: rgb(103 89 125 / 7%);
+  --segment-rail-rim: rgb(83 65 105 / 12%);
+  --segment-lens: rgb(255 255 255 / 58%);
+  --segment-rim: rgb(255 255 255 / 90%);
+  --segment-edge: rgb(66 41 88 / 14%);
+  --segment-spring: cubic-bezier(0.22, 1.18, 0.32, 1);
+  position: relative;
+  inset: auto;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--segment-rail-rim);
+  border-radius: 999px;
+  background: var(--segment-rail);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 60%),
+    inset 0 -1px 0 rgb(75 52 101 / 4%),
+    0 4px 16px rgb(60 37 81 / 3%);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+:root[data-theme] .glass-segments .glass-segments-lens {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--segment-rim);
+  border-radius: 999px;
+  background: var(--segment-lens);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 98%),
+    inset 0 -1px 1px var(--segment-edge),
+    0 2px 4px rgb(44 25 65 / 10%),
+    0 6px 16px rgb(44 25 65 / 5%);
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: 0 0;
+  transition:
+    transform 540ms var(--segment-spring),
+    opacity 180ms ease,
+    box-shadow 200ms ease;
+  will-change: transform;
+}
+
+:root[data-theme] .glass-segments-lens::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    124deg,
+    rgb(255 255 255 / 52%),
+    transparent 34%,
+    transparent 66%,
+    rgb(255 255 255 / 22%)
+  );
+  content: "";
+}
+
+:root[data-theme] .glass-segments[data-measured="true"] .glass-segments-lens {
+  opacity: 1;
+}
+
+:root[data-theme] .glass-segments[data-dragging="true"] .glass-segments-lens {
+  transition: none;
+}
+
+:root[data-theme] .glass-segments[data-pressed="true"] .glass-segments-lens {
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 100%),
+    inset 0 -1px 1px var(--segment-edge),
+    0 3px 9px rgb(44 25 65 / 12%),
+    0 10px 24px rgb(44 25 65 / 8%);
+}
+
+:root[data-theme] .glass-segments.glass-segments button.glass-segment {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 9px 16px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--segment-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none;
+  transition: color 180ms ease;
+}
+
+:root[data-theme] .glass-segments.glass-segments button.glass-segment::before,
+:root[data-theme] .glass-segments.glass-segments button.glass-segment::after {
+  display: none;
+}
+
+:root[data-theme]
+  .glass-segments.glass-segments
+  button.glass-segment[aria-pressed="true"] {
+  color: var(--segment-selected-ink);
+}
+
+:root[data-theme]
+  .glass-segments:not([data-measured="true"])
+  button.glass-segment[aria-pressed="true"] {
+  background: var(--segment-lens);
+  box-shadow: inset 0 0 0 1px var(--segment-rim);
+}
+
+:root[data-theme] .glass-segments.glass-segments button.glass-segment:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  color: var(--segment-selected-ink);
+}
+
+:root[data-theme]
+  .glass-segments.glass-segments
+  button.glass-segment:focus-visible {
+  outline: 2px solid var(--accent-text, #6744c7);
+  outline-offset: -3px;
+}
+
+:root[data-theme] .glass-segments.glass-segments button.glass-segment:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+:root[data-theme] .glass-segment > svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
+:root[data-theme]
+  .glass-segments.glass-segments.activity-tabs
+  button.glass-segment
+  > .glass-segments__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  min-height: 19px;
+  padding: 2px 5px;
+  border: 1px solid var(--segment-rail-rim);
+  border-radius: 99px;
+  background: rgb(128 110 148 / 9%);
+  color: inherit;
+  font-size: 10px;
+}
+
+:root[data-theme="dark"] .glass-segments.glass-segments {
+  --segment-ink: #cdc7d8;
+  --segment-selected-ink: #fff;
+  --segment-rail: rgb(255 255 255 / 5%);
+  --segment-rail-rim: rgb(255 255 255 / 11%);
+  --segment-lens: rgb(255 255 255 / 12%);
+  --segment-rim: rgb(255 255 255 / 24%);
+  --segment-edge: rgb(0 0 0 / 24%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    inset 0 -1px 0 rgb(0 0 0 / 13%),
+    0 4px 16px rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="dark"] .glass-segments .glass-segments-lens {
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 28%),
+    inset 0 -1px 1px var(--segment-edge),
+    0 2px 6px rgb(0 0 0 / 25%);
+}
+
+:root[data-theme="dark"] .glass-segments-lens::before {
+  opacity: 0.28;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  :root[data-theme] .glass-segments.glass-segments {
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+  :root[data-theme] .glass-segments .glass-segments-lens {
+    -webkit-backdrop-filter: blur(10px) saturate(170%) brightness(1.04);
+    backdrop-filter: blur(10px) saturate(170%) brightness(1.04);
+  }
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root[data-theme] .glass-segments.glass-segments {
+    --segment-spring: linear(
+      0,
+      0.19 6%,
+      0.55 15%,
+      0.85 25%,
+      1.025 37%,
+      1.055 47%,
+      1.025 62%,
+      0.998 79%,
+      1
+    );
+  }
+}
+
+@media (max-width: 480px) {
+  :root[data-theme] .glass-segments.glass-segments button.glass-segment {
+    gap: 5px;
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+  :root[data-theme] .glass-segments.glass-segments.activity-tabs {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme] .glass-segments .glass-segments-lens,
+  :root[data-theme] .glass-segments.glass-segments button.glass-segment {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] .glass-segments.glass-segments {
+    --segment-rail: #efedf2;
+    --segment-lens: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  :root[data-theme="dark"] .glass-segments.glass-segments {
+    --segment-rail: #24212c;
+    --segment-lens: #494251;
+  }
+  :root[data-theme] .glass-segments .glass-segments-lens {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :root[data-theme] .glass-segments.glass-segments {
+    border-color: ButtonText;
+  }
+  :root[data-theme] .glass-segments .glass-segments-lens {
+    display: none;
+  }
+  :root[data-theme]
+    .glass-segments.glass-segments
+    button.glass-segment[aria-pressed="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -3px;
+  }
+}
