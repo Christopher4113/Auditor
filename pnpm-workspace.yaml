@@ -1,5 +1,7 @@
 packages:
   - web
+overrides:
+  "@asamuzakjp/css-color": "7.1.7"
 allowBuilds:
   esbuild: true
   "@tailwindcss/oxide": true

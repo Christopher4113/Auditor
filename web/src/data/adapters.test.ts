@@ -160,9 +160,17 @@ function contract(overrides: Partial<WireContract> = {}): WireContract {
 }
 
 describe("live proposal mapping", () => {
+  it("retains each wire entity so identical display codes cannot merge across entities", () => {
+    const nyc = toProposal(row({ entity: "eo-festival-nyc" }));
+    const other = toProposal(row({ entity: "eo-festival-london" }));
+    expect(nyc.id).toBe(other.id);
+    expect(nyc.entity).toBe("eo-festival-nyc");
+    expect(other.entity).toBe("eo-festival-london");
+  });
   it("keeps display codes separate from Convex IDs and preserves the original revision", () => {
     const proposal = toProposal(row());
     expect(proposal.id).toBe("P-APEX-r2");
+    expect(proposal.entity).toBe("eo-festival-nyc");
     expect(proposal.backendId).toBe("convex-proposal-2");
     expect(proposal.breakBackendId).toBe("convex-break-1");
     expect(proposal.revisionOf).toBe("convex-proposal-1");
@@ -347,17 +355,25 @@ describe("live proposal mapping", () => {
     expect(merged.backendStatus).toBe("posted");
     expect(merged.postedEntryId).toBe("convex-entry-2");
   });
-  it("does not mistake a suspense-clearing credit or an inactive hold for a parked payment", () => {
+  it("treats posted net parked funds as held until a suspense-clearing journal is posted", () => {
     const clearingLines = [
       { account: "2000", debit: 4200000, credit: 0 },
       { account: "1400", debit: 0, credit: 4200000 },
     ];
     expect(statusFrom("posted", [], true, clearingLines)).toBe("posted");
+    expect(
+      statusFrom(
+        "posted",
+        [{ rule: "bank_detail_change", kind: "preventive", passed: false }],
+        true,
+        clearingLines,
+      ),
+    ).toBe("posted");
     const suspenseLines = [
       { account: "1400", debit: 4200000, credit: 0 },
       { account: "1000", debit: 0, credit: 4200000 },
     ];
-    expect(statusFrom("posted", [], false, suspenseLines)).toBe("posted");
+    expect(statusFrom("posted", [], false, suspenseLines)).toBe("held");
     expect(
       statusFrom(
         "posted",
@@ -365,7 +381,39 @@ describe("live proposal mapping", () => {
         false,
         suspenseLines,
       ),
-    ).toBe("posted");
+    ).toBe("held");
+  });
+  it("fails closed in the feed when a posted 1400 journal has an empty latest human decision", () => {
+    const suspenseLines = [
+      { account: "1400", debit: 4200000, credit: 0 },
+      { account: "1000", debit: 0, credit: 4200000 },
+    ];
+    const base = toProposal(
+      row({
+        status: "posted",
+        lines: suspenseLines,
+        decision: {
+          decisionId: "D-APEX-h",
+          outcome: "approved",
+          reason: "Record the funds under review.",
+          rulesRun: [],
+        },
+      }),
+    );
+    expect(base.status).toBe("held");
+    expect(base.backendStatus).toBe("posted");
+    expect(base.postedEntryId).toBeUndefined();
+    const merged = mergeProposalDetails(
+      base,
+      undefined,
+      details({
+        decision: decision({ entryId: "convex-entry-2", rulesRun: [] }),
+        entry: entry({ lines: suspenseLines }),
+      }),
+    );
+    expect(merged.status).toBe("held");
+    expect(merged.backendStatus).toBe("posted");
+    expect(merged.postedEntryId).toBe("convex-entry-2");
   });
   it("rejects unsupported period keys instead of moving their records into September", () => {
     expect(toPeriodKey("September 2026")).toBe("2026-09");

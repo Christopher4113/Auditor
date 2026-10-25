@@ -21,7 +21,7 @@ from service import RetrievalService, Settings
 from store import Document
 from crs import CRSVerifier
 
-Collection = Literal["policy", "contracts", "decisions", "corrections"]
+Collection = Literal["policy", "contracts", "decisions", "corrections", "events"]
 logger = logging.getLogger("uvicorn.error.auditor")
 
 

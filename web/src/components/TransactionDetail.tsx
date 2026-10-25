@@ -88,9 +88,9 @@ function presentation(record: DetailRecord, mode: "demo" | "live") {
       posted,
       next:
         mode === "live"
-          ? "Confirm the vendor’s bank details through a trusted channel. Live approval actions are unavailable here; the payment remains held."
+          ? "Review the evidence and confirm the vendor’s bank details through a trusted channel. A recorded hold does not release this payment."
           : "Confirm the vendor’s bank details through a trusted channel before releasing the payment.",
-      action: mode === "live" ? "Review evidence" : "Review this payment",
+      action: "Review this payment",
     };
   if (posted)
     return {
@@ -131,9 +131,9 @@ function presentation(record: DetailRecord, mode: "demo" | "live") {
       posted,
       next:
         mode === "live"
-          ? "Inspect the recorded review instruction and any later revision. Live approval actions are unavailable here."
+          ? "Inspect the recorded instruction and check the latest revision in the review inbox."
           : "Follow the review instruction, then check the revised proposal.",
-      action: mode === "live" ? "Review evidence" : "View review options",
+      action: "View review inbox",
     };
   if (status === "review" || record.outcome === "escalated")
     return {
@@ -146,9 +146,9 @@ function presentation(record: DetailRecord, mode: "demo" | "live") {
       posted,
       next:
         mode === "live"
-          ? "Inspect the evidence and recorded review. Live approval actions are unavailable in this workspace."
+          ? "Check the evidence and proposed entry, then approve or return it with an instruction from the review inbox."
           : "Check the evidence and proposed entry, then approve or return it for revision.",
-      action: mode === "live" ? "Review evidence" : "Review & decide",
+      action: "Review & decide",
     };
   return {
     label: "In progress",

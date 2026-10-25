@@ -67,7 +67,12 @@ async def run(backend: str, seed_path: Path, phase3=False):
                 print(f"Measured: {stats['retrievals']} retrievals; median {stats['medianLatencyMs']:.2f} ms; backend={stats['backend']}.", flush=True)
                 if phase3:
                     peer = {**memory,"id":"D-peer","meta":{**memory["meta"],"entity":entity+"-peer"}}
-                    (await client.post("/index",json=peer)).raise_for_status()
+                    event = {"collection":"events","id":"T-rehearsal","text":"The server refused the agent's post under rule 8.1; the audit trail records the denial.",
+                             "meta":{"entity":entity,"effectiveDate":"2026-09-30","sourceType":"trace","fixture":True}}
+                    (await client.post("/index/batch",json={"chunks":[peer,event]})).raise_for_status()
+                    event_hits=(await client.post("/query",json={"collection":"events","text":"agent post denied rule 8.1","asOf":"2026-09-30"})).json()
+                    assert event_hits[0]["id"] == "T-rehearsal" and event_hits[0]["text"] == event["text"]
+                    print("Audit summary retrieved verbatim from events; separate from decision precedent.",flush=True)
                     reset=await client.post("/reindex-all",json={"entity":entity,"chunks":chunks})
                     reset.raise_for_status()
                     assert (await client.post("/query",json=request)).json() == []

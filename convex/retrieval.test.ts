@@ -128,3 +128,11 @@ it("A6 CRS adapter forwards the opaque test ID, trace and normalized fail-closed
   expect(JSON.parse(mock.mock.calls[0][1].body)).toEqual({testIdentityId:"P12"});
   expect(mock.mock.calls[0][1].headers["X-Trace-Id"]).toBe("T-held-vendor");
 });
+
+it('A6 publishes audit trace summaries into events with entity/date metadata',async()=>{
+  const t=await seeded();
+  await t.run(async ctx=>{await ctx.db.insert('auditLog',{entity:sample.entity,period:'2026-09',traceId:'T-fixture',actor:'controls',action:'post_entry.denied',detail:'8.1 refused',at:1});});
+  const mock=sidecar({ok:true,id:'T-fixture'});
+  expect(await t.action(internal.retrieval.indexTrace,{entity:sample.entity,traceId:'T-fixture',effectiveDate:'2026-09-30'})).toBe(true);
+  expect(JSON.parse(mock.mock.calls[0][1].body)).toMatchObject({collection:'events',id:'T-fixture',meta:{entity:sample.entity,effectiveDate:'2026-09-30'}});
+});

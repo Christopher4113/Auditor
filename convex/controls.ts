@@ -1,7 +1,7 @@
 // Lane B: the controls engine. TypeScript rules, no model. B4 replaces the Phase 1 stub.
 // Signature is interface 2: keep it. Runs under the controls identity; posting happens in ledger.postEntry.
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { audit } from "./audit";
 import { vIdentity, vOutcome } from "./schema";
 import { evaluate, plImpact, type EvalCtx } from "./controls/rules";
@@ -236,5 +236,22 @@ export const onVendorBankChange = internalMutation({
     });
 
     return null;
+  },
+});
+
+/** B6 helper: load citations from the most recent decision on a proposal, for askAuditor. */
+export const decisionCitations = internalQuery({
+  args: { proposalId: v.id("proposals"), entity:v.optional(v.string()), asOf:v.optional(v.string()) },
+  returns: v.array(v.object({ sourceId: v.string(), text: v.string() })),
+  handler: async (ctx, { proposalId, entity, asOf }) => {
+    const proposal=await ctx.db.get(proposalId);
+    if(!proposal || (entity && proposal.entity!==entity) || (asOf && proposal.period>asOf.slice(0,7)))return [];
+    const decision = await ctx.db
+      .query("decisions")
+      .withIndex("by_proposal", (q) => q.eq("proposalId", proposalId))
+      .order("desc")
+      .first();
+    if (!decision) return [];
+    return decision.citations.map((c) => ({ sourceId: c.sourceId, text: c.text }));
   },
 });

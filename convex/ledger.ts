@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { internalMutation, type QueryCtx } from "./_generated/server";
 import { audit, traceFor } from "./audit";
 import { vIdentity } from "./schema";
+import { checkPostPermission } from "./controls/postGuard";
 
 export const postEntry = internalMutation({
   args: { caller: vIdentity, proposalId: v.id("proposals"), decisionId: v.id("decisions") },
@@ -23,7 +24,8 @@ export const postEntry = internalMutation({
       return { ok: false as const, reason };
     };
 
-    if (caller === "agent" || caller === proposal.proposedBy) return deny(`8.1: ${caller} proposed this entry and may not post it`);
+    const perm = checkPostPermission(caller, proposal.proposedBy as string);
+    if (!perm.allowed) return deny(perm.reason);
     if (decision.reviewer === caller && decision.outcome !== "posted" && decision.outcome !== "approved")
       return deny(`decision ${decision.decisionId} outcome is ${decision.outcome}`);
 

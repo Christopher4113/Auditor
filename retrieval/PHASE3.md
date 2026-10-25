@@ -100,6 +100,8 @@ PERIOD=2026-09 pnpm scoring:report
 
 The report command is read-only and uses the Convex CLI's selected deployment. Group D can subscribe to `useQuery(api.scoring.report, {entity, period})`; omit `period` for the whole entity. `api.scoreboard` retains its counts and adds `precision`, `recall`, `accuracy`, recomputed from current records. Internal `scoring:refresh` saves a per-case result snapshot; live queries never trust stale cached scores. Oversized scans fail explicitly.
 
+The latest team branch is merged into Deep. Its `retrieval.indexTrace` summaries are supported in a fifth collection, `events`, without creating approval precedent. Ask Auditor now uses the array response, shared auth and entity/date scope; it accepts optional `asOf`, defaults to the supplied proposal's month end, or conservatively July 31 without context. The UI owner still needs to wire its live question callback and pass the selected period when no proposal is selected. The combined dependency install pins test-only `@asamuzakjp/css-color` to the registry-verified 7.1.7 patch so it passes the existing release-age policy; no policy was disabled.
+
 | Measure | Definition |
 |---|---|
 | caught | A break links to the actual bank transaction, or raw evidence IDs for a non-bank case. Planted flags/case IDs are not detection evidence. |
@@ -154,7 +156,7 @@ B/C owns event investigation, real approvals, callback/hold decisions and demo s
 
 ## Checked locally · October 24, 2026
 
-- **234 passing tests:** 33 data, 38 retrieval/CRS, 163 TypeScript/UI. Convex type check and frontend production build passed. OpenAPI matches the FastAPI application; changed files pass whitespace and credential checks.
+- **338 passing tests after merging the team branch:** 33 data, 39 retrieval/CRS, 266 TypeScript/UI. Convex type check, frontend production build and frozen dependency install passed. OpenAPI matches the FastAPI application; changed files pass whitespace and credential checks.
 - Real Moss Phase 3 rehearsal passed: four successful initial retrievals, median **4.24 ms** in that run; verbatim sources, runtime fixture indexing, historical scope, stale-memory removal and other-entity preservation checked. This is a small rehearsal measurement, not a production latency benchmark. Idempotent cloud writes use bounded retries; exhausted failures still return 503, and pending resets remain unavailable until recovery.
 - Live CRS: P01 clean; P12/P13 identity mismatches; P14 deceased flag; P16 basic match with mandatory step-up flag. All returned available results using the account-default route. P01 four-product report was clear (fraud score 11); P12 report carried mismatch flags and fraud score **85**. No role/config blocker remains for these tested products.
 - The scorer oracle passed 11/11; the untouched dataset scored 0/11. Both are explicitly synthetic self-checks, not agent accuracy. The real four-scene integrated demo and actual controller approvals were not run in this lane.

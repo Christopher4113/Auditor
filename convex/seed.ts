@@ -70,6 +70,7 @@ const ENTITY_INDEX: Record<TableNames, string> = {
   policyPacks: "by_entity",
   fxRates: "by_entity_period",
   corrections: "by_entity_period",
+  seedFiles: "by_entity",
 };
 
 // ponytail: rule 8.0 threshold is not in the seed contract yet; the brief says $5,000. A adds it to policyPack metadata if it ever varies.
@@ -219,6 +220,7 @@ export const load = internalMutation({
       });
       journalEntries++;
     }
+    await ctx.db.insert("seedFiles", { entity, dataset: s.dataset, json: JSON.stringify(s), savedAt: Date.now() });
     await audit(ctx, { entity, actor: "seed", action: "seed.load", detail: `${s.dataset} seed ${s.seed} schema ${s.schemaVersion}` });
     await ctx.scheduler.runAfter(0, internal.retrieval.resetEntity, { entity }); // A6: remove stale runtime memory after entity reseed
     return { entity, bankTransactions: s.bankTransactions.length, journalEntries };

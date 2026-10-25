@@ -65,7 +65,7 @@ class MossBackend:
         documents = []
         for item in raw:
             metadata = item.metadata or {}
-            if "auditorMeta" in metadata and metadata.get("collection") in {"policy", "contracts", "decisions", "corrections"}:
+            if "auditorMeta" in metadata and metadata.get("collection") in {"policy", "contracts", "decisions", "corrections", "events"}:
                 documents.append(Document(metadata["collection"], metadata["sourceId"], item.text, json.loads(metadata["auditorMeta"])))
         await self.client.load_index(self.index_name, auto_refresh=True, polling_interval_in_seconds=60)
         self.loaded = True

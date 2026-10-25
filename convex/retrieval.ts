@@ -187,3 +187,18 @@ export const resetEntity = internalAction({
     return { ok };
   },
 });
+
+// ── Audit trail in natural language (Phase 3 add-on): one summary per unit of work, searchable through Moss. ──
+
+export const indexTrace = internalAction({
+  args: { entity: v.string(), traceId: v.string(), effectiveDate: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { entity, traceId, effectiveDate }): Promise<boolean> => {
+    const text = await ctx.runQuery(internal.trace.summary, { entity, traceId });
+    if (!text) return false;
+    // A6 stores audit summaries separately from reviewed decision precedent.
+    const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "events", id: traceId, text, meta: { entity, effectiveDate, sourceType: "trace" }, traceId });
+    await ctx.runMutation(internal.audit.write, { entity, actor: "workflow", action: ok ? "index_trace" : "index_trace.skipped", traceId });
+    return ok;
+  },
+});

@@ -220,5 +220,14 @@ class SnapshotTests(unittest.IsolatedAsyncioTestCase):
         enriched=await self.client.post('/verify',json={'testIdentityId':'P01','includeReport':True})
         self.assertEqual(enriched.json()['report']['fraudFinder']['score'],11)
 
+    async def test_audit_events_are_searchable_without_becoming_decision_precedent(self):
+        chunk=self.chunk(id='T-fixture',collection='events')
+        chunk['text']='Post refused by server rule 8.1; the agent cannot approve its own entry.'
+        self.assertEqual((await self.client.post('/index',json=chunk)).status_code,200)
+        hits=await self.client.post('/query',json={'collection':'events','text':'post refused'})
+        self.assertEqual(hits.json()[0]['id'],'T-fixture')
+        self.assertEqual((await self.client.post('/query',json={'collection':'decisions','text':'post refused'})).json(),[])
+        self.assertEqual((await self.client.get('/stats')).json()['collections']['events'],1)
+
 
 if __name__ == "__main__": unittest.main()

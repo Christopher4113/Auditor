@@ -83,7 +83,7 @@ Counterparty-only contract queries first select matching canonical contract titl
 | `GET /health` | Readiness and active backend; no financial text or credentials. |
 | `POST /verify` | `{testIdentityId}` → `{identityMatch,fraudFlags,available}` through the CRS sandbox. Unknown IDs/config/errors fail closed; this endpoint never releases holds. |
 
-Collections: `policy`, `contracts`, `decisions`, `corrections`. `k` is a JSON integer from 1–50 (default 3; agent tools cap it at 5). Blank text, malformed dates and invalid `k` return HTTP 422.
+Collections: `policy`, `contracts`, `decisions`, `corrections`, `events`. Audit summaries in `events` are separate from decision precedent. `k` is a JSON integer from 1–50 (default 3; agent tools cap it at 5). Blank text, malformed dates and invalid `k` return HTTP 422.
 
 **Scope:** pass `entity` and `asOf` for every close. Compatible requests that omit them use `eo-festival-nyc` and the conservative **July 31, 2026** default. Thus an older client never silently sees August/September knowledge during July. The Convex adapter now supplies its actual entity and month-end date. Filters are applied before ranking and checked again before returning source text. The August 10 Brightwater amendment is unavailable in July.
 
@@ -120,6 +120,10 @@ uv run python -m unittest discover -s tests -v
 ```
 
 The tests use isolated local catalogs and mock the SDK boundary; no credentials are needed. The real Moss runs are recorded separately in [PHASE2_AUDIT.md](PHASE2_AUDIT.md). Regenerate the agreed specification with `uv run python export_openapi.py`.
+
+## Vultr deployment
+
+The shared synthetic demo is hosted on Vultr. See [the verified deployment handoff](VULTR.md) for the server, health checks, update commands, and current close-review limitations.
 
 ## Railway package / team connection
 

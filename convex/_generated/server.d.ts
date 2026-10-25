@@ -32,6 +32,7 @@ type Env = {
   readonly CONVEX_SITE_URL: string;
   readonly RETRIEVAL_API_KEY: string | undefined;
   readonly RETRIEVAL_URL: string | undefined;
+  readonly ANTHROPIC_MODEL: string | undefined;
 };
 
 /**

@@ -221,6 +221,7 @@ components:
           - contracts
           - decisions
           - corrections
+          - events
           title: Collection
         id:
           type: string
@@ -279,6 +280,7 @@ components:
           - contracts
           - decisions
           - corrections
+          - events
           title: Collection
         text:
           type: string
@@ -339,6 +341,7 @@ components:
           - contracts
           - decisions
           - corrections
+          - events
           title: Collection
         id:
           type: string

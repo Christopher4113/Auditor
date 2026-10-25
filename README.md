@@ -141,6 +141,13 @@ npx convex run api:trace '{"entity":"eo-festival-nyc","proposalId":"P-sample-ban
 
 The Convex dashboard adds function logs, table data, schedules and the Workflow component's step status; the audit log is the durable, product-facing record.
 
+**Judges' scenarios and the forbidden call (Phase 3, C5/C6).** The Inject drawer calls `inject.injectBankTransaction`, `inject.amendContract` (indexed into Moss, the period's close re-runs) and `inject.changeVendorBank` (rule 4.3: hold, verify_payee via CRS, escalate; the controller answers with `inject.decideVendorHold`). `inject.resetAll` wipes and reseeds from the last loaded seed. The Permissions drawer reads `api.listRules` (every rule with kind, fired and failed counts, the three tool lists, denials) and its "make the agent post" button calls `api.attemptAgentPost`, which is refused server-side with the 8.1 reason and logged. `api.traceSummary` tells one unit of work in plain English from the audit rows; `api.indexTraces` pushes those summaries to Moss so Ask Auditor can search the log (supported by the sidecar's separate `events` collection).
+
+```bash
+npx convex run inject:changeVendorBank '{"entity":"eo-festival-nyc","vendorId":"field-flame","newLast4":"8832","source":"email"}'
+npx convex run api:attemptAgentPost '{"entity":"eo-festival-nyc","proposalId":"P-sample-bank-10-r1"}'
+```
+
 **Reading the backend directly.** `api:listProposals`, `api:scoreboard`, `api:closeStatus --watch`, `api:auditTrail`; the dashboard (https://dashboard.convex.dev/d/wary-labrador-928) shows every table and the Workflow component's step log.
 
 **How the lanes connect.** A's `seed.json` → `convex/seed.ts` (interface 5). The Workflow in `convex/close.ts` runs fetch → reconcile → propose → review → post; `convex/agent.ts` and `convex/controls.ts` are B's entry points and use B2's `agent/fake.ts` canned Apex proposal (interface 2). `convex/api.ts` is what the UI subscribes to; `web/src/data/live.ts` maps rows into D's `Proposal` view model (interface 3). `ledger.postEntry` is the only writer of `journalEntries` and refuses the proposer's identity. Every step writes `auditLog` under its seat.

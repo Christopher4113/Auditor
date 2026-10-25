@@ -133,7 +133,7 @@ class RetrievalService:
         documents = self.catalog.all()
         return {"backend": self.backend.name, "ready": self.ready, "documents": len(documents),
             "collections": {name: sum(d.collection == name for d in documents)
-                            for name in ("policy", "contracts", "decisions", "corrections")},
+                            for name in ("policy", "contracts", "decisions", "corrections", "events")},
             "retrievals": self.retrievals, "medianLatencyMs": median(self.latencies) if self.latencies else 0,
             "tokensUsed": self.tokens_used, "tokensFullContext": self.tokens_full,
             "tokenCounting": "estimate_chars_div_4", "counterScope": "process_since_start_or_explicit_reset",
