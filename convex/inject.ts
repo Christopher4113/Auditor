@@ -90,9 +90,13 @@ export const amendContract = mutation({
 
 /** A vendor's bank details change (seeded email or judge's injection). Rule 4.3 fires the same day. */
 export const changeVendorBank = mutation({
-  args: { entity: v.string(), vendorId: v.optional(v.string()), vendorName: v.optional(v.string()), newLast4: v.string(), source: v.optional(v.string()) },
+  args: {
+    entity: v.string(), vendorId: v.optional(v.string()), vendorName: v.optional(v.string()), newLast4: v.string(), source: v.optional(v.string()),
+    paymentAmount: v.optional(v.number()), // cents; the payment that is now due to this vendor. Injected as a bank line so the hold has something to hold.
+    date: v.optional(v.string()), // YYYY-MM-DD for that payment; defaults to today
+  },
   returns: v.object({ traceId: v.string() }),
-  handler: async (ctx, { entity, vendorId: givenId, vendorName, newLast4, source }) => {
+  handler: async (ctx, { entity, vendorId: givenId, vendorName, newLast4, source, paymentAmount, date }) => {
     if (!/^\d{4}$/.test(newLast4)) throw new Error("newLast4 must be four digits");
     const vendor = givenId
       ? await ctx.db.query("vendors").withIndex("by_entity_vendorId", (q) => q.eq("entity", entity).eq("vendorId", givenId)).unique()
@@ -105,6 +109,16 @@ export const changeVendorBank = mutation({
     await audit(ctx, { entity, actor: "inject", action: "vendor.bank_change", traceId, detail: `${vendor.name}: ${bankChange.previousLast4} -> ${newLast4} via ${bankChange.source}` });
     await audit(ctx, { entity, actor: "controls", action: "rule.bank_detail_change", traceId, detail: `4.3: payments to ${vendor.name} held until callback verification is logged` });
     await ctx.scheduler.runAfter(0, internal.inject.verifyVendor, { entity, vendorId, traceId });
+    // Generated books carry no payment row for this case (the answer key's B5 has no txnId), so the drawer's
+    // "payment affected" becomes one: the agent sees the held vendor, parks it in 1400, rule 4.3 escalates it.
+    if (paymentAmount && Math.round(Math.abs(paymentAmount)) > 0) {
+      const d = date ?? new Date().toISOString().slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error("date must be YYYY-MM-DD");
+      await ctx.runMutation(internal.close.ingestBankTransaction, {
+        entity, period: d.slice(0, 7), txnId: `INJ-${stamp()}`, date: d, amount: -Math.round(Math.abs(paymentAmount)),
+        counterparty: vendor.name, memo: `Payment due; bank details changed to ...${newLast4} via ${bankChange.source}`, vendorId, source: "bank", actor: "inject",
+      });
+    }
     return { traceId };
   },
 });

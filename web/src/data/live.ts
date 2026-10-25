@@ -258,7 +258,7 @@ type InjectResult = { traceId: string };
 const phase3 = {
   bank: makeFunctionReference<"mutation", { entity: string; date: string; amount: number; counterparty: string; memo: string }, InjectResult & { txnId: string }>("inject:injectBankTransaction"),
   amend: makeFunctionReference<"mutation", { entity: string; counterparty: string; text: string; effectiveDate: string }, InjectResult & { clauseId: string }>("inject:amendContract"),
-  bankChange: makeFunctionReference<"mutation", { entity: string; vendorName: string; newLast4: string; source: string }, InjectResult>("inject:changeVendorBank"),
+  bankChange: makeFunctionReference<"mutation", { entity: string; vendorName: string; newLast4: string; source: string; paymentAmount?: number; date?: string }, InjectResult>("inject:changeVendorBank"),
   attemptAgentPost: makeFunctionReference<"mutation", { entity: string; proposalId: string }, { ok: boolean; reason: string }>("api:attemptAgentPost"),
   ask: makeFunctionReference<"action", { entity: string; question: string; asOf?: string; proposalCode?: string }, { answer: string; citations: { sourceId: string; text: string }[]; sourcesAvailable: boolean }>("ask:askAuditor"),
 };
@@ -278,7 +278,7 @@ export async function injectScenario(kind: string, vendor: string, amountDollars
   if (kind === "vendor_bank_change") {
     const first = note.match(/\b\d{4}\b/); // "...a new account ending 8832 instead of 4471": the first 4-digit group is the new one
     const newLast4 = first ? first[0] : "8832";
-    const r = await h.mutation(phase3.bankChange, { entity: ENTITY, vendorName: vendor, newLast4, source: "inject" });
+    const r = await h.mutation(phase3.bankChange, { entity: ENTITY, vendorName: vendor, newLast4, source: "inject", paymentAmount: amountDollars > 0 ? Math.round(Math.abs(amountDollars) * 100) : undefined, date });
     return r.traceId;
   }
   const r = await h.mutation(phase3.bank, { entity: ENTITY, date, amount: -Math.round(Math.abs(amountDollars) * 100), counterparty: vendor, memo: note });
