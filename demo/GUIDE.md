@@ -21,8 +21,8 @@ About a minute. Puts prod back to: July and August signed, September open and un
 | 2 | **View close summary** → **Prepare close** | Status flips to running. Over 2–4 minutes proposals appear in the rail with no refresh. Open the site on a phone too: same rows appear there |
 | 3 | Click **Apex Staging** ($13,600, Sept 25) | Posted by controls at revision 1. Entry books the $2,400 shortfall as inspection fee expense. Three citations: Apex clause 9.4, policy 5.1, policy 2.0. "First read discarded" line present |
 | 4 | Click a **Stripe** payout | Posted by controls at revision 1 with no human touch (the learning loop). Two citations: policy 6.1 and the July decision D-P-bank-stripe-20260710-r1-h, whose text reads "approved by human". Some payouts also cite the Stripe fee schedule, a real public source with a URL |
-| 5 | **Review inbox** | Escalated items wait here: Brightwater sponsorship settlement ($40,000, contract amendment) and Ironclad setup invoice ($9,400, accrual reversal). Open one: rule checks listed, evidence on the right |
-| 6 | **Approve** one, **Return for revision** the other with an instruction | Approved: "Approved and posted", entry appears under the human identity. Returned: a revision arrives in the rail within a minute citing your instruction |
+| 5 | ⋯ → **Add a test scenario** → **Bank transaction**, counterparty `Ridgeway Event Freight`, amount `12000`, context "Overtime surcharge not on the purchase order" | The close re-runs. In about 2 minutes the item appears under **Needs attention**: escalated because $12,000 is over the $5,000 threshold, with three policy citations. (The seed's other September items, Brightwater and Ironclad, are matched by the code matcher and never reach the agent, so the inbox is empty until you inject something) |
+| 6 | **Review inbox** → open it → **Approve**, or **Return for revision** with an instruction | Approved: "Approved and posted", entry appears under the human identity. Returned: a revision arrives in the rail within a minute citing your instruction |
 | 7 | ⋯ → **Add a test scenario** → **Bank detail change**, vendor `Field & Flame`, note "new account ending 8832" | A held item appears: payment parked in 1400, CRS verification result with the TransUnion report summary. Only **Keep hold with instruction** is offered |
 | 8 | ⋯ → **How approvals work** → **Make the agent post** | Refused. Denial count goes up; the audit trail shows post_entry.denied with the 8.1 reason |
 | 9 | **Ask Auditor** (top right): "Why is the Field & Flame payment on hold?" | Answer in plain English citing the trace id and policy 4.3 |
@@ -44,9 +44,9 @@ Reset first. Open September. Say one line: "One AI staff accountant, a controls 
 
 **Scene 4, ask the audit trail (30 s).** Ask Auditor: "Why is the Field & Flame payment on hold?" Read the answer. "Every unit of work carries a trace id from the bank line to the human decision, and the trail is searchable in plain language."
 
-**Close (20 s).** Review inbox: "Two items waiting for me, with the evidence. Stripe was escalated the first time in July; I approved it once and it has posted on its own since. That is the learning loop." Optional: Sign period.
+**Close (20 s).** Review inbox: "The freight surcharge a judge injected is waiting for me, with the evidence. Stripe was escalated the first time in July; I approved it once and it has posted on its own since. That is the learning loop." Optional: Sign period.
 
-Judges may inject their own scenarios from Add a test scenario: a bank transaction, a contract amendment, or a bank detail change. Every injection re-runs the close for the period.
+Judges may inject their own scenarios from Add a test scenario: a bank transaction, a contract amendment, or a bank detail change. Every injection re-runs the close for the period, which takes about 2 minutes. Anything over $5,000 or with a control exception lands in the Review inbox; small routine items post on their own.
 
 ## 3. What not to do
 
