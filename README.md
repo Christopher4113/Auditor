@@ -4,6 +4,14 @@ Auditor runs the cash accounting close for one entity of an event-management gro
 
 The demo entity is modelled on Coachella (Goldenvoice / AEG; public shape in `datagen/public/coachella.json`) with fiscal periods July–September 2026. Every financial number is fictitious. Live demo: https://auditor-nine-ecru.vercel.app
 
+## How we use Convex
+
+Convex is the whole backend: the books are tables, the monthly close is a durable Workflow, the Claude agent runs as a Convex action with typed tools, the controls engine is a mutation, and the one function that may write a journal entry refuses the agent's identity.
+Every screen is a live `useQuery` subscription, so the proposal rail, inbox and close summary update on every open browser without a refresh.
+A webhook HTTP action, a cron and scheduled functions start closes from data, not buttons.
+Components: `@convex-dev/workflow` and `@convex-dev/agent`.
+Details, file pointers and the commit log are in [hackathon.md](hackathon.md).
+
 ## The three seats
 
 | Seat | Who | Does | Cannot |
