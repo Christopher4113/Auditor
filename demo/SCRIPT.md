@@ -6,6 +6,32 @@ Lines in **bold** are what you say. Lines in *italics* are what you do. Say the 
 
 ---
 
+## Three minute cut (judging slots)
+
+Reset first. Site open on September, dark theme, phone also open on the site.
+
+**0:00** *Click View close summary, Prepare close. Close the drawer.* **"Every company closes its books monthly. Most bank lines match themselves. The few that do not are where mistakes and fraud hide. Auditor: one Claude agent proposes, a rulebook in plain code checks, a human decides. The agent cannot post. The server refuses it."**
+
+**0:20** *⋯, Add a test scenario, Vendor bank change, Field & Flame, 42000, "new account ending 8832", Add scenario.* **"While the close runs, a vendor just emailed new bank details, five days before a 42,000 dollar payment. We will come back to it."**
+
+**0:40** *Hold up the phone as the first rows land.* **"Same rows on every screen, no refresh. Convex. 123 lines, the code matcher cleared the routine ones with no model call."**
+
+**0:55** *Click Apex Staging. Expand Citations.* **"A 16,000 dollar deposit came back 13,600. The agent found clause 9.4, a 15 percent inspection fee, policy 5.1 on when fees are expensed, and booked 2,400 as expense. Three quotes, verified word for word through Moss. Under threshold, so the rules posted it. Nobody touched it."**
+
+**1:30** *Click the Stripe row, point at the second citation.* **"Stripe payout. In July the agent asked, I approved once, and now it cites that approval and posts on its own. Asked once."**
+
+**1:45** *Click Field & Flame, now On hold.* **"Back to the vendor. The engine held the payment, checked the payee against TransUnion through CRS, identity mismatch, four fraud flags. Parked in payments under review. Only a human can release it."** *Type "call the vendor first" and Keep hold with instruction.*
+
+**2:15** *⋯, How approvals work, Advanced, Make the agent post.* **"The agent trying to post directly. Refused on the server, logged with the policy reference. Not a prompt."**
+
+**2:30** *Ask Auditor, type "Why is the Field & Flame payment on hold?", send.* **"Every step carries one trace id, and the trail is searchable in plain English."** *Read the first sentence of the answer.*
+
+**2:50** **"Routine items post themselves with citations. Exceptions come to me with evidence. The agent gets faster each month because I teach it once. The books are fictitious. The system is live."**
+
+If the close is slow, swap the order: do the forbidden call at 0:40 and come back to Apex when it lands.
+
+---
+
 ## 0. Setup line (15 s)
 
 *Overview screen, nothing started.*
