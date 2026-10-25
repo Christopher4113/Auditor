@@ -23,6 +23,8 @@ import {
   X,
 } from "lucide-react";
 import WorkspaceDrawer from "./components/WorkspaceDrawer";
+import SponsorRibbon from "./components/SponsorRibbon";
+import ThemeToggle from "./components/ThemeToggle";
 import type { DrawerType } from "./components/WorkspaceDrawer";
 import { initialProposals, periods } from "./data/demo";
 import {
@@ -710,6 +712,7 @@ export default function App() {
             <span className={`demo-tag ${live ? "live-mode-tag" : ""}`}>
               {live ? "Live data" : "Demo"}
             </span>
+            <ThemeToggle />
             <button className="ask-header" onClick={() => openDrawer("ask")}>
               <Sparkles size={15} />
               Ask Auditor
@@ -1266,6 +1269,7 @@ export default function App() {
             </button>
           </aside>
         </div>
+        <SponsorRibbon />
         <footer className="workspace-footer">
           <a
             href="#"
@@ -1368,20 +1372,34 @@ export default function App() {
                 ? liveSnapshot.controlResults
                 : undefined
             }
-            canDeny={live ? periodProposals.some((p) => p.status === "posted") : undefined}
-            onAsk={live ? (question) => askAuditor(question, period, selected?.id) : undefined}
+            canDeny={
+              live
+                ? periodProposals.some((p) => p.status === "posted")
+                : undefined
+            }
+            onAsk={
+              live
+                ? (question) => askAuditor(question, period, selected?.id)
+                : undefined
+            }
             onDeny={() => {
               if (live) {
                 const target =
                   (selected?.status === "posted" ? selected : undefined) ??
                   periodProposals.find((p) => p.status === "posted");
                 if (!target) {
-                  notify("No posted entry in this period to test against.", "error");
+                  notify(
+                    "No posted entry in this period to test against.",
+                    "error",
+                  );
                   return;
                 }
                 return controllerAction(async () => {
                   const r = await attemptAgentPost(target.id);
-                  if (r.ok) throw new Error("The agent was allowed to post. That is a bug.");
+                  if (r.ok)
+                    throw new Error(
+                      "The agent was allowed to post. That is a bug.",
+                    );
                   setDenialCount((count) => count + 1);
                   return r;
                 }, "Refused: 8.1, the agent proposed this entry and may not post it. The denial is in the audit log.");

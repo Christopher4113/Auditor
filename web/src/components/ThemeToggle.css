@@ -1,0 +1,65 @@
+.theme-toggle {
+  align-items: center;
+  background: var(--surface-subtle, #f3f1f7);
+  border: 1px solid var(--border, #e9e7ef);
+  border-radius: 999px;
+  color: var(--text-muted, #797585);
+  display: grid;
+  flex: 0 0 80px;
+  grid-template-columns: 34px 34px;
+  gap: 2px;
+  height: 44px;
+  isolation: isolate;
+  padding: 4px;
+  position: relative;
+  width: 80px;
+}
+.theme-toggle::before {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e9e7ef);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px #17132f0d;
+  content: "";
+  height: 34px;
+  left: 4px;
+  position: absolute;
+  top: 4px;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 180ms ease;
+  width: 34px;
+  z-index: -1;
+}
+.theme-toggle[data-active="dark"]::before {
+  transform: translateX(36px);
+}
+.theme-toggle-option {
+  align-items: center;
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  transition:
+    color 180ms ease,
+    transform 240ms ease;
+  width: 34px;
+}
+.theme-toggle[data-active="light"] .theme-toggle-option:first-child,
+.theme-toggle[data-active="dark"] .theme-toggle-option:last-child {
+  color: var(--accent-text, #7050ff);
+}
+.theme-toggle:hover {
+  border-color: var(--accent-border, #cdbfff);
+}
+.theme-toggle:hover .theme-toggle-option {
+  transform: rotate(-8deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle,
+  .theme-toggle::before,
+  .theme-toggle-option {
+    transition: none;
+  }
+  .theme-toggle:hover .theme-toggle-option {
+    transform: none;
+  }
+}

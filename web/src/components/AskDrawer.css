@@ -1,12 +1,12 @@
 .ask-drawer {
-  color: var(--text, #171331);
+  color: var(--text);
   display: grid;
   gap: 22px;
 }
 
 .ask-intro-meta {
   align-items: center;
-  color: #817e91;
+  color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
   font-size: 11px;
@@ -15,19 +15,19 @@
 }
 
 .ask-mode {
-  background: #f2efff;
-  border: 1px solid #e8e1ff;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 20px;
-  color: #694ae7;
+  color: var(--accent-text);
   font-size: 10px;
   font-weight: 650;
   padding: 4px 9px;
 }
 
 .ask-mode-live {
-  background: #f5f4fa;
-  border-color: #e6e4ed;
-  color: #5a526f;
+  background: var(--surface-subtle);
+  border-color: var(--border);
+  color: var(--text-secondary);
 }
 
 .ask-intro h2 {
@@ -40,7 +40,7 @@
 
 .ask-intro p,
 .ask-unavailable p {
-  color: #777386;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.65;
   margin: 0;
@@ -48,8 +48,8 @@
 
 .ask-unavailable {
   align-items: flex-start;
-  background: #f7f5ff;
-  border: 1px solid #e9e2ff;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   display: flex;
   gap: 10px;
@@ -57,14 +57,14 @@
 }
 
 .ask-unavailable svg {
-  color: #7353ea;
+  color: var(--accent-text);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .ask-demo-note,
 .ask-feedback {
-  color: #878293;
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.6;
   margin: -6px 0 0;
@@ -76,7 +76,7 @@
 }
 
 .ask-suggestions > span {
-  color: #9690a3;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 1px;
@@ -86,10 +86,10 @@
 
 .ask-suggestions button {
   align-items: center;
-  background: #fff;
-  border: 1px solid #ece9f1;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  color: #494357;
+  color: var(--text-secondary);
   display: flex;
   font: inherit;
   font-size: 12px;
@@ -104,12 +104,12 @@
 }
 
 .ask-suggestions button:hover:not(:disabled) {
-  background: #faf8ff;
-  border-color: #d8cbff;
+  background: var(--surface-hover);
+  border-color: var(--border);
 }
 
 .ask-suggestions button svg {
-  color: #9787b9;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -124,27 +124,27 @@
 }
 
 .ask-message {
-  border: 1px solid #ebe7f1;
+  border: 1px solid var(--border);
   border-radius: 13px;
   min-width: 0;
   padding: 17px;
 }
 
 .ask-message-user {
-  background: #f7f5fc;
-  border-color: #f0ebf9;
+  background: var(--surface-subtle);
+  border-color: var(--border-subtle);
   margin-left: 25px;
 }
 
 .ask-message-author {
-  color: #8f859f;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.4px;
 }
 
 .ask-message > p {
-  color: #4e475f;
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.8;
   margin: 9px 0 0;
@@ -153,19 +153,19 @@
 }
 
 .ask-message > .ask-source-empty {
-  color: #938a9e;
+  color: var(--text-muted);
   font-size: 11px;
 }
 
 .ask-sources {
-  border-top: 1px solid #f0ecf4;
+  border-top: 1px solid var(--border-subtle);
   margin-top: 14px;
   padding-top: 12px;
 }
 
 .ask-sources summary {
   align-items: center;
-  color: #7d6d9e;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   font-size: 11px;
@@ -193,24 +193,24 @@
 }
 
 .ask-source {
-  background: #faf9fd;
-  border: 1px solid #eeeaf5;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
   border-radius: 9px;
   padding: 12px;
 }
 
 .ask-source > span {
-  color: #988ba8;
+  color: var(--text-muted);
   font-size: 10px;
 }
 
 .ask-source strong {
-  color: #715d92;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .ask-source blockquote {
-  color: #696174;
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.75;
   margin: 8px 0 0;
@@ -222,7 +222,7 @@
   align-items: center;
   background: transparent;
   border: 0;
-  color: #8168b4;
+  color: var(--text-muted);
   display: inline-flex;
   font: inherit;
   font-size: 11px;
@@ -233,7 +233,7 @@
 
 .ask-waiting {
   align-items: center;
-  color: #8f80aa;
+  color: var(--text-muted);
   display: flex;
   font-size: 12px;
   gap: 8px;
@@ -246,14 +246,14 @@
 }
 
 .ask-composer {
-  background: #fff;
-  border: 1px solid #e8e3ee;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 13px;
   padding: 15px;
 }
 
 .ask-composer > label {
-  color: #7c708b;
+  color: var(--text-muted);
   display: block;
   font-size: 11px;
   font-weight: 550;
@@ -261,10 +261,10 @@
 }
 
 .ask-composer textarea {
-  background: #fcfbfe;
-  border: 1px solid #ede8f3;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 9px;
-  color: #4d425f;
+  color: var(--text-secondary);
   display: block;
   font: inherit;
   font-size: 13px;
@@ -276,12 +276,12 @@
 }
 
 .ask-composer textarea::placeholder {
-  color: #b1a8bd;
+  color: var(--text-muted);
 }
 
 .ask-composer textarea:focus {
-  border-color: #a78af7;
-  outline: 3px solid #f0eaff;
+  border-color: var(--border-strong);
+  outline: 3px solid var(--accent-border);
 }
 
 .ask-composer-actions {
@@ -312,16 +312,16 @@
 }
 
 .ask-mic {
-  background: #faf9fd;
-  border-color: #ece7f4;
-  color: #80708f;
+  background: var(--surface-subtle);
+  border-color: var(--border);
+  color: var(--text-muted);
 }
 
 .ask-mic:hover:not(:disabled),
 .ask-mic-active {
-  background: #f0e9ff;
-  border-color: #d7c7ff;
-  color: #7650cf;
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
 }
 
 .ask-submit {
@@ -346,22 +346,22 @@
 
 .ask-drawer button:focus-visible,
 .ask-drawer summary:focus-visible {
-  outline: 3px solid #d7caff;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
 .ask-voice-status,
 .ask-error {
-  color: #a294ae;
+  color: var(--text-muted);
   font-size: 10px;
   line-height: 1.7;
   margin: 10px 0 0;
 }
 
 .ask-error {
-  background: #fff6f1;
+  background: var(--danger-bg);
   border-radius: 7px;
-  color: #9b6349;
+  color: var(--danger-text);
   padding: 9px 11px;
 }
 

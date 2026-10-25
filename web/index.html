@@ -1,10 +1,34 @@
 <!doctype html>
-<html lang="en" class="light">
+<html lang="en" class="light" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f7f9" />
+    <script>
+      (() => {
+        let theme;
+        try {
+          theme = localStorage.getItem("auditor-theme");
+        } catch {}
+        if (theme !== "light" && theme !== "dark") {
+          try {
+            theme = matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          } catch {
+            theme = "light";
+          }
+        }
+        const root = document.documentElement;
+        root.dataset.theme = theme;
+        root.classList.toggle("dark", theme === "dark");
+        root.classList.toggle("light", theme === "light");
+        root.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === "dark" ? "#100e18" : "#f7f7f9";
+      })();
+    </script>
     <meta
       name="description"
       content="A clearer close. An accounting workspace with cited evidence, deterministic controls, and you in charge."

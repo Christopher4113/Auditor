@@ -1,6 +1,8 @@
 # Auditor frontend
 
-A responsive React and TypeScript workspace with white and soft gray surfaces, navy text, violet accents, and reduced-motion support. The overview stays simple; evidence and accounting details expand inside a transaction.
+A responsive React and TypeScript workspace with white and soft gray surfaces, navy text, violet accents, a complete dark theme, and reduced-motion support. The overview stays simple; evidence and accounting details expand inside a transaction.
+
+The header's sun/moon toggle remembers your appearance choice across reloads. It follows the system preference until you choose a mode. The bottom “Tracks & technology” strip loops through Hyphenate, Convex, Moss, CRS Credit, Anthropic, Microsoft, Vultr, and context.dev. Hover or focus pauses it; the pause button keeps it still. Reduced-motion preferences show a static list instead.
 
 ## Run
 
