@@ -144,6 +144,20 @@ export default defineSchema({
     verification: v.optional(v.object({ at: v.number(), identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) })), // verify_payee result; report = CRS identity/criminal/fraud/public-records summary (A6)
   }).index("by_entity_vendorId", ["entity", "vendorId"]),
 
+  // Real public documents (fee schedules, ticket terms, tax guidance) fetched from the web with their URL and
+  // date, indexed into Moss alongside the policy pack so citations can resolve to a page a judge can open.
+  // They survive a reseed; the agent never fetches the web itself.
+  publicSources: defineTable({
+    ...entity,
+    sourceId: v.string(), // e.g. "pub-stripe-pricing-2026-10"
+    title: v.string(),
+    url: v.string(),
+    publisher: v.string(),
+    text: v.string(), // cleaned page text, capped at the sidecar's 20,000 characters
+    effectiveDate: v.string(),
+    fetchedAt: v.number(),
+  }).index("by_entity_sourceId", ["entity", "sourceId"]),
+
   // The last loaded seed, so resetAll can wipe and reseed from inside Convex (C5).
   seedFiles: defineTable({
     ...entity,
@@ -178,6 +192,7 @@ export default defineSchema({
     revision: v.number(), // 1-based; the revision cap escalates the third
     revisionOf: v.optional(v.id("proposals")),
     discardedFirstRead: v.optional(v.string()),
+    requestedApproval: v.optional(v.boolean()), // the agent asked the controller (request_approval); the engine escalates, not returns
     correctionsApplied: v.array(v.string()), // correction ids the agent addressed
     proposedBy: vActor,
     traceId: v.optional(v.string()),

@@ -190,3 +190,29 @@ export const resetAll = mutation({
     return { dataset: file.dataset, bankTransactions: r.bankTransactions };
   },
 });
+
+/** Add a real public document as a citable source (Hyphenate add-on). Fetch it outside Convex (context.dev
+ *  Scrape), pass the cleaned text here; it is stored with its URL and date and indexed into Moss "policy". */
+export const addPublicSource = mutation({
+  args: { entity: v.string(), sourceId: v.string(), title: v.string(), url: v.string(), publisher: v.string(), text: v.string(), effectiveDate: v.string() },
+  returns: v.object({ sourceId: v.string(), chars: v.number() }),
+  handler: async (ctx, a) => {
+    if (!/^pub-[a-z0-9-]+$/.test(a.sourceId)) throw new Error("sourceId must look like pub-<slug>");
+    if (!/^https?:\/\//.test(a.url)) throw new Error("url must be http(s)");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(a.effectiveDate)) throw new Error("effectiveDate must be YYYY-MM-DD");
+    const text = a.text.replace(/\s+\n/g, "\n").trim().slice(0, 20000);
+    if (text.length < 200) throw new Error("text too short to be a source");
+    const existing = await ctx.db.query("publicSources").withIndex("by_entity_sourceId", (q) => q.eq("entity", a.entity).eq("sourceId", a.sourceId)).unique();
+    const row = { entity: a.entity, sourceId: a.sourceId, title: a.title, url: a.url, publisher: a.publisher, text, effectiveDate: a.effectiveDate, fetchedAt: Date.now() };
+    if (existing) await ctx.db.replace("publicSources", existing._id, row);
+    else await ctx.db.insert("publicSources", row);
+    await audit(ctx, { entity: a.entity, actor: "human", action: "public_source.add", detail: `${a.sourceId} ${a.url} (${text.length} chars)` });
+    await ctx.scheduler.runAfter(0, internal.retrieval.index, {
+      collection: "policy",
+      id: a.sourceId,
+      text,
+      meta: { entity: a.entity, effectiveDate: a.effectiveDate, sourceType: "public", title: a.title, url: a.url, publisher: a.publisher },
+    });
+    return { sourceId: a.sourceId, chars: text.length };
+  },
+});

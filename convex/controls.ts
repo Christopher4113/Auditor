@@ -105,6 +105,10 @@ export const review = internalMutation({
     for (const c of allCorrections) {
       sources.set(c.correctionId, c.instruction);
     }
+    // Real public documents (fee schedules, terms), keyed by their pub- id
+    for (const ps of await ctx.db.query("publicSources").withIndex("by_entity_sourceId", (q) => q.eq("entity", p.entity)).take(50)) {
+      sources.set(ps.sourceId, ps.text);
+    }
 
     const evalCtx: EvalCtx = {
       now: started,
@@ -141,6 +145,13 @@ export const review = internalMutation({
       const remaining = openCorrectionIds.filter((id) => !addressed.some((c) => c.correctionId === id));
       ({ rulesRun, outcome, reason } = evaluate(proposalView, { ...evalCtx, openCorrectionIds: remaining }));
       for (const c of addressed) await ctx.db.patch("corrections", c._id, { appliedBy: [...c.appliedBy, p.proposalId] });
+    }
+
+    // The agent asked the controller a question (request_approval): that is an escalation by design (8.0,
+    // "any control exception needs the controller"), not a return-and-revise loop. Rules still run and are logged.
+    if (p.requestedApproval && outcome !== "escalated") {
+      outcome = "escalated";
+      reason = `Agent requested the controller's decision: ${p.reason.replace(/^Controller decision requested: /, "")}`;
     }
 
     // Audit every rule result.

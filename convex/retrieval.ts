@@ -151,7 +151,9 @@ export const loadClauses = internalQuery({
   handler: async (ctx, { entity }) => {
     const pack = await ctx.db.query("policyPacks").withIndex("by_entity", (q) => q.eq("entity", entity)).unique();
     const contracts = await ctx.db.query("contracts").withIndex("by_entity_contractId", (q) => q.eq("entity", entity)).take(100);
+    const publicSources = await ctx.db.query("publicSources").withIndex("by_entity_sourceId", (q) => q.eq("entity", entity)).take(50);
     return [
+      ...publicSources.map((ps) => ({ collection: "policy", id: ps.sourceId, text: ps.text, meta: { entity, effectiveDate: ps.effectiveDate, sourceType: "public", title: ps.title, url: ps.url, publisher: ps.publisher } })),
       ...(pack?.clauses ?? []).filter((c) => !!c.effectiveDate).map((c) => ({ collection: "policy", id: c.id, text: c.text,
         meta: { entity, effectiveDate: c.effectiveDate!, sourceType: "policy", title: `Policy ${c.number ?? ""}`, number: c.number ?? "" } })),
       ...contracts.flatMap((k) => k.clauses.filter((c) => !!c.effectiveDate).map((c) => ({ collection: "contracts", id: c.id, text: c.text,

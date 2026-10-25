@@ -71,7 +71,9 @@ const ENTITY_INDEX: Record<TableNames, string> = {
   fxRates: "by_entity_period",
   corrections: "by_entity_period",
   seedFiles: "by_entity",
+  publicSources: "by_entity_sourceId",
 };
+const KEEP_ON_RESEED = new Set<TableNames>(["publicSources"]); // entity configuration, not books
 
 // ponytail: rule 8.0 threshold is not in the seed contract yet; the brief says $5,000. A adds it to policyPack metadata if it ever varies.
 const THRESHOLD_CENTS = 500_000;
@@ -106,6 +108,7 @@ export const load = internalMutation({
       if (row.entity !== entity) throw new Error("Cross-entity seed record rejected");
     }
     for (const [table, index] of Object.entries(ENTITY_INDEX) as [TableNames, string][]) {
+      if (KEEP_ON_RESEED.has(table)) continue;
       // ponytail: one transaction; fine at a few hundred rows per table, batch + reschedule if it ever isn't
       const q = ctx.db.query(table) as unknown as { withIndex: (i: string, r: (b: { eq: (f: string, v: string) => unknown }) => unknown) => AsyncIterable<{ _id: Id<TableNames> }> };
       for await (const row of q.withIndex(index, (b) => b.eq("entity", entity))) await ctx.db.delete(row._id);

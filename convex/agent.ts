@@ -167,6 +167,7 @@ export const saveProposal = internalMutation({
     citations: v.array(vCitation),
     correctionsApplied: v.array(v.string()),
     discardedFirstRead: v.optional(v.string()),
+    requestedApproval: v.optional(v.boolean()),
   },
   returns: v.id("proposals"),
   handler: async (ctx, { entity, period, breakId, txnId, revision: _requested, ...rest }) => {
@@ -313,11 +314,18 @@ export const propose = internalAction({
     const asOf = `${brk.period}-${new Date(Date.UTC(year, month, 0)).getUTCDate()}`;
     const retrievalScope = { entity: brk.entity, asOf, traceId: brk.traceId };
     const retrievedScores = new Map<string, number>();
+    // Everything retrieved this run, so a request for approval can carry its evidence (verbatim, from the index).
+    const retrievedHits = new Map<string, { sourceType: "policy" | "contract" | "decision" | "correction"; sourceId: string; text: string; score: number }>();
+    const sourceTypeOf = (collection: string) => (collection === "contracts" ? "contract" : collection === "decisions" ? "decision" : collection === "corrections" ? "correction" : "policy") as "policy" | "contract" | "decision" | "correction";
     const retrieve = async (collection: string, text: string, k: number) => {
       const hits = await queryRetrieval(collection, text, k, retrievalScope);
-      for (const hit of hits) retrievedScores.set(hit.sourceId, hit.score);
+      for (const hit of hits) {
+        retrievedScores.set(hit.sourceId, hit.score);
+        if (!retrievedHits.has(hit.sourceId)) retrievedHits.set(hit.sourceId, { sourceType: sourceTypeOf(collection), sourceId: hit.sourceId, text: hit.text, score: hit.score });
+      }
       return hits;
     };
+    let approvalQuestion: string | null = null;
 
     let createdProposalId: Id<"proposals"> | null = null;
     let escalated = false;
@@ -326,7 +334,7 @@ export const propose = internalAction({
 
     // Pre-retrieve relevant policy for this break kind so the agent has citations available from step 1.
     const KIND_QUERIES: Record<string, string> = {
-      stripe_fee_netting: "ticket revenue deferred fee expensed payout",
+      stripe_fee_netting: "processing fees expensed when the payout settles",
       deposit_shortfall: "deposit non-recoverable fee contract",
       duplicate_payable: "duplicate invoice control",
       bank_detail_change: "bank detail change verification hold",
@@ -521,6 +529,7 @@ export const propose = internalAction({
           }),
           execute: async ({ question }: { entity: string; breakId: string; question: string; proposalId?: string }) => {
             escalated = true;
+            approvalQuestion = question;
             await ctx.runMutation(internal.agent.escalateBreak, {
               entity: brk.entity,
               period: brk.period,
@@ -555,9 +564,13 @@ export const propose = internalAction({
         { account: "1000", debit: Math.abs(txn.amount), credit: 0 },
         { account: "1400", debit: 0, credit: Math.abs(txn.amount) },
       ],
-      reason: "Fallback stub: agent did not call propose_entry; parked in 1400 for human review.",
-      citations: [],
+      reason: approvalQuestion
+        ? `Controller decision requested: ${approvalQuestion}`
+        : "Fallback stub: agent did not call propose_entry; parked in 1400 for human review.",
+      // The best evidence retrieved this run rides along so the controller decides with sources in front of them.
+      citations: [...retrievedHits.values()].sort((a, b) => b.score - a.score).slice(0, 3),
       correctionsApplied: [],
+      requestedApproval: Boolean(approvalQuestion),
     }) as Promise<Id<"proposals">>);
     return fallbackId;
   },
