@@ -7,7 +7,6 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import "./LiquidSegmentedControl.css";
 
 export type LiquidSegmentOption = {
   value: string;
