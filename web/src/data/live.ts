@@ -1,7 +1,8 @@
 // Reactive workspace subscriptions and explicit controller actions. Server results stay authoritative.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ConvexReactClient,
+  useConvex,
   useConvexConnectionState,
   useQuery,
 } from "convex/react";
@@ -120,7 +121,10 @@ export function LiveWorkspace({
   const rows = useQuery(refs.proposals, { entity: ENTITY, period: periodKey });
   const summary = useQuery(refs.summary, { entity: ENTITY, period: periodKey });
   const periods = useQuery(refs.periods, { entity: ENTITY });
-  const score = useQuery(refs.score, { entity: ENTITY, period: periodKey });
+  // The scoreboard reads the whole entity, audit log included. A live subscription re-ran it on every
+  // audit row for every open browser (hundreds of MB a day). Fetch it when something visible changed instead.
+  const convex = useConvex();
+  const [score, setScore] = useState<WireScoreboard | undefined>(undefined);
   const workflow = useQuery(refs.status, { entity: ENTITY, period: periodKey });
   const audit = useQuery(refs.audit, {
     entity: ENTITY,
@@ -128,6 +132,16 @@ export function LiveWorkspace({
     limit: 100,
   });
   const connection = useConvexConnectionState();
+  const scoreKey = `${periodKey}|${workflow?.type ?? ""}|${summary?.status ?? ""}|${rows?.map((r) => `${r.proposalId}:${r.status}`).join(",") ?? ""}`;
+  useEffect(() => {
+    let current = true;
+    void convex.query(refs.score, { entity: ENTITY, period: periodKey }).then((s: WireScoreboard) => {
+      if (current) setScore(s);
+    }).catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [convex, periodKey, scoreKey]);
   useEffect(() => {
     onData({
       proposals: rows?.map(toProposal) ?? [],
