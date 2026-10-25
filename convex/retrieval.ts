@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { env, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { traceFor } from "./audit";
+import { summarizeTrace } from "./trace";
 
 const vHit = v.object({ id: v.string(), text: v.string(), score: v.number() });
 const vVerify = v.object({ identityMatch: v.boolean(), fraudFlags: v.array(v.string()), available: v.boolean(), report: v.optional(v.any()) });
@@ -216,5 +217,52 @@ export const indexTrace = internalAction({
     const { ok } = await ctx.runAction(internal.retrieval.index, { collection: "events", id: traceId, text, meta: { entity, effectiveDate, sourceType: "trace" }, traceId });
     await ctx.runMutation(internal.audit.write, { entity, actor: "workflow", action: ok ? "index_trace" : "index_trace.skipped", traceId });
     return ok;
+  },
+});
+
+// ── Demo reset: after a snapshot import, make the sidecar's memory for the entity equal the database. ──
+
+/** Every chunk Moss should hold for the entity: sources (policy, contracts, public documents), indexed decisions,
+ *  corrections and trace summaries. */
+export const loadMemory = internalQuery({
+  args: { entity: v.string() },
+  returns: v.array(v.object({ collection: v.string(), id: v.string(), text: v.string(), meta: v.record(v.string(), v.string()) })),
+  handler: async (ctx, { entity }) => {
+    const periods = await ctx.db.query("periods").withIndex("by_entity_period", (q) => q.eq("entity", entity)).take(50);
+    const chunks: { collection: string; id: string; text: string; meta: Record<string, string> }[] = [];
+    for (const p of periods) {
+      const decisions = await ctx.db.query("decisions").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", p.period)).take(1000);
+      for (const d of decisions) {
+        if (!d.indexedText) continue; // only decisions the engine or the controller indexed as precedent
+        const brk = await ctx.db.get((await ctx.db.get(d.proposalId))!.breakId);
+        chunks.push({ collection: "decisions", id: d.decisionId, text: d.indexedText, meta: { entity, period: d.period, effectiveDate: periodEnd(d.period),
+          sourceType: "decision", reviewer: d.reviewer, outcome: d.outcome, breakKind: d.precedentScope?.breakKind ?? brk?.kind ?? "", scope: JSON.stringify(d.precedentScope ?? {}) } });
+      }
+      const corrections = await ctx.db.query("corrections").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", p.period)).take(1000);
+      for (const c of corrections) chunks.push({ collection: "corrections", id: c.correctionId, text: `${c.correctionId} (${c.kind}, scope: ${c.scope}): ${c.instruction}`,
+        meta: { entity, period: c.period, effectiveDate: periodEnd(c.period), sourceType: "correction" } });
+      const rows = await ctx.db.query("auditLog").withIndex("by_entity_period", (q) => q.eq("entity", entity).eq("period", p.period)).take(5000);
+      for (const traceId of new Set(rows.map((r) => r.traceId).filter((t): t is string => !!t))) {
+        const text = await summarizeTrace(ctx, entity, traceId);
+        if (text) chunks.push({ collection: "events", id: traceId, text, meta: { entity, effectiveDate: p.end, sourceType: "trace" } });
+      }
+    }
+    return chunks;
+  },
+});
+
+/** Replace the entity's whole Moss snapshot with what the database holds now. Run after `convex import` of a demo
+ *  snapshot so approvals and traces made during a rehearsal do not survive the reset. */
+export const reindexAll = internalAction({
+  args: { entity: v.string() },
+  returns: v.object({ ok: v.boolean(), sources: v.number(), memory: v.number() }),
+  handler: async (ctx, { entity }): Promise<{ ok: boolean; sources: number; memory: number }> => {
+    const sources = await ctx.runQuery(internal.retrieval.loadClauses, { entity });
+    const memory = await ctx.runQuery(internal.retrieval.loadMemory, { entity });
+    const seen = new Set<string>();
+    const chunks = [...sources, ...memory].filter((c) => !seen.has(`${c.collection}/${c.id}`) && seen.add(`${c.collection}/${c.id}`));
+    const ok = (await post<{ ok?: boolean; indexed?: number }>("/reindex-all", { entity, chunks }))!== null;
+    await ctx.runMutation(internal.audit.write, { entity, actor: "seed", action: ok ? "retrieval.reindex_all" : "retrieval.reindex_all.failed", detail: `${sources.length} sources, ${memory.length} memory chunks` });
+    return { ok, sources: sources.length, memory: memory.length };
   },
 });
