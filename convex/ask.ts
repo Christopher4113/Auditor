@@ -8,6 +8,15 @@ import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { searchRetrieval } from "./retrievalClient";
 
+export const resolveProposal = internalQuery({
+  args: { entity: v.string(), proposalCode: v.string() },
+  returns: v.union(v.null(), v.id("proposals")),
+  handler: async (ctx, { entity, proposalCode }) => {
+    const p = await ctx.db.query("proposals").withIndex("by_entity_proposalId", (q) => q.eq("entity", entity).eq("proposalId", proposalCode)).unique();
+    return p?._id ?? null;
+  },
+});
+
 export const proposalContext = internalQuery({
   args: {entity:v.string(),proposalId:v.id("proposals")},
   returns:v.union(v.null(),v.object({asOf:v.string()})),
@@ -40,6 +49,7 @@ export const askAuditor = action({
     entity: v.string(),
     question: v.string(),
     proposalId: v.optional(v.id("proposals")),
+    proposalCode: v.optional(v.string()), // the rail's external code, e.g. "P-sample-bank-10-r2"
     asOf: v.optional(v.string()),
   },
   returns: v.object({
@@ -47,7 +57,8 @@ export const askAuditor = action({
     citations: v.array(v.object({ sourceId: v.string(), text: v.string() })),
     sourcesAvailable: v.boolean(),
   }),
-  handler: async (ctx, { entity, question, proposalId, asOf }) => {
+  handler: async (ctx, { entity, question, proposalId: givenId, proposalCode, asOf }) => {
+    const proposalId = givenId ?? (proposalCode ? await ctx.runQuery(internal.ask.resolveProposal, { entity, proposalCode }) ?? undefined : undefined);
     const context:{asOf:string}|null=proposalId ? await ctx.runQuery(internal.ask.proposalContext,{entity,proposalId}) : null;
     const cutoff=asOf ?? context?.asOf ?? "2026-07-31";
     if(!/^\d{4}-\d{2}-\d{2}$/.test(cutoff))throw new Error("asOf must be YYYY-MM-DD");
@@ -83,7 +94,8 @@ export const askAuditor = action({
       };
     }
 
-    // 3. Build verbatim sources block (cap at 20 to keep context manageable).
+    // 3. Build verbatim sources block: best matches first, cap at 20 to keep context manageable.
+    retrieved.sort((a, b) => b.score - a.score);
     const sourcesBlock = retrieved
       .slice(0, 20)
       .map((r, i) => `[${i + 1}] ${r.sourceId}\n${r.text}`)
@@ -92,8 +104,8 @@ export const askAuditor = action({
     const systemPrompt = `You are a financial controls auditor assistant. Answer the user's question using ONLY the sources provided below. Do not use any knowledge outside these sources.
 
 Rules:
-- If the sources cover the question, answer concisely and cite relevant source IDs in brackets (e.g. [1]).
-- If the sources do not cover the question, respond only with: "The available sources do not cover this question."
+- Answer concisely from whatever the sources support, citing each source you rely on in brackets (e.g. [1]). Prefer decisions and contract clauses over general policy when both apply.
+- If no source bears on the question at all, respond only with: "The available sources do not cover this question."
 - When citing, quote the exact passage; never paraphrase.
 - Never introduce amounts, accounts or treatments not present in the sources.
 

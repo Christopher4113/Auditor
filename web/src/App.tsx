@@ -1369,7 +1369,7 @@ export default function App() {
                 : undefined
             }
             canDeny={live ? periodProposals.some((p) => p.status === "posted") : undefined}
-            onAsk={live ? (question) => askAuditor(question, period) : undefined}
+            onAsk={live ? (question) => askAuditor(question, period, selected?.id) : undefined}
             onDeny={() => {
               if (live) {
                 const target =

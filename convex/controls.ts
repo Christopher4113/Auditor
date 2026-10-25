@@ -119,7 +119,7 @@ export const review = internalMutation({
 
     // The agent sometimes cites the decision id its own proposal will get (D-<proposalId>...). That is not
     // evidence; drop self-references so the citation rule judges the real sources.
-    const citations = p.citations.filter((c) => !c.sourceId.includes(p.proposalId));
+    const citations = p.citations.filter((c) => !c.sourceId.includes(p.proposalId) && !(c.sourceId.startsWith("D-P-") && !sources.has(c.sourceId)));
     if (citations.length !== p.citations.length) await ctx.db.patch("proposals", proposalId, { citations });
     const proposalView = {
       lines: p.lines,

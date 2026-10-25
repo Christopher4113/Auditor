@@ -260,7 +260,7 @@ const phase3 = {
   amend: makeFunctionReference<"mutation", { entity: string; counterparty: string; text: string; effectiveDate: string }, InjectResult & { clauseId: string }>("inject:amendContract"),
   bankChange: makeFunctionReference<"mutation", { entity: string; vendorName: string; newLast4: string; source: string }, InjectResult>("inject:changeVendorBank"),
   attemptAgentPost: makeFunctionReference<"mutation", { entity: string; proposalId: string }, { ok: boolean; reason: string }>("api:attemptAgentPost"),
-  ask: makeFunctionReference<"action", { entity: string; question: string; asOf?: string }, { answer: string; citations: { sourceId: string; text: string }[]; sourcesAvailable: boolean }>("ask:askAuditor"),
+  ask: makeFunctionReference<"action", { entity: string; question: string; asOf?: string; proposalCode?: string }, { answer: string; citations: { sourceId: string; text: string }[]; sourcesAvailable: boolean }>("ask:askAuditor"),
 };
 function requireLive() {
   if (!http) throw new Error("A live workspace is not configured.");
@@ -289,7 +289,7 @@ export async function attemptAgentPost(proposalId: string): Promise<{ ok: boolea
   return requireLive().mutation(phase3.attemptAgentPost, { entity: ENTITY, proposalId });
 }
 /** Ask Auditor: Group B's action answers from retrieved citations only. */
-export async function askAuditor(question: string, period: Period): Promise<AskAnswer> {
-  const r = await requireLive().action(phase3.ask, { entity: ENTITY, question, asOf: `${toPeriodKey(period)}-28` });
+export async function askAuditor(question: string, period: Period, proposalCode?: string): Promise<AskAnswer> {
+  const r = await requireLive().action(phase3.ask, { entity: ENTITY, question, asOf: `${toPeriodKey(period)}-28`, proposalCode });
   return { text: r.answer, citations: r.citations.map((c) => ({ sourceType: c.sourceId.startsWith("D-") ? "precedent" : c.sourceId.startsWith("policy") ? "policy" : "contract", sourceId: c.sourceId, text: c.text })) };
 }

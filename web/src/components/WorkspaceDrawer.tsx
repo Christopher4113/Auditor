@@ -386,8 +386,10 @@ function Scoreboard(props: WorkspaceDrawerProps) {
         ? "The close is running. Sign after it finishes."
         : !summaryReady
           ? "The server close summary is not available yet."
-          : pending
+          : pending && !signAllowed
             ? `${pending} current ${pending === 1 ? "item remains" : "items remain"} unresolved.`
+            : pending && signAllowed
+              ? `${pending} ${pending === 1 ? "item carries" : "items carry"} forward to the next period. Sign to lock this one.`
             : !balanced
               ? "The trial balance does not balance. Review it before signing."
               : !signAllowed

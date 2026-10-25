@@ -222,7 +222,7 @@ describe("live controller rehearsal from the workspace", () => {
     ).toBe(false);
   });
 
-  it("keeps Sign disabled until the returned proposal's actual revision posts, then signs the selected period", async () => {
+  it("keeps Sign disabled while a revision is still with the engine, then signs the selected period", async () => {
     const user = userEvent.setup();
     render(<App />);
     const inbox = await openInbox(user);
@@ -241,11 +241,12 @@ describe("live controller rehearsal from the workspace", () => {
     await publish(snapshot([rejected]));
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
     const summary = await openSummary(user);
+    // A rejected item the controller has decided carries forward (policy 3.0); it does not block sign-off.
     expect(
       within(summary)
         .getByRole("button", { name: "Sign period" })
         .hasAttribute("disabled"),
-    ).toBe(true);
+    ).toBe(false);
     const revision = proposal({
       id: "P-rehearsal-r2",
       backendId: "internal-proposal-2",

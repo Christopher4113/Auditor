@@ -200,8 +200,17 @@ export function canSignPeriod(
     );
   }
   if (current.some(liveRecord) && options.status === undefined) return false;
-  return current.every((proposal) => !isUnresolved(proposal));
+  // Policy 3.0: a period closes on sign-off; items still with the controller carry forward and are booked
+  // in the current period with a reference. Only work the engine has not finished blocks signing.
+  return current.every((proposal) => !isUnresolved(proposal) || carriesForward(proposal));
 }
+
+/** A live item the controller has seen (escalated, returned or rejected) may carry forward at sign-off. */
+export const carriesForward = (proposal: Proposal): boolean =>
+  liveRecord(proposal) &&
+  (proposal.backendStatus === "escalated" ||
+    proposal.backendStatus === "failed_rule" ||
+    proposal.backendStatus === "rejected");
 
 export type ControllerOptions = {
   signed?: boolean;

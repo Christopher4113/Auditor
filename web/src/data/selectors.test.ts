@@ -360,7 +360,7 @@ describe("revision-aware period completion", () => {
     expect(isCurrentProposal(posted, rows)).toBe(true);
   });
 
-  it("leaves the latest rejected proposal open while no actual revision exists", () => {
+  it("leaves the latest rejected proposal open but lets it carry forward at sign-off", () => {
     const rejected = proposal({
       status: "rejected",
       backendId: "p-a-1",
@@ -369,7 +369,7 @@ describe("revision-aware period completion", () => {
     });
     expect(unresolvedProposals([rejected])).toEqual([rejected]);
     expect(reviewProposals([rejected])).toEqual([]);
-    expect(canSignPeriod([rejected], { status: "open" })).toBe(false);
+    expect(canSignPeriod([rejected], { status: "open" })).toBe(true);
   });
 
   it("blocks signing when a newer pending revision supersedes a posted version, without making it a human task", () => {
