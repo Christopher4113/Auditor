@@ -1,167 +1,86 @@
 # Auditor
 
-The cash accounting function for one entity of an event-management group. The demo entity is modelled on Coachella (Goldenvoice / AEG; public shape in `datagen/public/coachella.json`), with fiscal periods July–September 2026 and every financial number fictitious; the entity id stays `eo-festival-nyc`. Three seats: one Claude Sonnet **staff accountant** agent that reconciles bank to books, retrieves precedent, policy and its own corrections through Moss, and proposes entries with verbatim citations; a **controls engine written in TypeScript** (balance, citation, P&L threshold, 4.3 bank-detail hold with CRS payee check, period lock, revision cap, precedent exception, correction check) that posts routine entries and escalates the rest; and a **human controller** who approves or rejects with an instruction and signs the period. The agent cannot post, enforced server-side in `post_entry`, not in a prompt. Source of truth: `Auditor — Cal Hacks 13.0 Brief v2 (final design).pdf` and `Auditor — Design.pdf` in the shared drive.
+Auditor runs the cash accounting close for one entity of an event-management group. One Claude agent proposes the entries, a controls engine written in code reviews every one of them, and a human controller decides the exceptions and signs the period. Nothing posts without a review it did not write, and that is enforced on the server, not in a prompt.
 
-## Seats
+The demo entity is modelled on Coachella (Goldenvoice / AEG; public shape in `datagen/public/coachella.json`) with fiscal periods July–September 2026. Every financial number is fictitious. Live demo: https://auditor-nine-ecru.vercel.app
+
+## The three seats
 
 | Seat | Who | Does | Cannot |
 |---|---|---|---|
-| Staff accountant | One Claude Sonnet agent | Investigate unmatched transactions, retrieve precedent, policy and past corrections, propose balanced entries with verbatim citations, ask the human a question | Post, approve, change policy |
-| Controls | TypeScript rules, no model | Validate every proposal; post under pre-approved policy when every rule passes; hold payments on bank-detail changes (4.3); verify payees via CRS; lock closed periods; escalate the rest | Propose, override the human |
-| Controller | Human (Christopher in the demo) | Approve or reject escalations with an instruction; sign the period close | Nothing it did not review |
+| Staff accountant | One Claude Sonnet agent | Investigates unmatched bank transactions, retrieves precedent, policy and its own past corrections through Moss, proposes balanced entries with verbatim citations, asks the controller a question when unsure | Post, approve, change policy |
+| Controls | TypeScript rules, no model | Checks every proposal: balance, citations resolve verbatim, P&L threshold, bank-detail hold with CRS payee verification, period lock, revision cap, precedent exception, correction check. Posts routine entries, escalates the rest | Propose, override the human |
+| Controller | A human | Approves or rejects with an instruction, keeps or releases vendor holds, signs the period | Nothing it did not review |
 
-Who may call which tool is the `TOOLS` map in `convex/tools.ts`. Materiality is P&L impact: under $5,000 with every rule passing and a clause cited may post; $5,000 or more, or any control exception, goes to the controller. A human-decided precedent with matching `precedentScope`, under threshold, is pre-approved and does not re-escalate (8.2).
+Materiality is P&L impact: under $5,000 with every rule passing and a clause cited may post; $5,000 or more, or any control exception, goes to the controller. A human approval becomes precedent the agent cites and the engine honors, so the same case escalates once. A rejection becomes a correction the agent must address next time.
 
-## What runs where
+## How a close runs
 
-Convex is the center: tables, the close as a durable Workflow (time and data triggers, no run button), the agent (Agent component, typed tool calls, prompt caching) and the controls engine all live there. Vite is the window into it; every view is a reactive query. FastAPI is a sidecar Convex calls for Moss retrieval (`/index`, `/query`, `/stats`) and CRS payee verification (`/verify`, fails closed). A code matcher (exact amount, same counterparty, within N days) closes ~85% of bank transactions with no model call; only unmatched items reach Sonnet, about 8–15 proposals a month.
+1. A bank transaction arrives from the seed, the scheduled period advance, or an injection. The close for its period starts as a durable Convex Workflow within seconds.
+2. A code matcher (exact amount, same counterparty, within a few days) closes most transactions against the ledger with no model call. The rest become breaks.
+3. For each break the agent retrieves, proposes an entry with citations, and records the first read it discarded. Each step runs under its seat's identity.
+4. The engine runs every rule and writes a decision plus an audit row per rule. Pass: posts under policy and indexes the decision as precedent. Return: the agent revises, up to the cap. Escalate: it waits for the controller.
+5. The controller decides from the Review inbox. Approval posts under the human identity and records the precedent scope. Rejection stores the instruction as a correction and the agent re-proposes.
+6. Signing snapshots entries, carried items and the trial balance, locks the period, and schedules the next period's advance.
 
-## Layout
+Every unit of work carries a trace id from the bank transaction through proposals, decisions, the journal entry, the sidecar calls and the human's decision. The trace is readable as a timeline and in plain English, and it is indexed into Moss so Ask Auditor can answer questions from the audit trail itself.
 
-| Dir | Owner | What |
-|---|---|---|
-| `convex/` | C | 13 tables (all with `entity`), Workflow (the close), Agent component, controls engine, audit log. Root-level so `convex dev` runs from the repo root. |
-| `web/` | D | Vite + React + Tailwind + shadcn (dark). Rail, sources, decision panel, four drawers. Reads `../convex/_generated`. |
-| `datagen/` | A | Seeded Python generator → `seed.json` (gitignored). |
-| `retrieval/` | A | FastAPI sidecar: Moss retrieval (`/index`, `/query`, `/stats`) and CRS `/verify`. |
+## Architecture
 
-## Interface files (agreed Friday night, then nobody forks them)
+- **Convex** holds the tables, the Workflow, the agent, the controls engine and the audit log. The agent is the Agent component with typed tool calls; the close is the Workflow component with time and data triggers.
+- **Vite + React** dashboard: one screen with the proposal rail, sources and decision panel, and drawers for the Review inbox, close summary, permissions, scenario injection and Ask Auditor. Every view is a reactive query.
+- **FastAPI sidecar**: Moss retrieval over policy, contracts, decisions, corrections and audit events; CRS payee verification against the TransUnion TruValidate sandbox with the full report (identity, fraud score, criminal, public records). Fails closed when unavailable.
+- **Python generator**: deterministic synthetic books, bank feed, Stripe payouts, contracts, policy pack, vendors with CRS sandbox personas, planted breaks and an answer key, so precision and recall are measured rather than assumed.
+- **context.dev**: used offline to gather sourced public facts and to fetch real public documents (Stripe's fee schedule and payout terms) that are stored as citable sources, and as a Monitor that files a contract amendment through a signed webhook when a watched page changes. The agent never fetches the web during a close.
 
-| # | Between | File |
-|---|---|---|
-| 1 | A → B | `retrieval/openapi.yaml` (regenerate from `retrieval/main.py`, see its docstring) |
-| 2 | B ↔ C | `convex/schema.ts` + `convex/tools.ts` (table types, tool schemas, the three identities and who may call what) |
-| 3, 4 | C → D | `convex/api.ts` |
-| 5 | A → C | `datagen/seed.schema.json` |
+## The planted breaks
 
-## Setup
+| # | Month | Break | Right answer |
+|---|---|---|---|
+| 1 | Jul, recurs | Stripe pays weekly net of fees | Match payout to charges; book the processing fees |
+| 2 | Jul | SoundWave invoice arrives twice | Void the duplicate |
+| 3 | Jul | Headliner deposit returned short after a cancellation | Clear the receivable; expense the shortfall under policy 5.1 |
+| 4 | Aug | Sponsor amended to a base plus a per-attendee fee; ledger still ratable | Catch-up in August; variable fee in September, capped |
+| 5 | Sept | Vendor bank-detail change days before a payment | Hold, verify the payee via CRS, escalate the same day |
+| 6 | Aug → Sept | Site setup done in August, invoice arrives in September | Accrue in August; reverse and book payables in September |
 
-```bash
-corepack enable pnpm && pnpm install
-pnpm dev:convex          # first run logs in and creates the dev deployment; writes .env.local
-pnpm dev:web             # http://localhost:5173
-pnpm dev:retrieval       # http://localhost:8000/docs
-cd datagen && uv run generate.py
-```
+The opening moment: a staging vendor's deposit comes back short in late September. The agent retrieves a July precedent, the contract's inspection clause and policy 5.1, proposes the difference as inspection-fee expense with three verbatim citations, and the engine posts it under threshold and indexes the decision.
 
-Group A's data/retrieval commands: [current data contract and Convex handoff](datagen/README.md), [10-transaction Phase 1 sample](datagen/sample.seed.json), [retrieval runbook](retrieval/README.md), and [historical Phase 1 verification](datagen/AUDIT.md). Run `pnpm data:generate`, `pnpm data:validate`, `pnpm data:test`, and `pnpm retrieval:test` from the root. Generation and offline validation require Python/uv; no API credentials or running services.
+## Repository
 
-Convex env: `npx convex env set ANTHROPIC_API_KEY ...` and `RETRIEVAL_URL`; `ANTHROPIC_MODEL` swaps Sonnet for Opus. CRS and Moss credentials go in `retrieval/.env` (copy `retrieval/.env.example`); they are read only by the FastAPI service.
+| Dir | Contents |
+|---|---|
+| `convex/` | `schema.ts`, `close.ts` (Workflow and data trigger), `agent.ts` and `agent/` (the agent), `controls.ts` and `controls/` (the rules), `ledger.ts` (the only writer of journal entries), `human.ts` (approve, reject, sign), `inject.ts` (judge scenarios, vendor holds, public sources, reset), `ask.ts` (Ask Auditor), `retrieval.ts` (sidecar calls), `trace.ts`, `audit.ts`, `scoring.ts`, `http.ts` (webhook), `seed.ts` |
+| `web/` | The dashboard. `src/data/live.ts` adapts Convex rows to the view model. |
+| `datagen/` | `generate.py` → `seed.json` (contract in `seed.schema.json`), `sample.seed.json`, `public/coachella.json` |
+| `retrieval/` | `main.py`, Moss and CRS adapters, `Dockerfile`, `compose.yaml` |
 
-## Group A Phase 3
-
-A5 scoring and Impact, A6 counters, scoped reset/re-index and CRS sandbox verification are implemented on `Deep`: [Phase 3 runbook and API handoff](retrieval/PHASE3.md). Start with `pnpm scoring:demo` and `pnpm retrieval:phase3:moss`. The scorer self-check is explicitly synthetic; live results come from `pnpm scoring:report` after the team deploys the current Convex functions and loads the dataset. CRS uses the hackathon's `/transunion/identity-manager-verification/basic` default-config route and P01–P20 personas. Live P01 verification and P12 mismatch/enrichment have been checked; no Postman config is needed. Errors still fail closed.
-
-## The six planted breaks
-
-**Group A Phase 2 is implemented:** [data contract and accounting assumptions](datagen/README.md), [real Moss/local retrieval and run commands](retrieval/README.md), and [verification record](retrieval/PHASE2_AUDIT.md). `pnpm data:generate` now defaults to schema 2.0.0: six break families, 11 period-specific cases, 368 bank rows, imported books and dated source documents. `pnpm data:phase1` retains the clean generator. `pnpm retrieval:demo` runs an isolated local-search rehearsal; `pnpm retrieval:demo:moss` uses the real supplied Moss project. Rehearsal human decisions are explicitly labelled fixtures; the full team gate still requires the real close and controller flow.
-
-Phase 2 adds these six planted breaks to ~120 clean transactions a month so precision and recall can be measured. Amounts and clauses are in the brief; A3 supplies the answer key in `seed.json`. The Phase 1 sample has empty `breaks` and `answerKey` arrays. Detection/scoring results require the integrated agent and scoring run.
-
-| # | Month | Break | Right answer | Who decides |
-|---|---|---|---|---|
-| 1 | Jul, recurs | Stripe pays weekly net of fees ($48,600 gross, $47,180 deposit) | Match payout to charges; book $1,420 processing fees | Human first time, precedent after |
-| 2 | Jul | SoundWave invoice SW-1042 arrives twice ($18,500) | Void the duplicate | Human (control exception) |
-| 3 | Jul | $60,000 headliner deposit; artist cancels; bank returns $51,000 | Clear receivable; expense $9,000 under 5.1 (D-0417) | Human |
-| 4 | Aug | Sponsor amended to $30,000 + $2/attendee; ledger still ratable on $50,000 | Catch-up in Aug; variable fee in Sept, capped at $70,000 | Human |
-| 5 | Sept | Field & Flame bank-detail change Sept 10; $42,000 due Sept 15 | Hold on the change; CRS verify; escalate same day; payment parked in 1400 | Human (control exception) |
-| 6 | Aug → Sept | Ironclad site setup Aug 30–31; $9,400 invoice arrives Sept 8 | Accrue in Aug (7.1); reverse in Sept and book AP | Human |
-
-The moment (opens the video): Apex's $16,000 deposit comes back as $13,600 on Sept 25. The agent retrieves D-0417, Apex clause 9.4 and policy 5.1, proposes the $2,400 as inspection-fee expense with three verbatim citations, the engine posts it under threshold and indexes D-0625.
-
-## Demo
-
-July and August are pre-run so their decisions sit in Moss; September runs live in under three minutes. The only touch is "prepare September close" in the Scoreboard drawer. Scenes: 1 the moment · 2 the no (Field & Flame hold, CRS check, human keeps the hold) · 3 the forbidden call (Permissions drawer, `post_entry` under the agent's identity refused, denial logged) · 4 Ask Auditor out loud (Moss) · 5 asked once (Stripe fees, escalations 5 → 2 → 1) · 6 learned from a mistake (SoundWave duplicate, repeat mistakes 0). Scenes 1–4 required. Judges can inject a bank transaction, a contract amendment or a vendor bank change from the Inject drawer.
-
-Cut order if behind, from the bottom: core (generator, Workflow, agent, controls engine, dashboard, approvals, scoreboard, Moss citations) → injector and forbidden call → corrections store and repeat-mistakes counter → breaks 2, 4, 6 → Ask Auditor voice → second entity (UK, GBP).
-
-## Phase 1 gate: run it end to end
-
-Historical procedure for the `phase-1` tag. The current branch has the real B3 agent; use the Phase 2 runbooks above for current data/retrieval checks.
-
-Gate: `seed.json` loads; a fake close runs through the Workflow; the rail updates live. Four terminals from the repo root.
+## Running it
 
 ```bash
-pnpm install && (cd datagen && uv sync --locked) && (cd retrieval && uv sync --locked)
+corepack enable pnpm && pnpm install && (cd datagen && uv sync --locked)
+pnpm dev:convex                      # first run creates a dev deployment and writes .env.local
+pnpm data:generate                   # datagen/seed.json
+pnpm seed                            # wipe and load the entity; indexes clauses into Moss
+pnpm dev:web                         # http://localhost:5173, live when CONVEX_URL is in .env.local
 ```
 
-**1. Lane checks, no services needed.** Group A's generator and validator, Group B's tool and fake tests, the retrieval contract, both typechecks.
-
-```bash
-pnpm data:generate && pnpm data:validate && pnpm data:test && pnpm retrieval:test && pnpm test && pnpm typecheck
-```
-
-**2. Backend up.** Pushes `convex/` to the dev deployment and keeps it synced; writes `.env.local`.
-
-```bash
-pnpm dev:convex
-```
-
-**3. Seed.** Wipes the entity and loads a file in one transaction. The sample has 10 transactions across July–September; the generated file has 360.
-
-```bash
-SEED=datagen/sample.seed.json pnpm seed
-```
-
-**4. Frontend up.** With `CONVEX_URL` in `.env.local` the rail is live; without it the app runs on fixtures.
-
-```bash
-pnpm dev:web
-```
-
-Open http://localhost:5173 on this machine and on a second device on the same network (`pnpm dev:web -- --host`). Pick September 2026.
-
-**5. Run the close.** From the UI: Close summary drawer → "Prepare September close". Or from a terminal:
+Start a close and read it back:
 
 ```bash
 npx convex run api:startClose '{"entity":"eo-festival-nyc","period":"2026-09"}'
+npx convex run api:listProposals '{"entity":"eo-festival-nyc","period":"2026-09"}'
+npx convex run api:trace '{"entity":"eo-festival-nyc","proposalId":"<code from the rail>"}'
 ```
 
-Within seconds the rail shows three September proposals on both screens with no refresh: Apex Staging $13,600 posted with Group B's canned entry (Dr 1000 / Dr 5160 / Cr 1200), three verbatim citations and the discarded first read; the Stripe payout and the office-supply payment posted under threshold.
+Checks: `pnpm typecheck`, `pnpm test`, `pnpm data:test`, `pnpm retrieval:test`.
 
-**6. Prove the data trigger.** Inject a bank transaction; the Workflow picks it up and a new row appears at the top of the rail.
+Convex deployment env: `ANTHROPIC_API_KEY`, `RETRIEVAL_URL`, `RETRIEVAL_API_KEY`; optional `ANTHROPIC_MODEL`, `CONTEXT_WEBHOOK_SECRET` or `CONTEXT_WEBHOOK_TOKEN`, `CONTEXT_WEBHOOK_EFFECTIVE_DATE`. The sidecar reads Moss and CRS credentials from `retrieval/.env` (see `retrieval/.env.example`); run it with `pnpm dev:retrieval` or `docker compose -f retrieval/compose.yaml up -d --build`.
 
-```bash
-npx convex run close:ingestBankTransaction '{"entity":"eo-festival-nyc","period":"2026-09","txnId":"gate-01","date":"2026-09-29","amount":-45000,"counterparty":"Ridgeway Freight","memo":"Gate test","source":"bank","actor":"inject"}'
-```
+## What is real and what is synthetic
 
-**7. Prove the 8.1 gate.** Take a proposal and decision id from the rail (or the dashboard) and post as the agent; it is refused and the denial is in the audit log.
+Real: the ledger, the Workflow, the agent's decisions, Moss retrieval, the controls engine, the audit trail, the CRS sandbox calls, the public documents cited by URL. Synthetic: the company's books, vendors, sponsors, contracts, bank feed, attendance and every amount.
 
-```bash
-npx convex run --inline-query 'const p = await ctx.db.query("proposals").withIndex("by_entity_proposalId", q => q.eq("entity","eo-festival-nyc").eq("proposalId","P-sample-bank-10-r1")).unique(); const d = await ctx.db.query("decisions").withIndex("by_proposal", q => q.eq("proposalId", p._id)).first(); return {proposalId: p._id, decisionId: d._id};'
-npx convex run ledger:postEntry '{"caller":"agent","proposalId":"<proposalId>","decisionId":"<decisionId>"}'
-npx convex run api:auditTrail '{"entity":"eo-festival-nyc","period":"2026-09","limit":5}'
-```
+## The demo
 
-**Observability.** Every unit of work (one bank transaction's journey) carries a correlation id, `T-<txnId>`, minted at seed or ingest and inherited by the break, proposals, decisions, journal entry, corrections and every audit row. `audit()` resolves it from any id on the chain, so a tool only has to pass the id it has. Sidecar calls send it as `X-Trace-Id`. The trace view is one indexed query, by trace id or by a proposal's code:
-
-```bash
-npx convex run api:trace '{"entity":"eo-festival-nyc","proposalId":"P-sample-bank-01-r1"}'
-```
-
-The Convex dashboard adds function logs, table data, schedules and the Workflow component's step status; the audit log is the durable, product-facing record.
-
-**Judges' scenarios and the forbidden call (Phase 3, C5/C6).** The Inject drawer calls `inject.injectBankTransaction`, `inject.amendContract` (indexed into Moss, the period's close re-runs) and `inject.changeVendorBank` (rule 4.3: hold, verify_payee via CRS, escalate; the controller answers with `inject.decideVendorHold`). `inject.resetAll` wipes and reseeds from the last loaded seed. The Permissions drawer reads `api.listRules` (every rule with kind, fired and failed counts, the three tool lists, denials) and its "make the agent post" button calls `api.attemptAgentPost`, which is refused server-side with the 8.1 reason and logged. `api.traceSummary` tells one unit of work in plain English from the audit rows; `api.indexTraces` pushes those summaries to Moss so Ask Auditor can search the log (supported by the sidecar's separate `events` collection).
-
-```bash
-npx convex run inject:changeVendorBank '{"entity":"eo-festival-nyc","vendorId":"field-flame","newLast4":"8832","source":"email"}'
-npx convex run api:attemptAgentPost '{"entity":"eo-festival-nyc","proposalId":"P-sample-bank-10-r1"}'
-```
-
-**Add-ons (after Phase 3).** *CRS report*: `verify_payee` asks the sidecar for the full report (identity, Fraud Finder score, criminal records, bankruptcies/liens/judgments) and stores it on the vendor; it is evidence in the trace and the controller's inbox, never an automatic verdict. *Audit trail you can ask*: every unit of work is summarised in plain English (`api.traceSummary`) and indexed into Moss's `events` collection after each close and each controller decision, so Ask Auditor can answer "why is this payment on hold" from the log, citing the trace id. *Real-world data trigger*: a context.dev Monitor on a public page calls `POST <CONVEX_SITE_URL>/hooks/context` (signed with `CONTEXT_WEBHOOK_SECRET`, or `?token=<CONTEXT_WEBHOOK_TOKEN>`); name the monitor `contract:<counterparty>` and the change is filed as an amendment, indexed, and the period's close re-runs. `CONTEXT_WEBHOOK_EFFECTIVE_DATE` dates it into the books' clock. *Real public documents as sources*: `inject.addPublicSource` stores a fetched page (title, URL, publisher, date, cleaned text) in `publicSources`, indexes it into Moss and lets the engine verify citations against it; Stripe's pricing and payouts pages are loaded first, so a Stripe payout proposal can cite the real fee schedule. *Display rebrand*: the demo entity is presented as Coachella (public shape in `datagen/public/coachella.json`); the entity id and every amount are unchanged and fictitious.
-
-**Reading the backend directly.** `api:listProposals`, `api:scoreboard`, `api:closeStatus --watch`, `api:auditTrail`; the dashboard (https://dashboard.convex.dev/d/wary-labrador-928) shows every table and the Workflow component's step log.
-
-**How the lanes connect.** A's `seed.json` → `convex/seed.ts` (interface 5). The Workflow in `convex/close.ts` runs fetch → reconcile → propose → review → post; `convex/agent.ts` and `convex/controls.ts` are B's entry points and use B2's `agent/fake.ts` canned Apex proposal (interface 2). `convex/api.ts` is what the UI subscribes to; `web/src/data/live.ts` maps rows into D's `Proposal` view model (interface 3). `ledger.postEntry` is the only writer of `journalEntries` and refuses the proposer's identity. Every step writes `auditLog` under its seat.
-
-## Branch workflow
-
-1. Branch from `main`: `a/p1-generator`, `b/p1-tools`, `c/p1-schema`, `d/p1-shell`, one branch per component pair.
-2. PR into the integration branch `phase-N`. One other person reviews for interface compliance only.
-3. All four in → run the gate test together on `phase-N`. Fix there, no new features.
-4. Gate passes → merge `phase-N` to `main`, tag `phase-N`, everyone pulls `main` and branches again.
-5. Gate still failing at gate time + 1h → merge what passes, carry the broken piece into the next phase.
-
-Phase 1 pairs (first one unblocks a teammate): A2 seed schema + sample → A1 generator · B1 tool schemas + identities → B2 fake agent + stub rules · C1 schema + seed function → C2 Workflow skeleton + audit log + data trigger · D1 shell + tokens + entity switcher → D2 rail on fixtures.
-
-Gates: Phase 1 Fri ~11 pm (`seed.json` loads, a fake close runs through the Workflow, rail updates live) · Phase 2 Sat ~3 pm (the moment reproduces on demand; breaks 1, 3, 5 pass; citations verbatim) · Phase 3 Sat ~9 pm (scenes 1–4 work, scoreboard and Impact panel score the key, Devpost draft in). Freeze after 3. Sun 8 am reset prod and rehearse; Devpost 9:00 AM.
+July and August are closed before judging so September has precedent. The one manual touch is Prepare close on September. Scenes: the opening moment above; a vendor's bank details change and the payment is held, CRS flags the payee, the controller keeps the hold; the agent is made to try to post and is refused with the denial logged; Ask Auditor explains a hold out loud from the audit trail. Judges inject their own bank transactions, contract amendments and bank-detail changes from the Inject drawer.
