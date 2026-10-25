@@ -4,6 +4,8 @@ A responsive React and TypeScript workspace with white and soft gray surfaces, n
 
 The header's sun/moon toggle remembers your appearance choice across reloads. It follows the system preference until you choose a mode. The bottom “Tracks & technology” strip loops through Hyphenate, Convex, Moss, CRS Credit, Anthropic, Microsoft, Vultr, and context.dev. Hover or focus pauses it; the pause button keeps it still. Reduced-motion preferences show a static list instead.
 
+Controls use a glass finish with subtle highlights, frosted surfaces, clear focus rings, and press feedback. Layouts adapt from narrow phones to large displays: mobile transactions retain the vendor, amount, and status; drawers and wide tables scroll locally; form fields stay readable and touch targets are at least 44px. Reduced-transparency and unsupported-blur environments use solid surfaces. The override styles load in order from `src/styles/glass.css`, `glass-components.css`, and `responsive.css`.
+
 ## Run
 
 Use Node 22.12+ (Node 24 recommended) and pnpm 10:
