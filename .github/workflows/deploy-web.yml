@@ -1,13 +1,15 @@
-# Every push to main rebuilds the dashboard against the prod Convex deployment and publishes it to Vercel
-# (project "auditor", alias https://auditor-nine-ecru.vercel.app). The only secret is VERCEL_TOKEN, a token
-# from https://vercel.com/account/tokens stored with `gh secret set VERCEL_TOKEN`. The ids below are not secret.
-name: Deploy web
+# Every push to main deploys convex/ to the prod Convex deployment, then rebuilds the dashboard against it and
+# publishes it to Vercel (project "auditor", alias https://auditor-nine-ecru.vercel.app). Secrets:
+#   CONVEX_DEPLOY_KEY  production deploy key (Convex dashboard -> Settings -> Deploy keys)
+#   VERCEL_TOKEN       from https://vercel.com/account/tokens
+# Both stored with `gh secret set <NAME>`. The ids below are not secret.
+name: Deploy
 on:
   push:
     branches: [main]
     paths: [web/**, convex/**, package.json, pnpm-lock.yaml, .github/workflows/deploy-web.yml]
   workflow_dispatch:
-concurrency: deploy-web
+concurrency: deploy
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,5 +24,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - run: npx convex deploy --yes
+        env: { CONVEX_DEPLOY_KEY: "${{ secrets.CONVEX_DEPLOY_KEY }}" }
       - run: pnpm --filter web build
       - run: npx vercel@65 deploy web/dist --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
