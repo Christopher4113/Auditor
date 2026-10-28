@@ -10,6 +10,7 @@ Convex is the whole backend: the books are tables, the monthly close is a durabl
 Every screen is a live `useQuery` subscription, so the proposal rail, inbox and close summary update on every open browser without a refresh.
 A webhook HTTP action, a cron and scheduled functions start closes from data, not buttons.
 Components: `@convex-dev/workflow` and `@convex-dev/agent`.
+I added a “How we use context.dev” section right after “How we use Convex”, with file pointers to convex/inject.ts, convex/http.ts, and datagen/public/coachella.json. Drop in the README.md file, or run git apply readme-context-dev.patch in your repo and push.
 Details, file pointers and the commit log are in [hackathon.md](hackathon.md).
 
 ## The three seats
