@@ -10,7 +10,6 @@ Convex is the whole backend: the books are tables, the monthly close is a durabl
 Every screen is a live `useQuery` subscription, so the proposal rail, inbox and close summary update on every open browser without a refresh.
 A webhook HTTP action, a cron and scheduled functions start closes from data, not buttons.
 Components: `@convex-dev/workflow` and `@convex-dev/agent`.
-I added a “How we use context.dev” section right after “How we use Convex”, with file pointers to convex/inject.ts, convex/http.ts, and datagen/public/coachella.json. Drop in the README.md file, or run git apply readme-context-dev.patch in your repo and push.
 Details, file pointers and the commit log are in [hackathon.md](hackathon.md).
 
 ## The three seats
@@ -41,6 +40,7 @@ Every unit of work carries a trace id from the bank transaction through proposal
 - **FastAPI sidecar**: Moss retrieval over policy, contracts, decisions, corrections and audit events; CRS payee verification against the TransUnion TruValidate sandbox with the full report (identity, fraud score, criminal, public records). Fails closed when unavailable.
 - **Python generator**: deterministic synthetic books, bank feed, Stripe payouts, contracts, policy pack, vendors with CRS sandbox personas, planted breaks and an answer key, so precision and recall are measured rather than assumed.
 - **context.dev**: used offline to gather sourced public facts and to fetch real public documents (Stripe's fee schedule and payout terms) that are stored as citable sources, and as a Monitor that files a contract amendment through a signed webhook when a watched page changes. The agent never fetches the web during a close.
+- I added a “How we use context.dev” section right after “How we use Convex”, with file pointers to convex/inject.ts, convex/http.ts, and datagen/public/coachella.json. Drop in the README.md file, or run git apply readme-context-dev.patch in your repo and push.
 
 ## The planted breaks
 
