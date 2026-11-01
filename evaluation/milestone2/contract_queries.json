@@ -1,0 +1,19 @@
+{
+  "name": "contract-pilot-v1",
+  "source": "Hand-authored questions and source-ID labels against datagen/reference_data.py; six synthetic vendor contracts, nine clauses.",
+  "split": "Pilot only; shares the project corpus with the policy pilot and is not an independent public benchmark. Frozen before first evaluation.",
+  "examples": [
+    {"id":"C01","query":"Northern Lines total artist fee September festival","expected":["northern-lines-2.1"]},
+    {"id":"C02","query":"Fifty percent artist fee payable within 10 days signing balance due","expected":["northern-lines-3.1"]},
+    {"id":"C03","query":"artist cancels more than 30 days deposit refunded administrative fee","expected":["northern-lines-7.2"]},
+    {"id":"C04","query":"Apex Staging","expected":["apex-9.4"]},
+    {"id":"C05","query":"sponsor pay $50,000 August 15 campaign July through September","asOf":"2026-07-31","expected":["brightwater-3.1"]},
+    {"id":"C06","query":"Signed August 10 replace fixed fee paid attendee capped $70,000","expected":["brightwater-amendment-1"]},
+    {"id":"C07","query":"Ironclad Security","expected":["ironclad-2.1"]},
+    {"id":"C08","query":"Field & Flame","expected":["field-flame-5.1"]},
+    {"id":"C09","query":"SoundWave Production","expected":["soundwave-2.1"]},
+    {"id":"C10","query":"Signed August 10 replace fixed fee paid attendee capped $70,000","asOf":"2026-07-31","expected":[],"negative":"The question asks for the August amendment, unavailable at July close. Returning an unrelated original clause is not successful abstention."},
+    {"id":"C11","query":"damage deposit refundable inspection fee","entity":"unrelated-evaluation-entity","expected":[],"negative":"No corpus documents belong to this entity."},
+    {"id":"C12","query":"catering cryptocurrency insurance","expected":[],"negative":"The catering contract does not define cryptocurrency insurance."}
+  ]
+}

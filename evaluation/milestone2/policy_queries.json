@@ -1,0 +1,19 @@
+{
+  "name": "policy-pilot-v1",
+  "source": "Hand-authored questions and source-ID labels against datagen/reference_data.py; synthetic Auditor policy, not professional accounting advice.",
+  "split": "Pilot only; no training split or held-out generalization claim. Frozen before first evaluation; no ranking changes made for these examples.",
+  "examples": [
+    {"id":"P01","query":"controller signs period close owns books","expected":["policy-1.0"]},
+    {"id":"P02","query":"bank feed ledger signed contracts sources disagree","expected":["policy-2.0"]},
+    {"id":"P03","query":"late items closed locked period","expected":["policy-3.0"]},
+    {"id":"P04","query":"vendor bank detail change callback verification hold payments","expected":["policy-4.3"]},
+    {"id":"P05","query":"non recoverable fee penalty deduction receivable expensed","expected":["policy-5.1"]},
+    {"id":"P06","query":"ticket sales deferred processing fees payout settles","expected":["policy-6.1"]},
+    {"id":"P07","query":"fixed sponsorship variable measurable amendment catch up","expected":["policy-6.2"]},
+    {"id":"P08","query":"services rendered accrued period service reverse invoice","expected":["policy-7.1"]},
+    {"id":"P09","query":"human decided precedent matching scope threshold re escalate","expected":["policy-8.2"]},
+    {"id":"P10","query":"vendor bank detail change callback verification hold payments","asOf":"2026-06-30","expected":[],"negative":"No policy is effective before July 1."},
+    {"id":"P11","query":"non recoverable fee penalty receivable","entity":"unrelated-evaluation-entity","expected":[],"negative":"No corpus documents belong to this entity."},
+    {"id":"P12","query":"cryptocurrency tax policy","expected":[],"negative":"No clause defines cryptocurrency tax treatment; lexical overlap must not be treated as an answer."}
+  ]
+}
