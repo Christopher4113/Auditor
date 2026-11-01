@@ -1,0 +1,2616 @@
+{
+  "generatedAtUtc": "2026-11-01T19:50:48.431977+00:00",
+  "sourceCommit": "ef07a1325a98f8a0c10fc4eb9831bd6f6a182dd2",
+  "python": "3.12.14",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "scope": "Retrieval component pilot. auditor-local is the existing FastAPI /query + SQLite + local BM25-style backend, NOT the complete Claude/Convex/Moss system.",
+  "conditions": {
+    "k": 3,
+    "runsPerExampleMethod": 1,
+    "corpusDocuments": 21,
+    "modelCalls": 0,
+    "cloudCalls": 0,
+    "latency": "Auditor includes in-process HTTP routing; baselines are direct function calls. Excludes server startup, indexing, network, LLM and close latency; single-run timings are descriptive only.",
+    "seed": 1328,
+    "labelsPassedToRankers": false,
+    "threshold": "score > 0; no tuned abstention threshold"
+  },
+  "hashes": {
+    "evaluation/milestone2/evaluate.py": "c9169d449954c6b57c5550800f9e5be8d2e7bcee59614c6d0acdd8a84316de3d",
+    "evaluation/milestone2/policy_queries.json": "4da702ffc4cd6bb6c9487ce601974bbf70454bdd3026b55ace9ee50b73ca8d1a",
+    "evaluation/milestone2/contract_queries.json": "f28dcaae083cf18e768dc75e748d5dbd4c8a02aa9f4335003818ff18a3f1a360",
+    "datagen/reference_data.py": "3d3fae52473ff8d58efea803b24f09813866ccf76b419b7c60c6a0a308cd7a7f",
+    "retrieval/service.py": "63d7922cc2bff723d91c4cebefb04a88ab1ac609154fbb233a7e8ea5a7182b50",
+    "retrieval/backends.py": "b44ff804a6f91849ced881efc1c2a433719805a165c4e4379246676d1054a653"
+  },
+  "datasets": [
+    {
+      "name": "policy-pilot-v1",
+      "source": "Hand-authored questions and source-ID labels against datagen/reference_data.py; synthetic Auditor policy, not professional accounting advice.",
+      "split": "Pilot only; no training split or held-out generalization claim. Frozen before first evaluation; no ranking changes made for these examples."
+    },
+    {
+      "name": "contract-pilot-v1",
+      "source": "Hand-authored questions and source-ID labels against datagen/reference_data.py; six synthetic vendor contracts, nine clauses.",
+      "split": "Pilot only; shares the project corpus with the policy pilot and is not an independent public benchmark. Frozen before first evaluation."
+    }
+  ],
+  "summary": [
+    {
+      "dataset": "policy-pilot-v1",
+      "method": "unscoped-tfidf",
+      "n": 12,
+      "answerable": 9,
+      "negative": 3,
+      "top1": 1.0,
+      "hitAt3": 1.0,
+      "abstention": 0.0,
+      "taskSuccess": 0.75,
+      "scopeViolations": 3,
+      "returnedHits": 26,
+      "verbatimHits": 26,
+      "errors": 0,
+      "medianLatencyMs": 0.15931250004541653
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "method": "scoped-tfidf",
+      "n": 12,
+      "answerable": 9,
+      "negative": 3,
+      "top1": 1.0,
+      "hitAt3": 1.0,
+      "abstention": 0.6666666666666666,
+      "taskSuccess": 0.9166666666666666,
+      "scopeViolations": 0,
+      "returnedHits": 23,
+      "verbatimHits": 23,
+      "errors": 0,
+      "medianLatencyMs": 0.1536250001663575
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "method": "auditor-local",
+      "n": 12,
+      "answerable": 9,
+      "negative": 3,
+      "top1": 1.0,
+      "hitAt3": 1.0,
+      "abstention": 0.6666666666666666,
+      "taskSuccess": 0.9166666666666666,
+      "scopeViolations": 0,
+      "returnedHits": 23,
+      "verbatimHits": 23,
+      "errors": 0,
+      "medianLatencyMs": 0.6667289999313653
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "method": "unscoped-tfidf",
+      "n": 12,
+      "answerable": 9,
+      "negative": 3,
+      "top1": 1.0,
+      "hitAt3": 1.0,
+      "abstention": 0.0,
+      "taskSuccess": 0.75,
+      "scopeViolations": 5,
+      "returnedHits": 26,
+      "verbatimHits": 26,
+      "errors": 0,
+      "medianLatencyMs": 0.11883299976034323
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "method": "scoped-tfidf",
+      "n": 12,
+      "answerable": 9,
+      "negative": 3,
+      "top1": 1.0,
+      "hitAt3": 1.0,
+      "abstention": 0.3333333333333333,
+      "taskSuccess": 0.8333333333333334,
+      "scopeViolations": 0,
+      "returnedHits": 23,
+      "verbatimHits": 23,
+      "errors": 0,
+      "medianLatencyMs": 0.10825000003933383
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "method": "auditor-local",
+      "n": 12,
+      "answerable": 9,
+      "negative": 3,
+      "top1": 1.0,
+      "hitAt3": 1.0,
+      "abstention": 0.3333333333333333,
+      "taskSuccess": 0.8333333333333334,
+      "scopeViolations": 0,
+      "returnedHits": 23,
+      "verbatimHits": 23,
+      "errors": 0,
+      "medianLatencyMs": 0.6393539999862696
+    }
+  ],
+  "records": [
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P01",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "controller signs period close owns books",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-1.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.686003889283113
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.1365815918493611
+        },
+        {
+          "id": "policy-8.0",
+          "text": "Materiality is P&L impact, the sum of revenue and expense lines. Under $5,000 the controls engine may post when every rule passes and a policy clause is cited. $5,000 or more, and any control exception, requires the controller.",
+          "score": 0.05158384435874084
+        }
+      ],
+      "latencyMs": 0.22158299998409348,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P01",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "controller signs period close owns books",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-1.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.686003889283113
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.1365815918493611
+        },
+        {
+          "id": "policy-8.0",
+          "text": "Materiality is P&L impact, the sum of revenue and expense lines. Under $5,000 the controls engine may post when every rule passes and a policy clause is cited. $5,000 or more, and any control exception, requires the controller.",
+          "score": 0.05158384435874084
+        }
+      ],
+      "latencyMs": 0.1681250000729051,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P01",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "controller signs period close owns books",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-1.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.9279863595743831
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.731509734194231
+        },
+        {
+          "id": "policy-8.0",
+          "text": "Materiality is P&L impact, the sum of revenue and expense lines. Under $5,000 the controls engine may post when every rule passes and a policy clause is cited. $5,000 or more, and any control exception, requires the controller.",
+          "score": 0.5630076615605526
+        }
+      ],
+      "latencyMs": 0.9291249998568674,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P02",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "bank feed ledger signed contracts sources disagree",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-2.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.4437185375213321
+        },
+        {
+          "id": "policy-6.2",
+          "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+          "score": 0.05437532371824822
+        },
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.05287603229127176
+        }
+      ],
+      "latencyMs": 0.1690410003902798,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P02",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "bank feed ledger signed contracts sources disagree",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-2.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.4437185375213321
+        },
+        {
+          "id": "policy-6.2",
+          "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+          "score": 0.05437532371824822
+        },
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.05287603229127176
+        }
+      ],
+      "latencyMs": 0.1564159997542447,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P02",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "bank feed ledger signed contracts sources disagree",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-2.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.9264813583074941
+        },
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.6187418709273346
+        },
+        {
+          "id": "policy-6.2",
+          "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+          "score": 0.6086989773280677
+        }
+      ],
+      "latencyMs": 0.8885839997674339,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P03",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "late items closed locked period",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-3.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.4105636770481393
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.06454082920677731
+        },
+        {
+          "id": "policy-7.1",
+          "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+          "score": 0.04578678848908913
+        }
+      ],
+      "latencyMs": 0.20383400033097132,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P03",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "late items closed locked period",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-3.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.4105636770481393
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.06454082920677731
+        },
+        {
+          "id": "policy-7.1",
+          "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+          "score": 0.04578678848908913
+        }
+      ],
+      "latencyMs": 0.1828330000535061,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P03",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "late items closed locked period",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-3.0"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.8801754093500597
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.5103312351279247
+        },
+        {
+          "id": "policy-7.1",
+          "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+          "score": 0.46951284957561173
+        }
+      ],
+      "latencyMs": 0.8165409999492113,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P04",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "vendor bank detail change callback verification hold payments",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-4.3"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.6140808829286935
+        },
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.04954826119435301
+        }
+      ],
+      "latencyMs": 0.21541699970839545,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P04",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "vendor bank detail change callback verification hold payments",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-4.3"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.6140808829286935
+        },
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.04954826119435301
+        }
+      ],
+      "latencyMs": 0.18870799976866692,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P04",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "vendor bank detail change callback verification hold payments",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-4.3"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.9411775529307586
+        },
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.5958048450131346
+        }
+      ],
+      "latencyMs": 0.7387919999928272,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P05",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "non recoverable fee penalty deduction receivable expensed",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-5.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-5.1",
+          "text": "Where a contract makes a fee, penalty or deduction non-recoverable, the amount is expensed in the period it becomes certain. It is not carried as a receivable.",
+          "score": 0.48241871491843147
+        },
+        {
+          "id": "policy-6.1",
+          "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+          "score": 0.056574741948015754
+        }
+      ],
+      "latencyMs": 0.157667000166839,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P05",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "non recoverable fee penalty deduction receivable expensed",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-5.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-5.1",
+          "text": "Where a contract makes a fee, penalty or deduction non-recoverable, the amount is expensed in the period it becomes certain. It is not carried as a receivable.",
+          "score": 0.48241871491843147
+        },
+        {
+          "id": "policy-6.1",
+          "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+          "score": 0.056574741948015754
+        }
+      ],
+      "latencyMs": 0.1524580002296716,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P05",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "non recoverable fee penalty deduction receivable expensed",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-5.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-5.1",
+          "text": "Where a contract makes a fee, penalty or deduction non-recoverable, the amount is expensed in the period it becomes certain. It is not carried as a receivable.",
+          "score": 0.9306043098972085
+        },
+        {
+          "id": "policy-6.1",
+          "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+          "score": 0.6221635525754539
+        }
+      ],
+      "latencyMs": 0.7754160001240962,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P06",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "ticket sales deferred processing fees payout settles",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-6.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-6.1",
+          "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+          "score": 0.5267772618424933
+        }
+      ],
+      "latencyMs": 0.16545800008316291,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P06",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "ticket sales deferred processing fees payout settles",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-6.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-6.1",
+          "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+          "score": 0.5267772618424933
+        }
+      ],
+      "latencyMs": 0.15587500001856824,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P06",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "ticket sales deferred processing fees payout settles",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-6.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-6.1",
+          "text": "Ticket sales are deferred until the event. Gross charges are recorded to Stripe clearing; processing fees are expensed when the payout settles.",
+          "score": 0.9378802992368671
+        }
+      ],
+      "latencyMs": 0.6521249997604173,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P07",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "fixed sponsorship variable measurable amendment catch up",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-6.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-6.2",
+          "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+          "score": 0.49633944561165183
+        }
+      ],
+      "latencyMs": 0.15604200007146574,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P07",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "fixed sponsorship variable measurable amendment catch up",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-6.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-6.2",
+          "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+          "score": 0.49633944561165183
+        }
+      ],
+      "latencyMs": 0.1512089997959265,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P07",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "fixed sponsorship variable measurable amendment catch up",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-6.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-6.2",
+          "text": "Fixed sponsorship is recognized ratably over the campaign. Variable components are recognized when measurable. A mid-term amendment triggers a catch-up in the period signed.",
+          "score": 0.9344818057524766
+        }
+      ],
+      "latencyMs": 0.6431249998968269,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P08",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "services rendered accrued period service reverse invoice",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-7.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-7.1",
+          "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+          "score": 0.5122927220132079
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.06595292269263857
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.051160104349849835
+        }
+      ],
+      "latencyMs": 0.16095799992399407,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P08",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "services rendered accrued period service reverse invoice",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-7.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-7.1",
+          "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+          "score": 0.5122927220132079
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.06595292269263857
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.051160104349849835
+        }
+      ],
+      "latencyMs": 0.1547920001030434,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P08",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "services rendered accrued period service reverse invoice",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-7.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-7.1",
+          "text": "Costs for services rendered are accrued in the period of service from the schedule and reversed when the invoice arrives.",
+          "score": 0.92304442644648
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.5342647379718987
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.5103312351279247
+        }
+      ],
+      "latencyMs": 0.6456669998442521,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P09",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "human decided precedent matching scope threshold re escalate",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-8.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-8.2",
+          "text": "A human-decided precedent with matching scope, under threshold, is pre-approved and does not re-escalate.",
+          "score": 0.6391174753703411
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.05320320118354025
+        }
+      ],
+      "latencyMs": 0.15745800010336097,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P09",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "human decided precedent matching scope threshold re escalate",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-8.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-8.2",
+          "text": "A human-decided precedent with matching scope, under threshold, is pre-approved and does not re-escalate.",
+          "score": 0.6391174753703411
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.05320320118354025
+        }
+      ],
+      "latencyMs": 0.15241699975376832,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P09",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "human decided precedent matching scope threshold re escalate",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "policy-8.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "policy-8.2",
+          "text": "A human-decided precedent with matching scope, under threshold, is pre-approved and does not re-escalate.",
+          "score": 0.9475526378641822
+        },
+        {
+          "id": "policy-3.0",
+          "text": "Periods close on human sign-off and are then locked. Late items are booked in the current period with a reference to the original period.",
+          "score": 0.6120101875348204
+        }
+      ],
+      "latencyMs": 0.6215420003172767,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P10",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "vendor bank detail change callback verification hold payments",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-06-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No policy is effective before July 1.",
+      "hits": [
+        {
+          "id": "policy-4.3",
+          "text": "A vendor bank-detail change holds payments to that vendor until callback verification is logged. The change is escalated the day it arrives.",
+          "score": 0.6140808829286935
+        },
+        {
+          "id": "policy-2.0",
+          "text": "The bank feed is the system of record for cash, the ledger for balances, and signed contracts for amounts owed. When sources disagree, the proposal states which governs and why.",
+          "score": 0.04954826119435301
+        }
+      ],
+      "latencyMs": 0.154249999923195,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 2,
+      "verbatimHits": 2,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P10",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "vendor bank detail change callback verification hold payments",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-06-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No policy is effective before July 1.",
+      "hits": [],
+      "latencyMs": 0.004582999736157944,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 0,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P10",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "vendor bank detail change callback verification hold payments",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-06-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No policy is effective before July 1.",
+      "hits": [],
+      "latencyMs": 0.664208000216604,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 0,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P11",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "non recoverable fee penalty receivable",
+        "entity": "unrelated-evaluation-entity",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No corpus documents belong to this entity.",
+      "hits": [
+        {
+          "id": "policy-5.1",
+          "text": "Where a contract makes a fee, penalty or deduction non-recoverable, the amount is expensed in the period it becomes certain. It is not carried as a receivable.",
+          "score": 0.4155831310721829
+        }
+      ],
+      "latencyMs": 0.15429200038852287,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 1,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P11",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "non recoverable fee penalty receivable",
+        "entity": "unrelated-evaluation-entity",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No corpus documents belong to this entity.",
+      "hits": [],
+      "latencyMs": 0.0035830003071168903,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 0,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P11",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "non recoverable fee penalty receivable",
+        "entity": "unrelated-evaluation-entity",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No corpus documents belong to this entity.",
+      "hits": [],
+      "latencyMs": 0.6000419998599682,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 0,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P12",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "cryptocurrency tax policy",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No clause defines cryptocurrency tax treatment; lexical overlap must not be treated as an answer.",
+      "hits": [
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.2167937373896221
+        },
+        {
+          "id": "policy-8.1",
+          "text": "No person or system approves an entry it proposed.",
+          "score": 0.19938054974665137
+        },
+        {
+          "id": "policy-9.0",
+          "text": "Every decision records the proposal, reviewer, rules run, verbatim citations, and outcome.",
+          "score": 0.17455558207032462
+        }
+      ],
+      "latencyMs": 0.1529169999230362,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P12",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "policy",
+        "text": "cryptocurrency tax policy",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No clause defines cryptocurrency tax treatment; lexical overlap must not be treated as an answer.",
+      "hits": [
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.2167937373896221
+        },
+        {
+          "id": "policy-8.1",
+          "text": "No person or system approves an entry it proposed.",
+          "score": 0.19938054974665137
+        },
+        {
+          "id": "policy-9.0",
+          "text": "Every decision records the proposal, reviewer, rules run, verbatim citations, and outcome.",
+          "score": 0.17455558207032462
+        }
+      ],
+      "latencyMs": 0.14916700001776917,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "policy-pilot-v1",
+      "exampleId": "P12",
+      "method": "auditor-local",
+      "request": {
+        "collection": "policy",
+        "text": "cryptocurrency tax policy",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No clause defines cryptocurrency tax treatment; lexical overlap must not be treated as an answer.",
+      "hits": [
+        {
+          "id": "policy-8.1",
+          "text": "No person or system approves an entry it proposed.",
+          "score": 0.05837692588914295
+        },
+        {
+          "id": "policy-1.0",
+          "text": "The controller owns the books and signs each period close.",
+          "score": 0.0577471549735999
+        },
+        {
+          "id": "policy-9.0",
+          "text": "Every decision records the proposal, reviewer, rules run, verbatim citations, and outcome.",
+          "score": 0.05652751604970052
+        }
+      ],
+      "latencyMs": 0.6692499996461265,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C01",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Northern Lines total artist fee September festival",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-2.1",
+          "text": "The total artist fee is $120,000 for the September 19\u201320, 2026 festival.",
+          "score": 0.6682296099457005
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.33827832974652816
+        },
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.3363589814016077
+        }
+      ],
+      "latencyMs": 0.14404200010176282,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C01",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Northern Lines total artist fee September festival",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-2.1",
+          "text": "The total artist fee is $120,000 for the September 19\u201320, 2026 festival.",
+          "score": 0.6682296099457005
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.33827832974652816
+        },
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.3363589814016077
+        }
+      ],
+      "latencyMs": 0.12254100010977709,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C01",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Northern Lines total artist fee September festival",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-2.1",
+          "text": "The total artist fee is $120,000 for the September 19\u201320, 2026 festival.",
+          "score": 0.899570907394332
+        },
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.8226285080495285
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.8210576838324761
+        }
+      ],
+      "latencyMs": 0.6807919999118894,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C02",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Fifty percent artist fee payable within 10 days signing balance due",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-3.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.5963088760974941
+        },
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.1914179090166734
+        },
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.1265929676939967
+        }
+      ],
+      "latencyMs": 0.12441599983503693,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C02",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Fifty percent artist fee payable within 10 days signing balance due",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-3.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.5963088760974941
+        },
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.1914179090166734
+        },
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.1265929676939967
+        }
+      ],
+      "latencyMs": 0.1150000002780871,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C02",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Fifty percent artist fee payable within 10 days signing balance due",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-3.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.9359364680975737
+        },
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.8368530087456788
+        },
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.7755632770803772
+        }
+      ],
+      "latencyMs": 0.6595840000045428,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C03",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "artist cancels more than 30 days deposit refunded administrative fee",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-7.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.589588797544853
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.10339155949835824
+        },
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.10196870245034127
+        }
+      ],
+      "latencyMs": 0.11962500002482557,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C03",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "artist cancels more than 30 days deposit refunded administrative fee",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-7.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.589588797544853
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.10339155949835824
+        },
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.10196870245034127
+        }
+      ],
+      "latencyMs": 0.11333400016155792,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C03",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "artist cancels more than 30 days deposit refunded administrative fee",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "northern-lines-7.2"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.935565474009101
+        },
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.7333682065112517
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.7128447018267396
+        }
+      ],
+      "latencyMs": 0.7127499998205167,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C04",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Apex Staging",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "apex-9.4"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.4012013777310016
+        }
+      ],
+      "latencyMs": 0.11183300011907704,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C04",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Apex Staging",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "apex-9.4"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.4012013777310016
+        }
+      ],
+      "latencyMs": 0.10741699998106924,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C04",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Apex Staging",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "apex-9.4"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.40590939150527044
+        }
+      ],
+      "latencyMs": 0.5712910001420823,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C05",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "sponsor pay $50,000 August 15 campaign July through September",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-07-31",
+        "k": 3
+      },
+      "expected": [
+        "brightwater-3.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.6056362889523819
+        },
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.19060187210593801
+        },
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.07719009592141517
+        }
+      ],
+      "latencyMs": 0.11666699992929352,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 1,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C05",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "sponsor pay $50,000 August 15 campaign July through September",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-07-31",
+        "k": 3
+      },
+      "expected": [
+        "brightwater-3.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.588459746288874
+        },
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.07992862900287295
+        },
+        {
+          "id": "ironclad-2.1",
+          "text": "Site setup on August 30\u201331, 2026 costs $9,400. Event coverage on September 19\u201320, 2026 costs $28,000. Each service is invoiced net 30 after service.",
+          "score": 0.07936416649484238
+        }
+      ],
+      "latencyMs": 0.09745799980009906,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C05",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "sponsor pay $50,000 August 15 campaign July through September",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-07-31",
+        "k": 3
+      },
+      "expected": [
+        "brightwater-3.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.9315843919485706
+        },
+        {
+          "id": "ironclad-2.1",
+          "text": "Site setup on August 30\u201331, 2026 costs $9,400. Event coverage on September 19\u201320, 2026 costs $28,000. Each service is invoiced net 30 after service.",
+          "score": 0.6794935903990812
+        },
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.6378663939493588
+        }
+      ],
+      "latencyMs": 0.6362079998325498,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C06",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Signed August 10 replace fixed fee paid attendee capped $70,000",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "brightwater-amendment-1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.5786681895896819
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.09451711136359883
+        },
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.05976873932377766
+        }
+      ],
+      "latencyMs": 0.1355409999632684,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C06",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Signed August 10 replace fixed fee paid attendee capped $70,000",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "brightwater-amendment-1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.5786681895896819
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.09451711136359883
+        },
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.05976873932377766
+        }
+      ],
+      "latencyMs": 0.12216699997225078,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C06",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Signed August 10 replace fixed fee paid attendee capped $70,000",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "brightwater-amendment-1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.9352335889069225
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.697473692348444
+        },
+        {
+          "id": "soundwave-2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "score": 0.5877778298689181
+        }
+      ],
+      "latencyMs": 0.6777079997846158,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C07",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Ironclad Security",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "ironclad-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "ironclad-2.1",
+          "text": "Site setup on August 30\u201331, 2026 costs $9,400. Event coverage on September 19\u201320, 2026 costs $28,000. Each service is invoiced net 30 after service.",
+          "score": 0.3439939791146604
+        }
+      ],
+      "latencyMs": 0.11308300008749939,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C07",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Ironclad Security",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "ironclad-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "ironclad-2.1",
+          "text": "Site setup on August 30\u201331, 2026 costs $9,400. Event coverage on September 19\u201320, 2026 costs $28,000. Each service is invoiced net 30 after service.",
+          "score": 0.3439939791146604
+        }
+      ],
+      "latencyMs": 0.10858400037250249,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C07",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Ironclad Security",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "ironclad-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "ironclad-2.1",
+          "text": "Site setup on August 30\u201331, 2026 costs $9,400. Event coverage on September 19\u201320, 2026 costs $28,000. Each service is invoiced net 30 after service.",
+          "score": 0.40590939150527044
+        }
+      ],
+      "latencyMs": 0.627916999746958,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C08",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Field & Flame",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "field-flame-5.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.5894138745831914
+        }
+      ],
+      "latencyMs": 0.11858299967570929,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C08",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Field & Flame",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "field-flame-5.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.5894138745831914
+        }
+      ],
+      "latencyMs": 0.10733299995990819,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C08",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Field & Flame",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "field-flame-5.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.44169189218658644
+        }
+      ],
+      "latencyMs": 0.7161250000535802,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C09",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "SoundWave Production",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "soundwave-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "soundwave-2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "score": 0.536751679981356
+        }
+      ],
+      "latencyMs": 0.15341700009230408,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C09",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "SoundWave Production",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "soundwave-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "soundwave-2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "score": 0.536751679981356
+        }
+      ],
+      "latencyMs": 0.11595800015129498,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C09",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "SoundWave Production",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [
+        "soundwave-2.1"
+      ],
+      "negativeReason": null,
+      "hits": [
+        {
+          "id": "soundwave-2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "score": 0.44169189218658644
+        }
+      ],
+      "latencyMs": 0.6425000001399894,
+      "top1Correct": true,
+      "hitAt3": true,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C10",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Signed August 10 replace fixed fee paid attendee capped $70,000",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-07-31",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "The question asks for the August amendment, unavailable at July close. Returning an unrelated original clause is not successful abstention.",
+      "hits": [
+        {
+          "id": "brightwater-amendment-1",
+          "text": "Signed August 10, 2026: replace the $50,000 fixed fee with $30,000 fixed, payable August 15, plus $2.00 per paid attendee. Total consideration is capped at $70,000 and the variable balance settles within 15 days after the festival.",
+          "score": 0.5786681895896819
+        },
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.09451711136359883
+        },
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.05976873932377766
+        }
+      ],
+      "latencyMs": 0.11908299984497717,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 1,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C10",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "Signed August 10 replace fixed fee paid attendee capped $70,000",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-07-31",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "The question asks for the August amendment, unavailable at July close. Returning an unrelated original clause is not successful abstention.",
+      "hits": [
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.19067508684754442
+        },
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.11201442883324658
+        },
+        {
+          "id": "soundwave-2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "score": 0.10239905324072897
+        }
+      ],
+      "latencyMs": 0.10691599982237676,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C10",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "Signed August 10 replace fixed fee paid attendee capped $70,000",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-07-31",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "The question asks for the August amendment, unavailable at July close. Returning an unrelated original clause is not successful abstention.",
+      "hits": [
+        {
+          "id": "northern-lines-3.1",
+          "text": "Fifty percent of the artist fee ($60,000) is payable within 10 days of signing; the balance is due before performance.",
+          "score": 0.7348349716639228
+        },
+        {
+          "id": "soundwave-2.1",
+          "text": "An accepted production invoice is paid once, net 30. Copies submitted through email and the vendor portal do not create separate obligations.",
+          "score": 0.6418029522161849
+        },
+        {
+          "id": "brightwater-3.1",
+          "text": "The sponsor will pay $50,000 on August 15, 2026 for a campaign running July 1 through September 20, 2026.",
+          "score": 0.6230671441442678
+        }
+      ],
+      "latencyMs": 0.6340420000015001,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C11",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "damage deposit refundable inspection fee",
+        "entity": "unrelated-evaluation-entity",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No corpus documents belong to this entity.",
+      "hits": [
+        {
+          "id": "apex-9.4",
+          "text": "A damage deposit of $16,000 is payable before load-in and refundable within 5 business days after load-out, less a 15% inspection fee.",
+          "score": 0.3805472451328753
+        },
+        {
+          "id": "northern-lines-7.2",
+          "text": "If the artist cancels more than 30 days before the event, the deposit is refunded less a 15% administrative fee.",
+          "score": 0.11272347825021709
+        },
+        {
+          "id": "northern-lines-2.1",
+          "text": "The total artist fee is $120,000 for the September 19\u201320, 2026 festival.",
+          "score": 0.04448123385876091
+        }
+      ],
+      "latencyMs": 0.11420800001360476,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 3,
+      "verbatimHits": 3,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C11",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "damage deposit refundable inspection fee",
+        "entity": "unrelated-evaluation-entity",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No corpus documents belong to this entity.",
+      "hits": [],
+      "latencyMs": 0.0036249998629500624,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 0,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C11",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "damage deposit refundable inspection fee",
+        "entity": "unrelated-evaluation-entity",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "No corpus documents belong to this entity.",
+      "hits": [],
+      "latencyMs": 0.5680419999407604,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": true,
+      "scopeViolations": 0,
+      "verbatimHits": 0,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C12",
+      "method": "unscoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "catering cryptocurrency insurance",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "The catering contract does not define cryptocurrency insurance.",
+      "hits": [
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.20838927382160594
+        }
+      ],
+      "latencyMs": 0.11287500001344597,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C12",
+      "method": "scoped-tfidf",
+      "request": {
+        "collection": "contracts",
+        "text": "catering cryptocurrency insurance",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "The catering contract does not define cryptocurrency insurance.",
+      "hits": [
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.20838927382160594
+        }
+      ],
+      "latencyMs": 0.10791599970616517,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    },
+    {
+      "dataset": "contract-pilot-v1",
+      "exampleId": "C12",
+      "method": "auditor-local",
+      "request": {
+        "collection": "contracts",
+        "text": "catering cryptocurrency insurance",
+        "entity": "eo-festival-nyc",
+        "asOf": "2026-09-30",
+        "k": 3
+      },
+      "expected": [],
+      "negativeReason": "The catering contract does not define cryptocurrency insurance.",
+      "hits": [
+        {
+          "id": "field-flame-5.1",
+          "text": "Final payment of $42,000 is due September 15, 2026 to the account on the vendor master ending 4471.",
+          "score": 0.6672806606449838
+        }
+      ],
+      "latencyMs": 0.6198330002007424,
+      "top1Correct": false,
+      "hitAt3": false,
+      "taskSuccess": false,
+      "scopeViolations": 0,
+      "verbatimHits": 1,
+      "error": null
+    }
+  ]
+}

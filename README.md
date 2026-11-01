@@ -1,5 +1,9 @@
 # Auditor
 
+Deep's [Milestone 2 report draft and handoff](docs/milestone2/DEEP_HANDOFF.md)
+includes an editable template-based report, actual local retrieval pilot results
+against two baselines, reproduction commands, and explicit remaining group inputs.
+
 The cash accounting function for one entity of an event-management group. The demo entity is modelled on Coachella (Goldenvoice / AEG; public shape in `datagen/public/coachella.json`), with fiscal periods July–September 2026 and every financial number fictitious; the entity id stays `eo-festival-nyc`. Three seats: one Claude Sonnet **staff accountant** agent that reconciles bank to books, retrieves precedent, policy and its own corrections through Moss, and proposes entries with verbatim citations; a **controls engine written in TypeScript** (balance, citation, P&L threshold, 4.3 bank-detail hold with CRS payee check, period lock, revision cap, precedent exception, correction check) that posts routine entries and escalates the rest; and a **human controller** who approves or rejects with an instruction and signs the period. The agent cannot post, enforced server-side in `post_entry`, not in a prompt. Source of truth: `Auditor — Cal Hacks 13.0 Brief v2 (final design).pdf` and `Auditor — Design.pdf` in the shared drive.
 
 ## Seats

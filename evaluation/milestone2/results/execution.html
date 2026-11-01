@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><title>Actual local retrieval pilot</title><style>body{background:#101827;color:#e5edf8;padding:30px}pre{font:16px/1.7 monospace;white-space:pre-wrap}h1{font:26px sans-serif;color:#66dac6}</style><h1>Milestone 2: recorded evaluation output</h1><pre>Auditor Milestone 2 — ACTUAL LOCAL RETRIEVAL PILOT
+Component evaluation only; no Claude close or real approvals.
+Source commit: ef07a1325a98f8a0c10fc4eb9831bd6f6a182dd2
+Corpus: 21 source-only clauses; 2 datasets x 12 examples x 3 methods = 72 executions.
+Top1/Hit@3 denominator: 9 answerable queries. Abstain denominator: 3 negatives.
+
+Dataset             Method             Top1    Hit@3   Abstain  Success  Violations  Median ms
+policy-pilot-v1     unscoped-tfidf     100.0%  100.0%  0.0%     75.0%             3     0.159
+policy-pilot-v1     scoped-tfidf       100.0%  100.0%  66.7%    91.7%             0     0.154
+policy-pilot-v1     auditor-local      100.0%  100.0%  66.7%    91.7%             0     0.667
+contract-pilot-v1   unscoped-tfidf     100.0%  100.0%  0.0%     75.0%             5     0.119
+contract-pilot-v1   scoped-tfidf       100.0%  100.0%  33.3%    83.3%             0     0.108
+contract-pilot-v1   auditor-local      100.0%  100.0%  33.3%    83.3%             0     0.639
+
+Observed Auditor misses (unchanged production ranking):
+P12: cryptocurrency tax policy | expected=[] | got=[&#x27;policy-8.1&#x27;, &#x27;policy-1.0&#x27;, &#x27;policy-9.0&#x27;]
+C10: Signed August 10 replace fixed fee paid attendee capped $70,000 | expected=[] | got=[&#x27;northern-lines-3.1&#x27;, &#x27;soundwave-2.1&#x27;, &#x27;brightwater-3.1&#x27;]
+C12: catering cryptocurrency insurance | expected=[] | got=[&#x27;field-flame-5.1&#x27;]
+
+Latency excludes startup/indexing/network/LLM. Auditor includes HTTP routing; baselines do not.
+No full-system precision, accounting correctness, cost savings, or stakeholder acceptance is established.
+</pre>
