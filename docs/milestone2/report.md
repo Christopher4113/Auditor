@@ -183,4 +183,3 @@ The evaluation needs Python 3.12+ and uv; no credentials. The app additionally n
 November 1 local checks: data 33 tests, retrieval 39, repository Vitest 266, evaluator 3: 341 passed. Convex/frontend TypeScript and frontend production build passed. The convenience typecheck script initially failed because nested pnpm was not on PATH; direct corepack invocations passed. Tests are regression evidence, not the full-system result table.
 
 Evidence: evaluation/milestone2/results/results.json and execution.txt; docs/milestone2/verification.md; datagen/README.md; retrieval/PHASE3.md; source files convex/agent.ts, close.ts, controls/rules.ts and ledger.ts. Local assignment template is preserved as template.docx. The original template’s seven sections are retained; missing group facts are explicitly marked.
-

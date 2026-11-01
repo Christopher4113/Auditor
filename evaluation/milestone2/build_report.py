@@ -264,7 +264,7 @@ def build():
         canvas.drawCentredString(306,20,f'Auditor • Group draft prepared by Deep • November 1, 2026 • {document.page}')
     SimpleDocTemplate(str(OUT/(stem+'.pdf')),pagesize=(612,792),rightMargin=49,leftMargin=49,topMargin=45,bottomMargin=42,
         title='Auditor — Milestone 2 group draft prepared by Deep',author='Deep Nayak').build(pdf,onFirstPage=page_footer,onLaterPages=page_footer)
-    (OUT/'report.md').write_text('\n'.join(md)+'\n')
+    (OUT/'report.md').write_text('\n'.join(md).rstrip()+'\n')
     print(f'Built DOCX, PDF and Markdown from {len(pages)} intended pages in {OUT}')
 
 
